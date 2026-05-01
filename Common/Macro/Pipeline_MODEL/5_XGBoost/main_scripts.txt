@@ -1,0 +1,4 @@
+train_a_multifold_pipeline.py   -> Abnormal returns model
+train_p_1fold_pipeline.py       -> Regime model
+
+the rest are intermediary/working scripts/priors/previous checkpoints

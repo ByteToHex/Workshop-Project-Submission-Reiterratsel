@@ -1,0 +1,1390 @@
+{
+  "mode": "Annual",
+  "source_path": "D:\\WS\\-GH-DEV-Ref\\WS-Python\\Tasks\\Scrape-Tradingview\\Consolidated\\SCHEMA_DIFFERENCES\\Tradingview_Schema_Annual_FromSS.txt",
+  "schema_rows": [
+    {
+      "row_id": 1,
+      "section": "income",
+      "label": "Total revenue",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 2,
+      "section": "income",
+      "label": "Rental income",
+      "depth": 2,
+      "parent_id": 1,
+      "group_output_label": null
+    },
+    {
+      "row_id": 3,
+      "section": "income",
+      "label": "Investment income",
+      "depth": 2,
+      "parent_id": 1,
+      "group_output_label": null
+    },
+    {
+      "row_id": 4,
+      "section": "income",
+      "label": "Interest income (revenue)",
+      "depth": 2,
+      "parent_id": 1,
+      "group_output_label": null
+    },
+    {
+      "row_id": 5,
+      "section": "income",
+      "label": "Other operating income",
+      "depth": 2,
+      "parent_id": 1,
+      "group_output_label": null
+    },
+    {
+      "row_id": 6,
+      "section": "income",
+      "label": "Trading account income",
+      "depth": 2,
+      "parent_id": 1,
+      "group_output_label": null
+    },
+    {
+      "row_id": 7,
+      "section": "income",
+      "label": "Foreign exchange income",
+      "depth": 2,
+      "parent_id": 1,
+      "group_output_label": null
+    },
+    {
+      "row_id": 8,
+      "section": "income",
+      "label": "Trust & fiduciary income, commissions & fees",
+      "depth": 2,
+      "parent_id": 1,
+      "group_output_label": null
+    },
+    {
+      "row_id": 9,
+      "section": "income",
+      "label": "Trust income",
+      "depth": 3,
+      "parent_id": 8,
+      "group_output_label": null
+    },
+    {
+      "row_id": 10,
+      "section": "income",
+      "label": "Commision & fee income",
+      "depth": 3,
+      "parent_id": 8,
+      "group_output_label": null
+    },
+    {
+      "row_id": 11,
+      "section": "income",
+      "label": "Total operating expenses",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 12,
+      "section": "income",
+      "label": "Loan loss provision",
+      "depth": 2,
+      "parent_id": 11,
+      "group_output_label": null
+    },
+    {
+      "row_id": 13,
+      "section": "income",
+      "label": "Selling/general/admin expenses (total)",
+      "depth": 2,
+      "parent_id": 11,
+      "group_output_label": null
+    },
+    {
+      "row_id": 14,
+      "section": "income",
+      "label": "Cost of goods sold",
+      "depth": 2,
+      "parent_id": 11,
+      "group_output_label": null
+    },
+    {
+      "row_id": 15,
+      "section": "income",
+      "label": "Deprecation and amortization",
+      "depth": 3,
+      "parent_id": 14,
+      "group_output_label": null
+    },
+    {
+      "row_id": 16,
+      "section": "income",
+      "label": "Depreciation",
+      "depth": 4,
+      "parent_id": 15,
+      "group_output_label": null
+    },
+    {
+      "row_id": 17,
+      "section": "income",
+      "label": "Amortization of intangibles",
+      "depth": 4,
+      "parent_id": 15,
+      "group_output_label": null
+    },
+    {
+      "row_id": 18,
+      "section": "income",
+      "label": "Amortization of deferred charges",
+      "depth": 4,
+      "parent_id": 15,
+      "group_output_label": null
+    },
+    {
+      "row_id": 19,
+      "section": "income",
+      "label": "Other cost of goods sold",
+      "depth": 3,
+      "parent_id": 14,
+      "group_output_label": null
+    },
+    {
+      "row_id": 20,
+      "section": "income",
+      "label": "Other operating expenses (total)",
+      "depth": 2,
+      "parent_id": 11,
+      "group_output_label": null
+    },
+    {
+      "row_id": 21,
+      "section": "income",
+      "label": "Operating income",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 22,
+      "section": "income",
+      "label": "Non-operating income (excl. interest expenses)",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 23,
+      "section": "income",
+      "label": "Non-operating interest income",
+      "depth": 2,
+      "parent_id": 22,
+      "group_output_label": null
+    },
+    {
+      "row_id": 24,
+      "section": "income",
+      "label": "Miscellaneous non-operating expense",
+      "depth": 2,
+      "parent_id": 22,
+      "group_output_label": null
+    },
+    {
+      "row_id": 25,
+      "section": "income",
+      "label": "Pretax equity in earnings",
+      "depth": 2,
+      "parent_id": 22,
+      "group_output_label": null
+    },
+    {
+      "row_id": 26,
+      "section": "income",
+      "label": "Total interest expense (banks)",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 27,
+      "section": "income",
+      "label": "Unusual income/expense",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 28,
+      "section": "income",
+      "label": "Pretax income",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 29,
+      "section": "income",
+      "label": "Taxes",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 30,
+      "section": "income",
+      "label": "Equity in earnings",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 31,
+      "section": "income",
+      "label": "After tax other income/expense",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 32,
+      "section": "income",
+      "label": "Non-controlling/minority interest",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 33,
+      "section": "income",
+      "label": "Net income before discontinued operations",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 34,
+      "section": "income",
+      "label": "Preferred dividends",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 35,
+      "section": "income",
+      "label": "Net income",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 36,
+      "section": "income",
+      "label": "Basic earnings per share (basic EPS)",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 37,
+      "section": "income",
+      "label": "Diluted earnings per share (diluted EPS)",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 38,
+      "section": "income",
+      "label": "Average basic shares outstanding",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 39,
+      "section": "income",
+      "label": "Diluted shares outstanding",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 40,
+      "section": "income",
+      "label": "EBITDA",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 41,
+      "section": "income",
+      "label": "EBIT",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 42,
+      "section": "balance",
+      "label": "Total assets",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 43,
+      "section": "balance",
+      "label": "Other long term assets (total)",
+      "depth": 2,
+      "parent_id": 42,
+      "group_output_label": null
+    },
+    {
+      "row_id": 44,
+      "section": "balance",
+      "label": "Intangible assets",
+      "depth": 2,
+      "parent_id": 42,
+      "group_output_label": null
+    },
+    {
+      "row_id": 45,
+      "section": "balance",
+      "label": "Deferred tax assets",
+      "depth": 2,
+      "parent_id": 42,
+      "group_output_label": null
+    },
+    {
+      "row_id": 46,
+      "section": "balance",
+      "label": "Net property/plant/equipment",
+      "depth": 2,
+      "parent_id": 42,
+      "group_output_label": null
+    },
+    {
+      "row_id": 47,
+      "section": "balance",
+      "label": "Investments in unconsolidated subsidiaries",
+      "depth": 2,
+      "parent_id": 42,
+      "group_output_label": null
+    },
+    {
+      "row_id": 48,
+      "section": "balance",
+      "label": "Total investments (banks)",
+      "depth": 2,
+      "parent_id": 42,
+      "group_output_label": null
+    },
+    {
+      "row_id": 49,
+      "section": "balance",
+      "label": "Net loans",
+      "depth": 3,
+      "parent_id": 48,
+      "group_output_label": null
+    },
+    {
+      "row_id": 50,
+      "section": "balance",
+      "label": "Gross loans",
+      "depth": 4,
+      "parent_id": 49,
+      "group_output_label": null
+    },
+    {
+      "row_id": 51,
+      "section": "balance",
+      "label": "Loan loss allowances (reserves)",
+      "depth": 4,
+      "parent_id": 49,
+      "group_output_label": null
+    },
+    {
+      "row_id": 52,
+      "section": "balance",
+      "label": "Real estate assets",
+      "depth": 3,
+      "parent_id": 48,
+      "group_output_label": null
+    },
+    {
+      "row_id": 53,
+      "section": "balance",
+      "label": "Other investments",
+      "depth": 3,
+      "parent_id": 48,
+      "group_output_label": null
+    },
+    {
+      "row_id": 54,
+      "section": "balance",
+      "label": "Total receivables (net)",
+      "depth": 2,
+      "parent_id": 42,
+      "group_output_label": null
+    },
+    {
+      "row_id": 55,
+      "section": "balance",
+      "label": "Cash and short term investments",
+      "depth": 2,
+      "parent_id": 42,
+      "group_output_label": null
+    },
+    {
+      "row_id": 56,
+      "section": "balance",
+      "label": "Cash & equivalents",
+      "depth": 3,
+      "parent_id": 55,
+      "group_output_label": null
+    },
+    {
+      "row_id": 57,
+      "section": "balance",
+      "label": "Short term investments",
+      "depth": 3,
+      "parent_id": 55,
+      "group_output_label": null
+    },
+    {
+      "row_id": 58,
+      "section": "balance",
+      "label": "Total liabilities",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 59,
+      "section": "balance",
+      "label": "Other non-current liabilities (total)",
+      "depth": 2,
+      "parent_id": 58,
+      "group_output_label": null
+    },
+    {
+      "row_id": 60,
+      "section": "balance",
+      "label": "Deferred income (non-current)",
+      "depth": 2,
+      "parent_id": 58,
+      "group_output_label": null
+    },
+    {
+      "row_id": 61,
+      "section": "balance",
+      "label": "Deferred tax liabilities",
+      "depth": 2,
+      "parent_id": 58,
+      "group_output_label": null
+    },
+    {
+      "row_id": 62,
+      "section": "balance",
+      "label": "Provision for risks & charge",
+      "depth": 2,
+      "parent_id": 58,
+      "group_output_label": null
+    },
+    {
+      "row_id": 63,
+      "section": "balance",
+      "label": "Total debt",
+      "depth": 2,
+      "parent_id": 58,
+      "group_output_label": null
+    },
+    {
+      "row_id": 64,
+      "section": "balance",
+      "label": "Short term debt",
+      "depth": 3,
+      "parent_id": 63,
+      "group_output_label": null
+    },
+    {
+      "row_id": 65,
+      "section": "balance",
+      "label": "Long term debt",
+      "depth": 3,
+      "parent_id": 63,
+      "group_output_label": null
+    },
+    {
+      "row_id": 66,
+      "section": "balance",
+      "label": "Long term debt (excl. lease liabilities)",
+      "depth": 4,
+      "parent_id": 65,
+      "group_output_label": null
+    },
+    {
+      "row_id": 67,
+      "section": "balance",
+      "label": "Capital and operating lease obligations",
+      "depth": 4,
+      "parent_id": 65,
+      "group_output_label": null
+    },
+    {
+      "row_id": 68,
+      "section": "balance",
+      "label": "Total deposits",
+      "depth": 2,
+      "parent_id": 58,
+      "group_output_label": null
+    },
+    {
+      "row_id": 69,
+      "section": "balance",
+      "label": "Total equity",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 70,
+      "section": "balance",
+      "label": "Shareholders' equity",
+      "depth": 2,
+      "parent_id": 69,
+      "group_output_label": null
+    },
+    {
+      "row_id": 71,
+      "section": "balance",
+      "label": "Common equity (total)",
+      "depth": 3,
+      "parent_id": 70,
+      "group_output_label": null
+    },
+    {
+      "row_id": 72,
+      "section": "balance",
+      "label": "Retained earnings",
+      "depth": 4,
+      "parent_id": 71,
+      "group_output_label": null
+    },
+    {
+      "row_id": 73,
+      "section": "balance",
+      "label": "Additional paid-in capital / Capital su...",
+      "depth": 4,
+      "parent_id": 71,
+      "group_output_label": null
+    },
+    {
+      "row_id": 74,
+      "section": "balance",
+      "label": "Common stock par / Carrying value",
+      "depth": 4,
+      "parent_id": 71,
+      "group_output_label": null
+    },
+    {
+      "row_id": 75,
+      "section": "balance",
+      "label": "Treasury stock (common)",
+      "depth": 4,
+      "parent_id": 71,
+      "group_output_label": null
+    },
+    {
+      "row_id": 76,
+      "section": "balance",
+      "label": "Other common equity",
+      "depth": 4,
+      "parent_id": 71,
+      "group_output_label": null
+    },
+    {
+      "row_id": 77,
+      "section": "balance",
+      "label": "Preferred stock, carrying value",
+      "depth": 3,
+      "parent_id": 70,
+      "group_output_label": null
+    },
+    {
+      "row_id": 78,
+      "section": "balance",
+      "label": "Minority interest",
+      "depth": 2,
+      "parent_id": 69,
+      "group_output_label": null
+    },
+    {
+      "row_id": 79,
+      "section": "balance",
+      "label": "Total liabilities & shareholders' equities",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 80,
+      "section": "balance",
+      "label": "Net debt",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 81,
+      "section": "cashflow",
+      "label": "Cash from operating activities",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 82,
+      "section": "cashflow",
+      "label": "Funds from operations",
+      "depth": 2,
+      "parent_id": 81,
+      "group_output_label": null
+    },
+    {
+      "row_id": 83,
+      "section": "cashflow",
+      "label": "Changes in working capital",
+      "depth": 2,
+      "parent_id": 81,
+      "group_output_label": null
+    },
+    {
+      "row_id": 84,
+      "section": "cashflow",
+      "label": "Change in accrued expenses",
+      "depth": 3,
+      "parent_id": 83,
+      "group_output_label": null
+    },
+    {
+      "row_id": 85,
+      "section": "cashflow",
+      "label": "Change in accounts receivable",
+      "depth": 3,
+      "parent_id": 83,
+      "group_output_label": null
+    },
+    {
+      "row_id": 86,
+      "section": "cashflow",
+      "label": "Change in inventories",
+      "depth": 3,
+      "parent_id": 83,
+      "group_output_label": null
+    },
+    {
+      "row_id": 87,
+      "section": "cashflow",
+      "label": "Change in accounts payable",
+      "depth": 3,
+      "parent_id": 83,
+      "group_output_label": null
+    },
+    {
+      "row_id": 88,
+      "section": "cashflow",
+      "label": "Change in taxes payable",
+      "depth": 3,
+      "parent_id": 83,
+      "group_output_label": null
+    },
+    {
+      "row_id": 89,
+      "section": "cashflow",
+      "label": "Change in other assets/liabilities",
+      "depth": 3,
+      "parent_id": 83,
+      "group_output_label": null
+    },
+    {
+      "row_id": 90,
+      "section": "cashflow",
+      "label": "Cash from investing activities",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 91,
+      "section": "cashflow",
+      "label": "Purchase/sale of business (net)",
+      "depth": 2,
+      "parent_id": 90,
+      "group_output_label": null
+    },
+    {
+      "row_id": 92,
+      "section": "cashflow",
+      "label": "Purchase/acquisition of business",
+      "depth": 3,
+      "parent_id": 91,
+      "group_output_label": null
+    },
+    {
+      "row_id": 93,
+      "section": "cashflow",
+      "label": "Sale of fixed assets & businesses",
+      "depth": 3,
+      "parent_id": 91,
+      "group_output_label": null
+    },
+    {
+      "row_id": 94,
+      "section": "cashflow",
+      "label": "Purchase/sale of investments (net)",
+      "depth": 2,
+      "parent_id": 90,
+      "group_output_label": null
+    },
+    {
+      "row_id": 95,
+      "section": "cashflow",
+      "label": "Purchase of investments",
+      "depth": 3,
+      "parent_id": 94,
+      "group_output_label": null
+    },
+    {
+      "row_id": 96,
+      "section": "cashflow",
+      "label": "Sale/maturity of investments",
+      "depth": 3,
+      "parent_id": 94,
+      "group_output_label": null
+    },
+    {
+      "row_id": 97,
+      "section": "cashflow",
+      "label": "Capital expenditures",
+      "depth": 2,
+      "parent_id": 90,
+      "group_output_label": null
+    },
+    {
+      "row_id": 98,
+      "section": "cashflow",
+      "label": "Capital expenditures (fixed assets)",
+      "depth": 3,
+      "parent_id": 97,
+      "group_output_label": null
+    },
+    {
+      "row_id": 99,
+      "section": "cashflow",
+      "label": "Capital expenditures (other assets)",
+      "depth": 3,
+      "parent_id": 97,
+      "group_output_label": null
+    },
+    {
+      "row_id": 100,
+      "section": "cashflow",
+      "label": "Proceeds from loans",
+      "depth": 2,
+      "parent_id": 90,
+      "group_output_label": null
+    },
+    {
+      "row_id": 101,
+      "section": "cashflow",
+      "label": "Increase in loans",
+      "depth": 3,
+      "parent_id": 100,
+      "group_output_label": null
+    },
+    {
+      "row_id": 102,
+      "section": "cashflow",
+      "label": "Decrease in loans",
+      "depth": 3,
+      "parent_id": 100,
+      "group_output_label": null
+    },
+    {
+      "row_id": 103,
+      "section": "cashflow",
+      "label": "Other investing cash flow items (total)",
+      "depth": 2,
+      "parent_id": 90,
+      "group_output_label": null
+    },
+    {
+      "row_id": 104,
+      "section": "cashflow",
+      "label": "Investing activities (other uses)",
+      "depth": 3,
+      "parent_id": 103,
+      "group_output_label": null
+    },
+    {
+      "row_id": 105,
+      "section": "cashflow",
+      "label": "Investing activities (other sources)",
+      "depth": 3,
+      "parent_id": 103,
+      "group_output_label": null
+    },
+    {
+      "row_id": 106,
+      "section": "cashflow",
+      "label": "Cash from financing activities",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 107,
+      "section": "cashflow",
+      "label": "Change in deposits",
+      "depth": 2,
+      "parent_id": 106,
+      "group_output_label": null
+    },
+    {
+      "row_id": 108,
+      "section": "cashflow",
+      "label": "Decrease in deposits",
+      "depth": 3,
+      "parent_id": 107,
+      "group_output_label": null
+    },
+    {
+      "row_id": 109,
+      "section": "cashflow",
+      "label": "Increase in deposits",
+      "depth": 3,
+      "parent_id": 107,
+      "group_output_label": null
+    },
+    {
+      "row_id": 110,
+      "section": "cashflow",
+      "label": "Issuance/retirement of stock (net)",
+      "depth": 2,
+      "parent_id": 106,
+      "group_output_label": null
+    },
+    {
+      "row_id": 111,
+      "section": "cashflow",
+      "label": "Repurchase of common & preferred stock",
+      "depth": 3,
+      "parent_id": 110,
+      "group_output_label": null
+    },
+    {
+      "row_id": 112,
+      "section": "cashflow",
+      "label": "Sale of common & preferred stock",
+      "depth": 3,
+      "parent_id": 110,
+      "group_output_label": null
+    },
+    {
+      "row_id": 113,
+      "section": "cashflow",
+      "label": "Other Proceeds from Sale/Issuance of Sto...",
+      "depth": 4,
+      "parent_id": 112,
+      "group_output_label": null
+    },
+    {
+      "row_id": 114,
+      "section": "cashflow",
+      "label": "Proceeds from stock options",
+      "depth": 4,
+      "parent_id": 112,
+      "group_output_label": null
+    },
+    {
+      "row_id": 115,
+      "section": "cashflow",
+      "label": "Total cash dividends paid",
+      "depth": 2,
+      "parent_id": 106,
+      "group_output_label": null
+    },
+    {
+      "row_id": 116,
+      "section": "cashflow",
+      "label": "Issuance/retirement of debt (net)",
+      "depth": 2,
+      "parent_id": 106,
+      "group_output_label": null
+    },
+    {
+      "row_id": 117,
+      "section": "cashflow",
+      "label": "Issuance/retirement of short term debt",
+      "depth": 3,
+      "parent_id": 116,
+      "group_output_label": null
+    },
+    {
+      "row_id": 118,
+      "section": "cashflow",
+      "label": "Issuance/retirement of long term debt",
+      "depth": 3,
+      "parent_id": 116,
+      "group_output_label": null
+    },
+    {
+      "row_id": 119,
+      "section": "cashflow",
+      "label": "Issuance of long term debt",
+      "depth": 4,
+      "parent_id": 118,
+      "group_output_label": null
+    },
+    {
+      "row_id": 120,
+      "section": "cashflow",
+      "label": "Reduction of long term debt",
+      "depth": 4,
+      "parent_id": 118,
+      "group_output_label": null
+    },
+    {
+      "row_id": 121,
+      "section": "cashflow",
+      "label": "Issuance/retirement of other debt",
+      "depth": 3,
+      "parent_id": 116,
+      "group_output_label": null
+    },
+    {
+      "row_id": 122,
+      "section": "cashflow",
+      "label": "Other financing cash flow items (total)",
+      "depth": 2,
+      "parent_id": 106,
+      "group_output_label": null
+    },
+    {
+      "row_id": 123,
+      "section": "cashflow",
+      "label": "Financing activities (other uses)",
+      "depth": 3,
+      "parent_id": 122,
+      "group_output_label": null
+    },
+    {
+      "row_id": 124,
+      "section": "cashflow",
+      "label": "Financing activities (other sources)",
+      "depth": 3,
+      "parent_id": 122,
+      "group_output_label": null
+    },
+    {
+      "row_id": 125,
+      "section": "cashflow",
+      "label": "Exchange rate effect",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 126,
+      "section": "cashflow",
+      "label": "Miscellaneous funds",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 127,
+      "section": "cashflow",
+      "label": "Net change in cash",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 128,
+      "section": "cashflow",
+      "label": "Free cash flow",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 129,
+      "section": "cashflow",
+      "label": "Interest paid",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 130,
+      "section": "cashflow",
+      "label": "Taxes paid",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 131,
+      "section": "statistics",
+      "label": "Total common shares outstanding",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "0-Key_stats"
+    },
+    {
+      "row_id": 132,
+      "section": "statistics",
+      "label": "Free float",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "0-Key_stats"
+    },
+    {
+      "row_id": 133,
+      "section": "statistics",
+      "label": "Number of employees",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "0-Key_stats"
+    },
+    {
+      "row_id": 134,
+      "section": "statistics",
+      "label": "Number of shareholders",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "0-Key_stats"
+    },
+    {
+      "row_id": 135,
+      "section": "statistics",
+      "label": "Price to earnings ratio",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "1-Valuation_ratios"
+    },
+    {
+      "row_id": 136,
+      "section": "statistics",
+      "label": "Price to sales ratio",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "1-Valuation_ratios"
+    },
+    {
+      "row_id": 137,
+      "section": "statistics",
+      "label": "Price to cash flow ratio",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "1-Valuation_ratios"
+    },
+    {
+      "row_id": 138,
+      "section": "statistics",
+      "label": "Price to book ratio",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "1-Valuation_ratios"
+    },
+    {
+      "row_id": 139,
+      "section": "statistics",
+      "label": "Enterprise value",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "1-Valuation_ratios"
+    },
+    {
+      "row_id": 140,
+      "section": "statistics",
+      "label": "Enterprise value to EBITDA ratio",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "1-Valuation_ratios"
+    },
+    {
+      "row_id": 141,
+      "section": "statistics",
+      "label": "Return on assets %",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "2-Profitability_Ratios"
+    },
+    {
+      "row_id": 142,
+      "section": "statistics",
+      "label": "Return on equity %",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "2-Profitability_Ratios"
+    },
+    {
+      "row_id": 143,
+      "section": "statistics",
+      "label": "Return on invested capital %",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "2-Profitability_Ratios"
+    },
+    {
+      "row_id": 144,
+      "section": "statistics",
+      "label": "Gross margin %",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "2-Profitability_Ratios"
+    },
+    {
+      "row_id": 145,
+      "section": "statistics",
+      "label": "Operating margin %",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "2-Profitability_Ratios"
+    },
+    {
+      "row_id": 146,
+      "section": "statistics",
+      "label": "EBITDA margin %",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "2-Profitability_Ratios"
+    },
+    {
+      "row_id": 147,
+      "section": "statistics",
+      "label": "Net margin %",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "2-Profitability_Ratios"
+    },
+    {
+      "row_id": 148,
+      "section": "statistics",
+      "label": "Asset turnover",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "3-Liquidity_Ratios"
+    },
+    {
+      "row_id": 149,
+      "section": "statistics",
+      "label": "Debt to assets ratio",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "4-Solvency_Ratios"
+    },
+    {
+      "row_id": 150,
+      "section": "statistics",
+      "label": "Debt to equity ratio",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "4-Solvency_Ratios"
+    },
+    {
+      "row_id": 151,
+      "section": "statistics",
+      "label": "Long term debt to total assets ratio",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "4-Solvency_Ratios"
+    },
+    {
+      "row_id": 152,
+      "section": "statistics",
+      "label": "Long term debt to total equity ratio",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "4-Solvency_Ratios"
+    },
+    {
+      "row_id": 153,
+      "section": "statistics",
+      "label": "Revenue per share",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "5-Per_Share_Metrics"
+    },
+    {
+      "row_id": 154,
+      "section": "statistics",
+      "label": "Operating cash flow per share",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "5-Per_Share_Metrics"
+    },
+    {
+      "row_id": 155,
+      "section": "statistics",
+      "label": "Free cash flow per share",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "5-Per_Share_Metrics"
+    },
+    {
+      "row_id": 156,
+      "section": "statistics",
+      "label": "EBIT per share",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "5-Per_Share_Metrics"
+    },
+    {
+      "row_id": 157,
+      "section": "statistics",
+      "label": "EBITDA per share",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "5-Per_Share_Metrics"
+    },
+    {
+      "row_id": 158,
+      "section": "statistics",
+      "label": "Book value per share",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "5-Per_Share_Metrics"
+    },
+    {
+      "row_id": 159,
+      "section": "statistics",
+      "label": "Total debt per share",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "5-Per_Share_Metrics"
+    },
+    {
+      "row_id": 160,
+      "section": "statistics",
+      "label": "Cash per share",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "5-Per_Share_Metrics"
+    },
+    {
+      "row_id": 161,
+      "section": "statistics",
+      "label": "Net current asset value per share",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "5-Per_Share_Metrics"
+    },
+    {
+      "row_id": 162,
+      "section": "statistics",
+      "label": "Tangible book value per share",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "5-Per_Share_Metrics"
+    },
+    {
+      "row_id": 163,
+      "section": "statistics",
+      "label": "Working capital per share",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "5-Per_Share_Metrics"
+    },
+    {
+      "row_id": 164,
+      "section": "statistics",
+      "label": "CapEx per share",
+      "depth": 2,
+      "parent_id": null,
+      "group_output_label": "5-Per_Share_Metrics"
+    },
+    {
+      "row_id": 165,
+      "section": "dividends",
+      "label": "Dividends per share (FY)",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 166,
+      "section": "dividends",
+      "label": "Dividend yield (FY) %",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 167,
+      "section": "dividends",
+      "label": "Payout ratio (FY) %",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": null
+    },
+    {
+      "row_id": 168,
+      "section": "earnings",
+      "label": "Reported",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": "0-EPS"
+    },
+    {
+      "row_id": 169,
+      "section": "earnings",
+      "label": "Estimate",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": "0-EPS"
+    },
+    {
+      "row_id": 170,
+      "section": "earnings",
+      "label": "Surprise",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": "0-EPS"
+    },
+    {
+      "row_id": 171,
+      "section": "earnings",
+      "label": "Reported",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": "1-Revenue"
+    },
+    {
+      "row_id": 172,
+      "section": "earnings",
+      "label": "Estimate",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": "1-Revenue"
+    },
+    {
+      "row_id": 173,
+      "section": "earnings",
+      "label": "Surprise",
+      "depth": 1,
+      "parent_id": null,
+      "group_output_label": "1-Revenue"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+The data on the Monetary Authority of Singapore (MAS) website is recorded in **Singapore Standard Time (SST)**.
+
+Singapore Standard Time is **UTC+08:00**. Singapore does not observe Daylight Saving Time, so this offset remains constant throughout the year.
+
+While the specific page for Domestic Interest Rates does not always append a timezone label to every data point, the following structural details confirm the use of local Singapore time:
+
+* **Benchmark Calculation:** Benchmarks such as SORA (Singapore Overnight Rate Average) are calculated based on transactions occurring in the Singapore interbank SGD cash market between **8:00 AM and 6:15 PM SGT**.
+* **Publication Schedule:** MAS typically publishes updated interest rate data by **9:00 AM SGT** on the next business day.
+* **Official Source:** As the central bank of Singapore, MAS records all domestic financial statistics according to the national time standard.

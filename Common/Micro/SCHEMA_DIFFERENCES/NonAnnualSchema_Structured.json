@@ -1,0 +1,270 @@
+{
+  "mode": "NonAnnual",
+  "source_path": "D:\\WS\\-GH-DEV-Ref\\WS-Python\\Tasks\\Scrape-Tradingview\\Consolidated\\SCHEMA_DIFFERENCES\\Tradingview_Schema_NonAnnual.txt",
+  "statements": {
+    "income": {
+      "rows": [
+        "Total revenue",
+        "Total revenue YoY growth",
+        "Rental income",
+        "Investment income",
+        "Interest income (revenue)",
+        "Other operating income",
+        "Trading account income",
+        "Trust & fiduciary income, commissions & fees",
+        "Trust income",
+        "Commision & fee income",
+        "Total operating expenses",
+        "Loan loss provision",
+        "Selling/general/admin expenses (total)",
+        "Cost of goods sold",
+        "Depreciation and amortization",
+        "Other cost of goods sold",
+        "Other operating expenses (total)",
+        "Operating income",
+        "Non-operating income (excl. interest expenses)",
+        "Non-operating interest income",
+        "Miscellaneous non-operating expense",
+        "Pretax equity in earnings",
+        "Total interest expense (banks)",
+        "Unusual income/expense",
+        "Pretax income",
+        "Taxes",
+        "Equity in earnings",
+        "After tax other income/expense",
+        "Non-controlling/minority interest",
+        "Net income before discontinued operations",
+        "Preferred dividends",
+        "Net income",
+        "Net income YoY growth",
+        "Basic earnings per share (basic EPS)",
+        "Diluted earnings per share (diluted EPS)",
+        "Diluted earnings per share (diluted EPS) YoY growth",
+        "Average basic shares outstanding",
+        "Diluted shares outstanding",
+        "EBITDA",
+        "EBITDA YoY growth",
+        "EBIT",
+        "EBIT YoY growth"
+      ]
+    },
+    "balance": {
+      "rows": [
+        "Total assets",
+        "Total assets YoY growth",
+        "Other long term assets (total)",
+        "Intangible assets",
+        "Deferred tax assets",
+        "Net property/plant/equipment",
+        "Investments in unconsolidated subsidiaries",
+        "Total investments (banks)",
+        "Net loans",
+        "Gross Loans",
+        "Loan loss allowances (reserves)",
+        "Real estate assets",
+        "Other investments",
+        "Total receivables (net)",
+        "Cash and short term investments",
+        "Cash & equivalents",
+        "Short term investments",
+        "Total liabilities",
+        "Total liabilities YoY growth",
+        "Other non-current liabilities (total)",
+        "Deferred income (non-current)",
+        "Deferred tax liabilities",
+        "Provision for risks & charge",
+        "Total debt",
+        "Short term debt",
+        "Long term debt",
+        "Long term debt (excl. lease liabilities)",
+        "Capital and operating lease obligations",
+        "Total deposits",
+        "Total equity",
+        "Total equity YoY growth",
+        "Shareholders' equity",
+        "Common equity (total)",
+        "Retained earnings",
+        "Additional paid-in capital / Capital su...",
+        "Common stock par / Carrying value",
+        "Treasury stock (common)",
+        "Other common equity",
+        "Preferred stock, carrying value",
+        "Minority interest",
+        "Total liabilities & shareholders' equities",
+        "Net debt"
+      ]
+    },
+    "cashflow": {
+      "rows": [
+        "Cash from operating activities",
+        "Cash from operating activities YoY growth",
+        "Funds from operations",
+        "Changes in working capital",
+        "Change in accrued expenses",
+        "Change in accounts receivable",
+        "Change in inventories",
+        "Change in accounts payable",
+        "Change in taxes payable",
+        "Change in other assets/liabilities",
+        "Cash from investing activities",
+        "Cash from investing activities YoY growth",
+        "Purchase/sale of business (net)",
+        "Purchase/acquisition of business",
+        "Sale of fixed assets & businesses",
+        "Purchase/sale of investments (net)",
+        "Purchase of investments",
+        "Sale/maturity of investments",
+        "Capital expenditures",
+        "Capital expenditures (fixed assets)",
+        "Capital expenditures (other assets)",
+        "Proceeds from loans",
+        "Increase in loans",
+        "Decrease in loans",
+        "Other investing cash flow items (total)",
+        "Investing activities (other uses)",
+        "Investing activities (other sources)",
+        "Cash from financing activities",
+        "Cash from financing activities YoY growth",
+        "Change in deposits",
+        "Decrease in deposits",
+        "Increase in deposits",
+        "Issuance/retirement of stock (net)",
+        "Repurchase of common & preferred stock",
+        "Sale of common & preferred stock",
+        "Other Proceeds from Sale/Issuance of Sto...",
+        "Proceeds from stock options",
+        "Total cash dividends paid",
+        "Issuance/retirement of debt (net)",
+        "Issuance/retirement of short term debt",
+        "Issuance/retirement of long term debt",
+        "Issuance of long term debt",
+        "Reduction of long term debt",
+        "Issuance/retirement of other debt",
+        "Other financing cash flow items (total)",
+        "Financing activities (other uses)",
+        "Financing activities (other sources)",
+        "Exchange rate effect",
+        "Miscellaneous funds",
+        "Net change in cash",
+        "Free cash flow",
+        "Free cash flow YoY growth",
+        "Interest paid",
+        "Taxes paid"
+      ]
+    }
+  },
+  "statistics": {
+    "groups": [
+      {
+        "name": "Valuation ratios",
+        "output_label": "1-Valuation_ratios",
+        "rows": [
+          "Price to earnings ratio",
+          "Price to sales ratio",
+          "Price to cash flow ratio",
+          "Price to book ratio",
+          "Enterprise value",
+          "Enterprise value to EBITDA ratio"
+        ]
+      },
+      {
+        "name": "Profitability ratios",
+        "output_label": "2-Profitability_Ratios",
+        "rows": [
+          "Return on assets %",
+          "Return on equity %",
+          "Return on invested capital %",
+          "Gross margin %",
+          "Operating margin %",
+          "EBITDA margin %",
+          "Net margin %"
+        ]
+      },
+      {
+        "name": "Liquidity ratios",
+        "output_label": "3-Liquidity_Ratios",
+        "rows": [
+          "Asset turnover"
+        ]
+      },
+      {
+        "name": "Solvency ratios",
+        "output_label": "4-Solvency_Ratios",
+        "rows": [
+          "Debt to assets ratio",
+          "Debt to equity ratio",
+          "Long term debt to total assets ratio",
+          "Long term debt to total equity ratio"
+        ]
+      },
+      {
+        "name": "Per share metrics",
+        "output_label": "5-Per_Share_Metrics",
+        "rows": [
+          "Revenue per share",
+          "Operating cash flow per share",
+          "Free cash flow per share",
+          "EBIT per share",
+          "EBITDA per share",
+          "Book value per share",
+          "Total debt per share",
+          "Cash per share",
+          "Net current asset value per share",
+          "Tangible book value per share",
+          "Working capital per share",
+          "CapEx per share"
+        ]
+      }
+    ]
+  },
+  "dividends": {
+    "table": {
+      "output_label": "0-Dividend_yield_TTM",
+      "rows": [
+        "Dividends per share (FY)",
+        "Dividend yield (FY) %",
+        "Payout ratio (FY) %"
+      ]
+    },
+    "payout_history": {
+      "output_label": "1-Dividend_payout_history",
+      "columns": []
+    }
+  },
+  "earnings": {
+    "groups": [
+      {
+        "name": "EPS",
+        "output_label": "0-EPS",
+        "rows": [
+          "Reported",
+          "Estimate",
+          "Surprise"
+        ]
+      },
+      {
+        "name": "Revenue",
+        "output_label": "1-Revenue",
+        "rows": [
+          "Reported",
+          "Estimate",
+          "Surprise"
+        ]
+      }
+    ]
+  },
+  "revenue": {
+    "groups": [
+      {
+        "name": "By Source",
+        "output_label": "0-By_Source",
+        "rows": []
+      },
+      {
+        "name": "By Country",
+        "output_label": "1-By_Country",
+        "rows": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "data_dir": "JonathanBeckerProject",
+  "scan_mode": "full",
+  "input_csv": "D:\\WS_NUS\\REF_DATA\\prediction-market-analysis\\scripts\\util\\out_Markets\\1EXTRACT_fed_parquet_events.csv",
+  "market_slugs_filter_count": 125,
+  "markets_files_scanned": 41,
+  "ctf_trade_files_scanned": 40454,
+  "legacy_trade_files_scanned": 221,
+  "fpmm_column_used": "market_maker_address",
+  "condition_column_used": "condition_id",
+  "n_markets_with_ctf_trades": 106,
+  "n_markets_with_legacy_trades": 24,
+  "n_markets_overlap_ctf_and_legacy": 5,
+  "n_markets_ctf_only": 101,
+  "n_markets_legacy_only": 19,
+  "output_overlap_csv": "D:\\WS_NUS\\REF_DATA\\prediction-market-analysis\\scripts\\util\\out_Trades\\LEGACY\\3PROBE_LEGACY_ctf_legacy_overlap_markets.csv",
+  "output_ctf_only_csv": "D:\\WS_NUS\\REF_DATA\\prediction-market-analysis\\scripts\\util\\out_Trades\\LEGACY\\3PROBE_LEGACY_ctf_only_markets.csv",
+  "output_legacy_only_csv": "D:\\WS_NUS\\REF_DATA\\prediction-market-analysis\\scripts\\util\\out_Trades\\LEGACY\\3PROBE_LEGACY_legacy_only_markets.csv"
+}

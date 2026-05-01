@@ -1,0 +1,79 @@
+REF: D:\WS\-GH-A-Ref\REF-Study\GC_ASMT\Project\REF_SELF\IRS\Working\Data\Xform_FeatureEngineer\Both\AssembleData\260427_0320_Ask_Claude_Catastrophic_Bug.txt
+
+Found it. There are actually **three separate bugs** compounding into the catastrophic R2 you're seeing. Here's the full breakdown:
+
+---
+
+## Bug 1: Catastrophic Data Leakage (primary cause of negative R2)
+
+**`sora_fwd_21d_level` is literally just `sora_level_realized.shift(-21)`** — confirmed, correlation = 1.0.
+
+Now look at your features: `sora_level_t2` (corr=0.87 with target) and `sora_level_realized` (corr=0.87) are both *near-identical to the target in level space*. The model learns "just predict a number close to today's SORA" and gets good train R2. But in the **test period, the SORA rate is drastically different**:
+
+```
+Train mean SORA:  3.35  (high-rate regime)
+Test mean SORA:   1.46  (low-rate regime)
+```
+
+The model learned level relationships from a high-rate world and is predicting those high levels on a low-rate test set → predictions are ~2 points too high for every row → catastrophically negative R2. **The model is essentially predicting the wrong rate regime.**
+
+The real fix depends on intent: if you want `option1_level`, the model is basically memorizing levels, not learning anything predictive. You almost certainly want `option2_change` or `option3_abs_change` as your primary target.
+
+---
+
+## Bug 2: Wrong Math on Interest Rate Features (`pct_change`)
+
+```python
+df["sora_lag_21d_return"] = level.pct_change(21)  # WRONG
+```
+
+`pct_change()` is for **prices** (stocks, indices). SORA is already a *rate in %*. The math is nonsensical:
+- SORA going from `0.726` → `1.5` = `+106%` pct_change (should be `+77 bps`)
+- SORA going from `4.39` → `4.30` = `-2%` pct_change (same ~9 bps move)
+
+The same bps move gets wildly different magnitudes depending on the rate level. This poisons your lag features. Fix:
+
+```python
+# Correct: use absolute difference (change in bps/pp)
+df["sora_lag_21d_return"] = level.diff(21)
+df["sora_lag_63d_return"] = level.diff(63)
+# Realized vol: still use pct_change for daily, or switch to diff:
+sora_daily_change = level.diff(1)
+df["sora_realized_vol_21d"] = sora_daily_change.rolling(21).std()
+df["sora_realized_vol_63d"] = sora_daily_change.rolling(63).std()
+# Drawdown is also weird on a rate - consider just removing it or using level distance from peak
+```
+
+---
+
+## Bug 3: DEAP Always Mutates (optimizer is broken)
+
+```python
+if random.random() < 1.0:   # ← This is ALWAYS True
+    toolbox.mutate(mutant)
+```
+
+`random.random()` returns a float in `[0, 1)`, which is always `< 1.0`. So **every individual is mutated every generation**, completely destroying selection pressure. DEAP is running 8 generations of pure random search with no evolution. It should be:
+
+```python
+if random.random() < DEAP_MUTATION_PROB:  # DEAP_MUTATION_PROB = 0.15
+    toolbox.mutate(mutant)
+```
+
+---
+
+## Why R2 gets *worse with each run*
+
+Each run creates a new `run_N` folder. The DEAP bug means it's exploring random params each time → occasionally lands on a param combo that happens to overfit training more aggressively → predicts even more confidently the wrong regime → worse test R2. The exponential degradation you saw (-1 → -7.9 → -54.4) is the stochastic unluckiness of random search hitting increasingly bad hyperparameters for the out-of-sample period.
+
+---
+
+## Summary of fixes
+
+| Bug | Fix |
+|---|---|
+| Level target + level features = regime leakage | Focus on `option2_change`; remove or carefully handle `sora_level_t2` as a feature |
+| `pct_change` on interest rates | Replace with `.diff()` for all lag/vol features |
+| DEAP always mutates | Change `< 1.0` to `< DEAP_MUTATION_PROB` |
+
+The level leakage is by far the biggest culprit for the R2 scores you're seeing.

@@ -1,0 +1,104 @@
+D:\WS\-GH-A-Ref\REF-Study\GC_ASMT\Project\REF_SELF\IRS\Working\Data\Xform_FeatureEngineer\Both\AssembleData\260427_0320_Ask_Claude_Catastrophic_Bug.txt
+
+Let me read the updated script first.Good, I have the full updated script. Let me now carefully audit everything specific to Option 2 before making recommendations.Here's a thorough breakdown of every meaningful change you can make, ordered by expected impact.
+
+---
+
+## 1. Drop `sora_level_t2` and `sora_3m_t2` from Option 2 features (High impact)
+
+These are the biggest hidden problem. The data shows they have near-zero partial correlation with the change target (−0.007 after controlling for momentum), but **massive distribution shift** — the test period has rates 3–4x lower than training. So the model learned spurious relationships like "when rates are at 3.4%, changes tend to be X" but the test set only has rates at 1.5%. Those learned relationships don't transfer.
+
+For a *change* target, the level itself is mostly noise. Extend your existing `OPTION1_LEVEL_EXCLUDED_FEATURES` pattern to Option 2:
+
+```python
+OPTION2_CHANGE_EXCLUDED_FEATURES = ("sora_level_t2", "sora_3m_t2")
+
+def feature_cols_for_target(target_key: str) -> List[str]:
+    if target_key == "option1_level":
+        return [c for c in FEATURE_COLS if c not in OPTION1_LEVEL_EXCLUDED_FEATURES]
+    if target_key == "option2_change":
+        return [c for c in FEATURE_COLS if c not in OPTION2_CHANGE_EXCLUDED_FEATURES]
+    return list(FEATURE_COLS)
+```
+
+---
+
+## 2. Fix `DEAP_MUTATION_PROB` — it's effectively broken again (High impact)
+
+You fixed the `< 1.0` bug but overcorrected to `0.0015`. With 9 genes, the probability that **any** gene mutates per individual is only 1.3%. In a population of 20, you get on average **0.27 mutations per generation** — meaning most generations have zero mutations at all. DEAP is running 8 generations of pure tournament selection with a frozen gene pool. It's not evolving.
+
+The standard convention is `1/n_genes`:
+
+```python
+DEAP_MUTATION_PROB = 1.0 / 9  # ≈ 0.111 — expected ~1 gene mutated per individual
+```
+
+---
+
+## 3. Add three new features with strong signal and low regime shift (Medium impact)
+
+The data analysis found several candidate features with better properties than what's currently in the set:
+
+```python
+# In load_base_dataset(), add after existing engineered features:
+
+# Distance from 63d moving average — corr -0.53 with target, shift only 0.62x
+df["sora_dist_from_63d_ma"] = level - level.rolling(63).mean()
+
+# Shorter-horizon momentum — corr -0.48 and -0.38, shift 0.10x and 0.17x (very stable)
+df["sora_lag_10d_diff"] = level.diff(10)
+df["sora_lag_5d_diff"] = level.diff(5)
+
+# Acceleration (change in momentum) — corr -0.37, shift near 0.0x (most regime-stable)
+df["sora_accel_21d"] = level.diff(21) - level.diff(21).shift(21)
+```
+
+Then add them to `ENGINEERED_SORA_PATH_COLS`. The key reason these are better than the level features: they're expressed in *change units* (bps), so a 0.1 diff in a low-rate regime is the same scale as a 0.1 diff in a high-rate regime. The model generalises across regimes.
+
+---
+
+## 4. Increase Optuna trials (Low-medium impact)
+
+40 trials across 9 continuous hyperparameters with TPE is on the thin side. TPE needs roughly 10–20 trials just to build its initial model before it starts exploring intelligently. Bumping to 80 effectively doubles the useful search:
+
+```python
+OPTUNA_N_TRIALS = 80
+```
+
+---
+
+## 5. Add `zero_baseline` R² as a second benchmark to track (Housekeeping, useful)
+
+You currently compare against `train_mean` baseline. But for a signed-change target, the **zero baseline** ("predict no change") is often a tougher and more informative benchmark — particularly because the test period has more negative changes (37% positive) than training (49% positive). If your model just predicts "small negative" every time it would beat train_mean too. Worth surfacing in your comparison printout so you know what you're actually beating.
+
+---
+
+## Summary table
+
+| Change | Where | Expected effect |
+|---|---|---|
+| Exclude `sora_level_t2`, `sora_3m_t2` from Option 2 | `feature_cols_for_target()` | Removes regime-shift noise, likely biggest R² lift |
+| Fix `DEAP_MUTATION_PROB` to `1/9 ≈ 0.111` | Config | Restores DEAP as an actual optimizer |
+| Add `sora_dist_from_63d_ma`, `sora_lag_10d_diff`, `sora_lag_5d_diff`, `sora_accel_21d` | `load_base_dataset()` + `ENGINEERED_SORA_PATH_COLS` | Adds the strongest signal features with least regime shift |
+| Increase `OPTUNA_N_TRIALS` to 80 | Config | Better hyperparameter coverage |
+| Track zero baseline explicitly | Reporting | No model change, better interpretation |
+
+---------------------------------
+
+## (1) What was and wasn't implemented
+
+**✅ Implemented correctly:**
+- `pct_change` → `.diff()` for all lag/vol/peak features — done
+- CLI target selection (`--option2`, `--all-targets`, etc.) — added and works correctly
+- `feature_cols_for_target()` now properly excludes level features for Option 1 — done
+- `build_target_dataset()` now takes `target_key` and uses per-target feature cols — done
+- `evaluate_single_holdout()` now takes `feature_cols` as an argument — done
+- Zero baseline tracked alongside train_mean baseline — done
+
+**❌ Not implemented (from the recommendations):**
+- `DEAP_MUTATION_PROB` is still `0.0015`. The fix to `1/9 ≈ 0.111` was **not applied**. DEAP is still effectively frozen after generation 0.
+- `sora_level_t2` and `sora_3m_t2` are **not excluded from Option 2** features. The `OPTION2_CHANGE_EXCLUDED_FEATURES` suggestion was not added. These two high-regime-shift features are still going into the Option 2 model.
+- The four new engineered features (`sora_dist_from_63d_ma`, `sora_lag_10d_diff`, `sora_lag_5d_diff`, `sora_accel_21d`) were **not added**.
+- `OPTUNA_N_TRIALS` is still 40, not 80.
+
+So roughly half the recommendations made it in. The two most impactful ones (drop level features from Option 2, fix DEAP mutation) did not.

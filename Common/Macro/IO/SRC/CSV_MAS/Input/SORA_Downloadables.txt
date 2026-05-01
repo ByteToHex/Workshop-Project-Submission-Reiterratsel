@@ -1,0 +1,22 @@
+Interbank Overnight
+Interbank 1-week
+Interbank 1-month
+Interbank 2-month
+Interbank 3-month
+Interbank 6-month
+Interbank 12-month
+3-month Commercial Bills
+3-month US$ SIBOR
+SGS Repo Overnight Rate
+Standing Facility Deposit Rate
+Standing Facility Borrowing Rate
+RMB Overnight Rate
+SORA
+SORA Index
+1-month Compounded SORA
+3-month Compounded SORA
+6-month Compounded SORA
+Aggregate Volume of SORA Transactions
+Highest Transacted Rate from Reporting Banks for SORA
+Lowest Transacted Rate from Reporting Banks for SORA
+SORA Calculation Method
