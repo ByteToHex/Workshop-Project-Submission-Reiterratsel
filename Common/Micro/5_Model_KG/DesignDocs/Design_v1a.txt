@@ -21,7 +21,10 @@
 - A7b: `CAR_126wd`
 - A7c: Prefer compounded form: `prod(1 + abnormal_return) - 1`.
 - A8: Store label artifacts in a separate downstream table, not in the raw metric fact table.
+- A8x: DuckDB table name: `reit_labels.fact_distress_label`.
 - A8a: Minimum fields: `ticker`, `period_id`, `anchor_date`, `car_63wd`, `car_126wd`, `null_count`, `non_ok_count`, `label_scheme_version`, `label_126wd`.
+- A8b: Write label outputs to separate parquet shard `distresslabels.parquet`.
+- A8c: Do not mix label outputs into existing raw financial or metric shards.
 - A9: Convert `CAR_126wd` into labels with adjustable thresholds.
 - A9a: Initial placeholder only: `< -15% = DISTRESSED`, `> +5% = HEALTHY`, else `WATCH`.
 - A10: Optional clustering check may be run after labels exist.
@@ -61,8 +64,9 @@
 - B7b: Persist results back to DuckDB in a downstream table.
 - B7c: This persistence is mandatory for auditability and cacheing.
 - B7d: Purpose of the persisted copy is auditability and cacheing only.
+- B7dx: DuckDB table name: `reit_fuzzy.fact_fuzzy_cache`.
 - B7e: Do not mix Mamdani persisted outputs into existing raw financial or metric shards.
-- B7f: Write Mamdani persisted outputs to their own separate shard under `_annual_warehouse/parquet`.
+- B7f: Write Mamdani persisted outputs to separate parquet shard `fuzzycache.parquet` under `_annual_warehouse/parquet`.
 - B7g: Keep the existing shard set intact, including per-ticker financial shards and `metrics.parquet`.
 
 **C - Dashboard**
@@ -70,8 +74,10 @@
 - C1: Streamlit fetches frozen annual metrics and frozen Mamdani outputs from DuckDB.
 - C2: Streamlit fetches rule definitions from Neo4j.
 - C3: XGBoost model source is under `Common/Macro/IO/Model_Train/Use/run_21`.
-- C3a: Use the local trained model artifacts from that path.
-- C3b: Daily recomputation is a simulated walk-forward over the frozen test window, not live market deployment.
+- C3a: Use `fwd_10_days` first.
+- C3b: Keep the model wiring modular so `fwd_15_days` can be tested later without redesign.
+- C3c: Use the local trained model artifacts from that path.
+- C3d: Daily recomputation is a simulated walk-forward over the frozen test window, not live market deployment.
 - C4: Daily layer recomputes:
 - C4a: predicted SORA
 - C4b: distress_sora or SORA modifier
