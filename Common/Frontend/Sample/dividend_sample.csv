@@ -1,0 +1,6 @@
+symbol,company,sector,price,dividend_yield,pe_ratio,market_cap_bil,last_dividend,payout_frequency
+AAPL,Apple Inc.,Technology,184.30,0.51,29.4,2860,0.24,Quarterly
+MSFT,Microsoft Corp.,Technology,417.80,0.72,35.1,3110,0.75,Quarterly
+KO,Coca-Cola Co.,Consumer Staples,60.90,3.12,24.8,263,0.49,Quarterly
+JNJ,Johnson & Johnson,Healthcare,156.40,2.98,16.2,376,1.24,Quarterly
+XOM,Exxon Mobil,Energy,113.20,3.35,13.8,453,0.95,Quarterly
