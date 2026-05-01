@@ -1,5 +1,14 @@
 # Notebook / Jupytext Pairing Convention
 
+## Python Environment
+
+- Always use Anaconda environment named `env` for Python execution in this repository.
+- Treat `env` as the required project environment.
+- Explicitly use the interpreter from `C:\ProgramData\anaconda3\envs\env\python.exe` when running Python scripts.
+- Explicitly use the matching Streamlit executable from `C:\ProgramData\anaconda3\envs\env\Scripts\streamlit.exe` when running Streamlit apps.
+- Assume this environment is the project-standard Python `3.14` environment.
+- Do not default to `base`, `env310`, `env312`, or any system Python unless the user explicitly says otherwise.
+
 This repository uses Jupytext-paired notebooks under `Data/Data_Company/5_Model_KG/DesignRef/RS/Day_1/Workshop/`.
 
 ## Scope
