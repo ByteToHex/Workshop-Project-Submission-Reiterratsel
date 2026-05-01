@@ -15,7 +15,7 @@ SGT = timezone(timedelta(hours=8))
 SCRIPT_DIR = Path(__file__).resolve().parent
 CONSOLIDATED_ROOT = SCRIPT_DIR.parents[1]
 IO_SRC_DIR = CONSOLIDATED_ROOT / "IO" / "SRC"
-TV_DIR = IO_SRC_DIR / "MODEL"
+TV_DIR = IO_SRC_DIR / "CSV_TICKER"
 RATE14 = IO_SRC_DIR / "CSV_MAS" / "Input" / "DomesticInterestRates_Idx14_SORA.csv"
 RATE17 = IO_SRC_DIR / "CSV_MAS" / "Input" / "DomesticInterestRates_idx17_SORA3MthCompounded.csv"
 PM_PATH = IO_SRC_DIR / "CSV_FED" / "Output" / "timeseries_2022-07-27_2026-03-18_xgb_ready.csv"

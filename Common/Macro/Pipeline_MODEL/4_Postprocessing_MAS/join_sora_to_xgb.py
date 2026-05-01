@@ -7,7 +7,8 @@ Reads the cleaned MAS daily outputs produced by parse_mas_sora.py:
 
 Then reproduces the existing join logic:
   - filter xgb_ready down to SGX trading days only (drop weekends and
-    exchange holidays using the REIT index file as the trading calendar proxy)
+    exchange holidays using the REIT index file from IO/SRC/CSV_TICKER as the
+    trading calendar proxy)
   - append REIT index OHLC values onto the filtered rows
   - shift MAS SORA to T-2 business-day point-in-time safe values
   - keep a separate realized SORA path for future-target construction
@@ -59,9 +60,10 @@ IO_SRC_DIR = CONSOLIDATED_ROOT / "IO" / "SRC"
 FED_OUTPUT_DIR = IO_SRC_DIR / "CSV_FED" / "Output"
 MAS_OUTPUT_DIR = IO_SRC_DIR / "CSV_MAS" / "Output"
 MODEL_DIR = IO_SRC_DIR / "MODEL"
+CSV_TICKER_DIR = IO_SRC_DIR / "CSV_TICKER"
 
 XGB_READY = FED_OUTPUT_DIR / "timeseries_2022-07-27_2026-03-18_xgb_ready.csv"
-SGX_REIT_INDEX = MODEL_DIR / "SGX_DLY_REIT, 1D.csv"
+SGX_REIT_INDEX = CSV_TICKER_DIR / "SGX_DLY_REIT, 1D.csv"
 SORA_DAILY = MAS_OUTPUT_DIR / "sora_daily.csv"
 SORA_3M_DAILY = MAS_OUTPUT_DIR / "sora_3m_daily.csv"
 OUT_JOINED = MODEL_DIR / "sora_joined_to_xgb.csv"

@@ -107,10 +107,11 @@ IO_SRC_DIR = CONSOLIDATED_ROOT / "IO" / "SRC"
 FED_OUTPUT_DIR = IO_SRC_DIR / "CSV_FED" / "Output"
 MAS_OUTPUT_DIR = IO_SRC_DIR / "CSV_MAS" / "Output"
 MODEL_DIR = IO_SRC_DIR / "MODEL"
+CSV_TICKER_DIR = IO_SRC_DIR / "CSV_TICKER"
 MODEL_TRAIN_DIR = CONSOLIDATED_ROOT / "IO" / "Model_Train"
 
 XGB_READY_PATH = FED_OUTPUT_DIR / "timeseries_2022-07-27_2026-03-18_xgb_ready.csv"
-SGX_REIT_INDEX_PATH = MODEL_DIR / "SGX_DLY_REIT, 1D.csv"
+SGX_REIT_INDEX_PATH = CSV_TICKER_DIR / "SGX_DLY_REIT, 1D.csv"
 SORA_DAILY_PATH = MAS_OUTPUT_DIR / "sora_daily.csv"
 SORA_3M_DAILY_PATH = MAS_OUTPUT_DIR / "sora_3m_daily.csv"
 TICKER_UNIVERSE_REFERENCE_PATH = MODEL_DIR / "Tickers_SingleTable.md"
@@ -670,7 +671,7 @@ def build_macro_feature_dataset(cfg: HorizonConfig, drop_calendar_by: str, reit_
 def build_ticker_panel(cfg: HorizonConfig, reit_index: pd.DataFrame) -> pd.DataFrame:
     frames: List[pd.DataFrame] = []
     for ticker in effective_reit_universe():
-        path = MODEL_DIR / f"SGX_DLY_{ticker}, 1D.csv"
+        path = CSV_TICKER_DIR / f"SGX_DLY_{ticker}, 1D.csv"
         if not path.exists():
             raise FileNotFoundError(f"Missing ticker price file for {ticker}: {path}")
         df = load_tradingview_price_csv(path, ticker=ticker)
