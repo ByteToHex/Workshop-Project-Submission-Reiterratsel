@@ -2,7 +2,7 @@
 | :--- | :--- | :--- | :--- | :--- |
 | [CapitaLand Integrated Commercial Trust](https://www.tradingview.com/symbols/SGX-C38U) | [C38U](https://investor.cict.com.sg/financial_results.html) | Retail + Office | - | HEALTHY |
 | [Suntec REIT](https://www.tradingview.com/symbols/SGX-T82U) | [T82U](https://suntecreit.listedcompany.com/slides.html) | Retail + Office | - | HEALTHY |
-| [Mapletree Pan Asia Commercial Trust](https://www.tradingview.com/symbols/SGX-N21U) | [N21U](https://investor.mapletreepact.com/slides.html) | Retail + Office | - | HEALTHY |
+| [Mapletree Pan Asia Commercial Trust](https://www.tradingview.com/symbols/SGX-N21U) | [N2IU](https://investor.mapletreepact.com/slides.html) | Retail + Office | - | HEALTHY |
 | [Frasers Centrepoint Trust](https://www.tradingview.com/symbols/SGX-J69U) | [J69U](https://fct.frasersproperty.com/financial_information.html) | Suburban | - | HEALTHY |
 | [CapitaLand Ascendas REIT](https://www.tradingview.com/symbols/SGX-A17U) | [A17U](https://investor.capitaland-ascendasreit.com/financials.html) | Industrial | - | HEALTHY |
 | [Keppel DC REIT](https://www.tradingview.com/symbols/SGX-AJBU) | [AJBU](https://www.keppeldcreit.com/en/investor-relations/presentations/) | Data Center | - | HEALTHY |
