@@ -1,0 +1,62 @@
+**A — Labelling**
+- A1: Compute 20 ratios + `null_count` per ticker-year (DuckDB)
+- A2: Compute daily abnormal returns = REIT return − SGX iEdge index return (Time-Series DB)
+- A3: Sum over 63wd and 126wd from fiscal year end anchor (Python)
+- A4: (Label Thresholds) -> After A3 produces CAR values, what converts them into labels (DISTRESSED/WATCH/HEALTHY)?
+	need to be adjustable in the design; preliminary placeholder values maybe: CAR_126wd < -15% → DISTRESSED, > +5% → HEALTHY, middle → WATCH
+- Anext1: somewhere somewhere they the LLM said, use it to factor into distress score; if null=5 slightly distressed, if null=10 then moderately dont know when or how added -> then add into the distress score somehow later
+- OPTIONAL CLUSTERING CHECK:
+	Cluster on ratios (A1 output) — after computing ratios, group the 15 REITs by ratio similarity. Then when CAR labels come out in A3, check if the clusters match the labels. If a REIT's cluster says distressed but its CAR label says healthy, flag it. Then manually review
+
+**B — Mamdani Rule Induction**
+- B1: Store rules + membership function boundaries in Neo4j
+- B2: Fire 5-input Mamdani on frozen ratios: ICR, Gearing, Payout, DSCR, Refi Risk Ratio (Python via Neo4j traversal at query time)
+- B3: Tier 3 supporting rules: ND/EBITDA (corroborating), FFO Coverage Margin (confirmation of Payout only, not independent)
+- B4: other ratios where applicable from the ratios calculation
+- Bnext0: null_count needs its own Mamdani input — a 6th input with its own membership function: null_count 0 → HEALTHY, null_count >5 → weak DISTRESS, null_count >10 → strong DISTRESS. This adds directly to distress_mamdani.
+- OPTIONAL CLUSTERING CHECK:
+	Cluster the 15 REITs by `null_count`. See if the naturally-formed clusters align with distress labels from A. If REITs with null_count 5-10 consistently land in the distressed cluster, that validates the thresholds you set for Bnext0 (null>5 weak distress, null>10 strong distress). If they don't, adjust the thresholds.
+- Bnext1: Output `distress_score_mamdani` (0–1) per ticker-year, frozen until hits next annual checkpoint (DuckDB)
+- Bnext2 i dont know what else ties in
+
+
+**C — Dashboard**
+// ENTIRELY LOCAL, ASSUME PULL LOCAL DATA ONLY EVER
+- C1: On user request into streamlit: 
+	- repredict SORA value on the daily (see C1a)
+	- fetch ratios, scores from DuckDB
+	- fetch rules from Neo4j
+- C1a: XGBoost predicts SORA value, direction based on daily value -> recompute SORA modifier (or refinancing risk rule weight?) + accumulate CAR → update `final_distress` (per daily update)
+	PLEASE NOTE: 
+	- "my original intent was to have the hybrid model fire on the daily (the sora model actually predicts daily outputs)"
+	- "im using exclusively frozen data from 2022 sept-2026 jan. it will "recompute" over the test period to simulate moving forward over the test window, but never actually pull real data for this POC deployment."
+	- "my model has a train-test validation split and the result is 693:150. this means that the testing part is purely rate holds or cuts which doesn't adequately demonstrate the power of this combination in predicting distress."
+- C2: Use components to compute final_distress (distress_mamdani and distress_sora)
+- C3: propagate to app layer at query time (Streamlit)
+- C4: Display per ticker: `distress_mamdani` (timestamped to filing), `predicted_sora` (today), `distress_sora` (today) `final_distress` (combined), rule firing panel (which rules fired at what degree, which silenced with ⚠)
+- C5: CAR panel -> shows the FUTURE CAR_63 final + CAR_126?? to confirm or deny if the prediction was accurate
+
+**D — Evaluation**
+- Ground truth = CAR_126wd labels.
+- Version 1 (naive baseline): single ratio threshold e.g. ICR < 1.5 → distress score → `distress_baseline`
+- Version 2: `distress_mamdani` → delta vs `distress_baseline`
+- Version 3: `final_distress` (Mamdani + SORA modifier) → delta vs `distress_baseline` and `distress_mamdani`
+- Disagreement analysis: for each disagreement, evaluate and then maybe write case explanation.
+D has two different ways of modeling/measuring "did Mamdani do well":
+	Method 1: count how many REITs Mamdani got the right label (DISTRESSED/WATCH/HEALTHY) vs what the CARs said
+	Method 2: convert CARs to a number 0–1, subtract Mamdani's number 0–1, see which version has the smallest gap
+
+
+Known limitations: 
+- test window (150 days) covers predominantly rate hold/cut period — SORA modifier's contribution demonstrated on training window via score sensitivity analysis instead.
+
+
+-----------------------------
+
+D:\WS\-GH-A-Ref\REF-Study\GC_ASMT\Project\REF_SELF\IRS\Working\Models\KG_Rules\DesignFeature\Design_v1_ClusteringOptions.txt
+D:\WS\-GH-A-Ref\REF-Study\GC_ASMT\Project\REF_SELF\IRS\Working\Models\KG_Rules\DesignFeature\Design_v1_Developing.txt
+
+I still don't know how these are to be included:
+- I still don't know if this is missing INTERMERIARY steps STOP BLOATING
+
+
