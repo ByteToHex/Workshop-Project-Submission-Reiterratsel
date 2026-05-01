@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import os
 import tempfile
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -182,8 +183,8 @@ RULE_DEFINITIONS: list[dict[str, Any]] = [
     {
         "rule_id": "R8",
         "operator": "AND",
-        "weight": 0.85,
-        "output_term": "high",
+        "weight": 0.75,
+        "output_term": "watch",
         "description": "Over-distribution with FFO shortfall indicates payout strain.",
         "antecedents": [
             {"metric_code": "PAYOUT_RATIO", "term": "over_distributing"},
@@ -193,8 +194,8 @@ RULE_DEFINITIONS: list[dict[str, Any]] = [
     {
         "rule_id": "R9",
         "operator": "AND",
-        "weight": 0.75,
-        "output_term": "high",
+        "weight": 0.55,
+        "output_term": "watch",
         "description": "High net debt with weak ICR corroborates leverage stress.",
         "antecedents": [
             {"metric_code": "NET_DEBT_EBITDA", "term": "distress"},
@@ -236,7 +237,7 @@ RULE_DEFINITIONS: list[dict[str, Any]] = [
     {
         "rule_id": "R13",
         "operator": "AND",
-        "weight": 0.60,
+        "weight": 0.70,
         "output_term": "watch",
         "description": "Leverage is elevated, but coverage remains resilient.",
         "antecedents": [
@@ -751,7 +752,10 @@ def evaluate_fuzzy_row(row: pd.Series, rule_bundle: dict[str, Any]) -> dict[str,
             )
         numerator += x_value * aggregate_membership
         denominator += aggregate_membership
-    score = numerator / denominator if denominator else 0.5
+    raw_score = numerator / denominator if denominator else 0.5
+    activation_confidence = max(output_strengths.values()) if output_strengths else 0.0
+    activation_confidence = max(0.0, min(1.0, activation_confidence))
+    score = 0.5 * (1.0 - activation_confidence) + raw_score * activation_confidence
     level = score_to_level(score)
     fired_rules.sort(key=lambda item: item["strength"], reverse=True)
     top_rules = fired_rules[:5]
@@ -943,19 +947,69 @@ def persist_outputs_to_duckdb(
 
 def load_macro_prediction_frame(horizon_days: int = DEFAULT_HORIZON_DAYS) -> pd.DataFrame:
     run_dir = XGB_RUN_ROOT / f"fwd_{horizon_days}_days"
-    pred_path = run_dir / "option2_change_deap_holdout_oos_predictions.csv"
     joined_path = run_dir / "sora_joined_to_xgb_pipeline.csv"
-    pred_df = pd.read_csv(pred_path, parse_dates=["snapshot_ts", "fomc_decision_date"])
+    model_path = run_dir / "option2_change_final_model_xgb.json"
     joined_df = pd.read_csv(joined_path, parse_dates=["snapshot_ts", "fomc_decision_date"])
-    joined_cols = [
-        "snapshot_ts",
-        "sora_level_realized",
-        f"sora_fwd_{horizon_days}d_change",
-        f"sora_fwd_{horizon_days}d_level",
-    ]
-    macro_df = pred_df.merge(joined_df[joined_cols], on="snapshot_ts", how="left")
-    macro_df["predicted_level"] = macro_df["sora_level_realized"] + macro_df["y_pred"]
-    return macro_df.sort_values("snapshot_ts").reset_index(drop=True)
+    engineered_df = _build_macro_feature_frame(joined_df)
+    try:
+        import xgboost as xgb
+
+        booster = xgb.Booster()
+        booster.load_model(str(model_path))
+        feature_names = booster.feature_names or []
+        if not feature_names:
+            with open(run_dir / "feature_manifest.json", "r", encoding="utf-8") as fh:
+                manifest = json.load(fh)
+            feature_names = [c for c in manifest["features"] if c not in ("sora_level_t2", "sora_3m_t2")]
+        feature_frame = engineered_df.reindex(columns=feature_names)
+        predictions = booster.predict(xgb.DMatrix(feature_frame, feature_names=feature_names))
+        macro_df = engineered_df.copy()
+        macro_df["fold"] = pd.NA
+        macro_df["target_col"] = f"sora_fwd_{horizon_days}d_change"
+        macro_df["y_true"] = macro_df.get(f"sora_fwd_{horizon_days}d_change")
+        macro_df["y_pred"] = predictions
+        macro_df["y_true_dir"] = (pd.to_numeric(macro_df["y_true"], errors="coerce") > 0).astype("Int64")
+        macro_df["y_pred_dir"] = (macro_df["y_pred"] > 0).astype(int)
+        macro_df["predicted_level"] = macro_df["sora_level_realized"] + macro_df["y_pred"]
+        macro_df["prediction_source"] = "xgboost_final_model"
+        return macro_df.sort_values("snapshot_ts").reset_index(drop=True)
+    except Exception:
+        pred_path = run_dir / "option2_change_deap_holdout_oos_predictions.csv"
+        pred_df = pd.read_csv(pred_path, parse_dates=["snapshot_ts", "fomc_decision_date"])
+        joined_cols = [
+            "snapshot_ts",
+            "sora_level_realized",
+            f"sora_fwd_{horizon_days}d_change",
+            f"sora_fwd_{horizon_days}d_level",
+        ]
+        macro_df = pred_df.merge(engineered_df[joined_cols], on="snapshot_ts", how="left")
+        macro_df["predicted_level"] = macro_df["sora_level_realized"] + macro_df["y_pred"]
+        macro_df["prediction_source"] = "cached_holdout_predictions"
+        return macro_df.sort_values("snapshot_ts").reset_index(drop=True)
+
+
+def _build_macro_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.sort_values("snapshot_ts").reset_index(drop=True).copy()
+    out["p_no_change_missing"] = out["p_no_change"].isna().astype(int)
+    out["margin_over_second_missing"] = out["margin_over_second"].isna().astype(int)
+    for col in ("sora_level_realized", "sora_90d_change_t2", "sora_level_t2", "sora_3m_t2", "expected_bps"):
+        if col in out.columns:
+            out[col] = pd.to_numeric(out[col], errors="coerce")
+    level = out["sora_level_realized"]
+    out["sora_lag_21d_diff"] = level.diff(21)
+    out["sora_lag_63d_diff"] = level.diff(63)
+    out["sora_lag_10d_diff"] = level.diff(10)
+    out["sora_lag_5d_diff"] = level.diff(5)
+    d_level = level.diff(1)
+    out["sora_realized_vol_21d"] = d_level.rolling(21).std()
+    out["sora_realized_vol_63d"] = d_level.rolling(63).std()
+    roll_max = level.rolling(63).max()
+    out["sora_below_63d_peak"] = level - roll_max
+    out["sora_dist_from_63d_ma"] = level - level.rolling(63).mean()
+    out["sora_accel_21d"] = level.diff(21) - level.diff(21).shift(21)
+    out["expected_bps_minus_sora_90d"] = out["expected_bps"] - out["sora_90d_change_t2"]
+    out["sora_curve_steepness"] = out["sora_level_t2"] - out["sora_3m_t2"]
+    return out
 
 
 def compute_sora_distress_score(predicted_change: float) -> float:
