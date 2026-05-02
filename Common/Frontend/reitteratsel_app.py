@@ -328,6 +328,24 @@ def format_currency_compact(value: float | None) -> str:
 
 
 def derive_absolute_trend(values: pd.Series, *, threshold: float, up_label: str, down_label: str) -> str:
+    """
+    Classify a level-style annual series using the latest point versus a recent baseline.
+
+    Current use:
+    - ICR Trend
+
+    Definition:
+    - if 3+ annual points exist, baseline = mean of all but the latest point
+    - if only 2 points exist, baseline = prior point
+    - delta = latest - baseline
+    - if abs(delta) < threshold -> "Flat"
+    - if delta > 0 -> up_label
+    - if delta < 0 -> down_label
+
+    For ICR Trend, this means:
+    - "Improving" when the latest ICR is materially above the recent annual baseline
+    - "Deteriorating" when it is materially below
+    """
     clean = pd.to_numeric(values, errors="coerce").dropna().reset_index(drop=True)
     if len(clean) < 2:
         return "N/A"
@@ -339,6 +357,23 @@ def derive_absolute_trend(values: pd.Series, *, threshold: float, up_label: str,
 
 
 def derive_relative_trend(values: pd.Series, *, threshold_ratio: float, up_label: str, down_label: str) -> str:
+    """
+    Classify a percentage-style annual series using relative change versus a recent baseline.
+
+    Current use:
+    - DPU Trend, where DPU is annual `Dividends per share (FY)` from the raw annual source layer
+
+    Definition:
+    - if 3+ annual points exist, baseline = mean of all but the latest point
+    - if only 2 points exist, baseline = prior point
+    - delta_ratio = (latest - baseline) / abs(baseline)
+    - if abs(delta_ratio) < threshold_ratio -> "Flat"
+    - if delta_ratio > 0 -> up_label
+    - if delta_ratio < 0 -> down_label
+
+    Fallback when baseline is zero:
+    - use the latest absolute delta against the prior point
+    """
     clean = pd.to_numeric(values, errors="coerce").dropna().reset_index(drop=True)
     if len(clean) < 2:
         return "N/A"
@@ -439,6 +474,23 @@ def build_reit_header_context(
     final_distress: float,
     final_level: str,
 ) -> dict[str, Any]:
+    """
+    Build one canonical annual-anchor context object for the expanded REIT header.
+
+    This keeps the header logic aligned to a single selected `period_id` so the page
+    does not mix "latest" rows from different annual anchors.
+
+    Definitions used here:
+    - ICR Trend:
+      derived from the annual ICR series with `derive_absolute_trend(...)`
+    - DPU Trend:
+      derived from annual `Dividends per share (FY)` with `derive_relative_trend(...)`
+    - Refi Cliff:
+      currently defined in the header as annual `Short Term Debt`
+      read from `reit_metrics.fact_metric_component` for metric `REFI_RISK`
+    - TOPGEO:
+      latest annual top geography label/share from `REV_CONC_TOPGEO`
+    """
     metric_pivot = (
         selected_metric_df.sort_values(["fiscal_year_end_date", "metric_code"])
         .pivot_table(
