@@ -1,1 +1,3 @@
-IO/
+IO/*
+!IO/run_3/
+!IO/run_3/**
