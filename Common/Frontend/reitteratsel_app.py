@@ -11,11 +11,14 @@ import streamlit as st
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 KG_DIR = ROOT_DIR / "Common" / "Micro" / "5_Model_KG"
-LOGO_PATH = ROOT_DIR / "Common" / "Frontend" / "DesignDoc" / "Reiterratsel_Logo.png"
+LOGO_ICON_PATH = ROOT_DIR / "Common" / "Frontend" / "DesignDoc" / "Ritteratsel_Logo.svg"
+LOGO_WORDMARK_PATH = ROOT_DIR / "Common" / "Frontend" / "DesignDoc" / "Reiterratsel_Wordmark.svg"
 if str(KG_DIR) not in sys.path:
     sys.path.insert(0, str(KG_DIR))
-if not LOGO_PATH.exists():
-    raise FileNotFoundError(f"Required frontend logo asset is missing: {LOGO_PATH}")
+if not LOGO_ICON_PATH.exists():
+    raise FileNotFoundError(f"Required frontend logo icon asset is missing: {LOGO_ICON_PATH}")
+if not LOGO_WORDMARK_PATH.exists():
+    raise FileNotFoundError(f"Required frontend wordmark asset is missing: {LOGO_WORDMARK_PATH}")
 
 from reitteratsel_core import (  # noqa: E402
     DEFAULT_HORIZON_DAYS,
@@ -33,7 +36,7 @@ from reitteratsel_view_logic import (  # noqa: E402
 
 
 st.set_page_config(page_title="REITterratsel", layout="wide")
-st.logo(str(LOGO_PATH), size="large")
+st.logo(str(LOGO_WORDMARK_PATH), icon_image=str(LOGO_ICON_PATH), size="large")
 
 st.markdown(
     """

@@ -231,11 +231,13 @@ CREATE TABLE financials (
 
 - Key assets currently present:
   `Common\Frontend\DesignDoc\figma.png`
+  `Common\Frontend\DesignDoc\Ritteratsel_Logo.svg`
   `Common\Frontend\DesignDoc\Reiterratsel_Logo.png`
+  `Common\Frontend\DesignDoc\Reiterratsel_Wordmark.svg`
   `Common\Frontend\DesignDoc\Reitteratsel.pdf`
 
 - Active app branding asset now rendered in the Streamlit sidebar top-left:
-  `Common\Frontend\DesignDoc\Reiterratsel_Logo.png`
+  `Common\Frontend\DesignDoc\Reiterratsel_Wordmark.svg`
 
 ### 11) Active app / pipeline components
 
@@ -272,7 +274,7 @@ CREATE TABLE financials (
 
 - Streamlit app entrypoint:
   `Common\Frontend\reitteratsel_app.py`
-  Note: sidebar navigation now includes built-in Material icons for Ranking, Individual REIT Navigator, and Time Series (Rates), with the branded logo rendered above the nav via Streamlit's native logo API.
+  Note: sidebar navigation now includes built-in Material icons for Ranking, Individual REIT Navigator, and Time Series (Rates), with Streamlit's native logo API using `Reiterratsel_Wordmark.svg` for the expanded sidebar and `Ritteratsel_Logo.svg` for the minimized icon state.
 
 - App view-logic module:
   `Common\Frontend\reitteratsel_view_logic.py`
