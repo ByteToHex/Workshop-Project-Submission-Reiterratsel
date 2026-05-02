@@ -73,7 +73,7 @@ Current role:
 
 - long-form annual metric fact table
 - one row per ticker-period-metric_code
-- current live metric universe is `19` metric codes
+- current live metric universe is `20` metric codes. Omit `REAL_YIELD_CPI` ONLY
 - raw annual metrics remain separate from label and fuzzy outputs
 
 Important current implementation notes:

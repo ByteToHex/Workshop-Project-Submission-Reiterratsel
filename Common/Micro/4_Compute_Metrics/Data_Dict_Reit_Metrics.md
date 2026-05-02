@@ -177,6 +177,28 @@ General rules used by the script:
 - Layman meaning:
   - This measures how dependent the REIT is on its biggest revenue segment.
 
+### REV_CONC_TOPGEO
+
+- Full name: `Revenue Concentration (Top Geography Share)`
+- Metric code: `REV_CONC_TOPGEO`
+- Source intent from spec: `Largest geography revenue / Total revenue`
+- Implemented formula:
+  - find largest positive geography inside revenue group `1-By_Country`
+  - compare that geography to a denominator
+- Source labels:
+  - revenue section rows where `group_output_label = '1-By_Country'`
+  - `Total revenue`
+- Implemented denominator logic:
+  - If geography sum is close to `Total revenue`, use `Total revenue`
+  - If geography sum and `Total revenue` disagree materially, use geography sum instead
+- Notes:
+  - `OK`: geography breakdown and total revenue align well enough
+  - `PARTIAL`: geography data exists, but geography sum does not align well with reported total revenue
+  - `MISSING_INPUT`: no usable geography values
+  - `CLIPPED_SOURCE_SHARE`: raw share slightly exceeded `1.0`, so it was clipped to `1.0`
+- Layman meaning:
+  - This measures how dependent the REIT is on its biggest geographic revenue bucket.
+
 ### PAYOUT_RATIO
 
 - Full name: `Payout Ratio`
@@ -491,6 +513,7 @@ Reason:
 Applies to:
 
 - `REV_CONC_TOPSEG`
+- `REV_CONC_TOPGEO`
 
 Recommendation:
 

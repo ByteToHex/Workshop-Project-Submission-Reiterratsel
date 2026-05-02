@@ -1,7 +1,7 @@
 **A - Labelling**
 - A0: DuckDB is authoritative. Override this doc wherever DuckDB contents differ.
 - A1: Use the existing annual metrics already in `reit_metrics.fact_metric_value`.
-- A1a: Current warehouse state is `19` metric codes, not `20`.
+- A1a: Current warehouse state is `20` metric codes. Omit `REAL_YIELD_CPI` ONLY.
 - A1b: Do not add `REAL_YIELD_CPI` unless intentionally implemented later.
 - A1c: Keep raw metrics unchanged in DuckDB. Do not overwrite them with fuzzy-transformed values.
 - A2: Derive `null_count` per ticker-period from DuckDB at query/build time.

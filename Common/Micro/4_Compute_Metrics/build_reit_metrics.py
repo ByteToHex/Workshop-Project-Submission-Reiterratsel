@@ -185,6 +185,16 @@ METRIC_DEFINITIONS: list[dict[str, Any]] = [
         "description": "Uses revenue section group 0-By_Source, comparing segment sum against annual total revenue.",
     },
     {
+        "metric_code": "REV_CONC_TOPGEO",
+        "metric_name": "Revenue Concentration (Top Geography Share)",
+        "formula_short": "Largest By_Country geography / denominator",
+        "unit_type": "ratio",
+        "higher_is_better": False,
+        "source_schema_hint": "SCHEMA_05",
+        "requires_external": False,
+        "description": "Uses revenue section group 1-By_Country, comparing country/geography sum against annual total revenue.",
+    },
+    {
         "metric_code": "PAYOUT_RATIO",
         "metric_name": "Payout Ratio",
         "formula_short": "abs(Total Cash Dividends Paid) / FFO",
@@ -509,6 +519,9 @@ def _build_lookups(source_df: pd.DataFrame) -> dict[str, Any]:
     revenue_source_df = yearly_df.loc[
         (yearly_df["section"] == "revenue") & (yearly_df["group_output_label"] == "0-By_Source")
     ].copy()
+    revenue_geo_df = yearly_df.loc[
+        (yearly_df["section"] == "revenue") & (yearly_df["group_output_label"] == "1-By_Country")
+    ].copy()
 
     return {
         "annual_lookup_num": annual_lookup_num,
@@ -516,6 +529,7 @@ def _build_lookups(source_df: pd.DataFrame) -> dict[str, Any]:
         "yearly_lookup_num": yearly_lookup_num,
         "yearly_lookup_text": yearly_lookup_text,
         "revenue_source_df": revenue_source_df,
+        "revenue_geo_df": revenue_geo_df,
     }
 
 
@@ -616,18 +630,27 @@ def _compute_revenue_concentration(
     ticker: str,
     fiscal_year: int,
     total_revenue: float | None,
+    *,
+    group_output_label: str,
+    metric_label: str,
 ) -> tuple[float | None, str, str, list[tuple[str, float | None, str | None]]]:
-    revenue_source_df: pd.DataFrame = lookups["revenue_source_df"]
-    subset = revenue_source_df.loc[
-        (revenue_source_df["ticker"] == ticker) & (revenue_source_df["fiscal_year"] == fiscal_year)
+    if group_output_label == "0-By_Source":
+        revenue_group_df: pd.DataFrame = lookups["revenue_source_df"]
+    elif group_output_label == "1-By_Country":
+        revenue_group_df = lookups["revenue_geo_df"]
+    else:
+        raise ValueError(f"Unsupported revenue concentration group_output_label: {group_output_label}")
+
+    subset = revenue_group_df.loc[
+        (revenue_group_df["ticker"] == ticker) & (revenue_group_df["fiscal_year"] == fiscal_year)
     ].copy()
     if subset.empty:
-        return None, "MISSING_INPUT", "No 0-By_Source revenue rows found.", []
+        return None, "MISSING_INPUT", f"No {group_output_label} revenue rows found.", []
 
     subset["clean_value"] = subset["value_num"].apply(lambda v: None if pd.isna(v) else float(v))
     positive_subset = subset.loc[subset["clean_value"].notna() & (subset["clean_value"] > 0)].copy()
     if positive_subset.empty:
-        return None, "MISSING_INPUT", "0-By_Source revenue rows were present but all values were blank or non-positive.", []
+        return None, "MISSING_INPUT", f"{group_output_label} revenue rows were present but all values were blank or non-positive.", []
 
     positive_subset = positive_subset.sort_values(["clean_value", "label"], ascending=[False, True])
     top_row = positive_subset.iloc[0]
@@ -637,17 +660,17 @@ def _compute_revenue_concentration(
 
     denominator = segment_sum
     status = "OK"
-    note = f"Top segment label={top_label}; denominator=segment_sum"
+    note = f"Top {metric_label} label={top_label}; denominator=segment_sum"
 
     if total_revenue is not None and total_revenue > 0:
         rel_diff = abs(segment_sum - total_revenue) / total_revenue
         if rel_diff <= 0.05:
             denominator = total_revenue
-            note = f"Top segment label={top_label}; denominator=income_total_revenue; rel_diff={rel_diff:.4f}"
+            note = f"Top {metric_label} label={top_label}; denominator=income_total_revenue; rel_diff={rel_diff:.4f}"
         else:
             status = "PARTIAL"
             note = (
-                f"Top segment label={top_label}; segment_sum diverged from income total revenue "
+                f"Top {metric_label} label={top_label}; segment_sum diverged from income total revenue "
                 f"(rel_diff={rel_diff:.4f}), so denominator=segment_sum"
             )
 
@@ -660,8 +683,8 @@ def _compute_revenue_concentration(
             "Raw share exceeded 1.0 because top segment slightly exceeded denominator; clipped to 1.0.",
         )
     components = [
-        ("top_segment_value", top_value, top_label),
-        ("segment_sum", segment_sum, "0-By_Source positive rows"),
+        (f"top_{metric_label}_value", top_value, top_label),
+        (f"{metric_label}_sum", segment_sum, f"{group_output_label} positive rows"),
         ("income_total_revenue", total_revenue, "Total revenue"),
     ]
     return value, status, note, components
@@ -782,6 +805,8 @@ def _compute_metric_rows(
                         ticker=ticker,
                         fiscal_year=fiscal_year,
                         total_revenue=inputs["total_revenue"],
+                        group_output_label="0-By_Source",
+                        metric_label="segment",
                     )
                     for component_name, component_value, component_text in components:
                         _append_component(
@@ -796,6 +821,30 @@ def _compute_metric_rows(
                             source_table="financials",
                             source_section="revenue",
                             source_label="0-By_Source",
+                        )
+
+                elif metric_code == "REV_CONC_TOPGEO":
+                    value, status, notes, components = _compute_revenue_concentration(
+                        lookups=lookups,
+                        ticker=ticker,
+                        fiscal_year=fiscal_year,
+                        total_revenue=inputs["total_revenue"],
+                        group_output_label="1-By_Country",
+                        metric_label="geography",
+                    )
+                    for component_name, component_value, component_text in components:
+                        _append_component(
+                            component_rows,
+                            ticker=ticker,
+                            period_id=period_id,
+                            metric_code=metric_code,
+                            component_role="input",
+                            component_name=component_name,
+                            component_value=component_value,
+                            component_text=component_text,
+                            source_table="financials",
+                            source_section="revenue",
+                            source_label="1-By_Country",
                         )
 
                 elif metric_code == "PAYOUT_RATIO":
