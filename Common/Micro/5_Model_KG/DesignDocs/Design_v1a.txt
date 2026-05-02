@@ -1,126 +1,144 @@
 **A - Labelling**
-- A0: DuckDB is authoritative. Override this doc wherever DuckDB contents differ.
+- A0: Implemented source of truth is live DuckDB plus current code. Override older draft assumptions wherever they differ.
 - A1: Use the existing annual metrics already in `reit_metrics.fact_metric_value`.
-- A1a: Current warehouse state is `20` metric codes. Omit `REAL_YIELD_CPI` ONLY.
-- A1b: Do not add `REAL_YIELD_CPI` unless intentionally implemented later.
-- A1c: Keep raw metrics unchanged in DuckDB. Do not overwrite them with fuzzy-transformed values.
-- A2: Derive `null_count` per ticker-period from DuckDB at query/build time.
-- A2a: Preferred definition: count rows where `calc_status = 'MISSING_INPUT'`.
-- A2b: Do not store `null_count` as a fake ratio row inside `fact_metric_value`.
-- A2c: Also derive `non_ok_count` separately for broader diagnostics.
+- A1a: Current implemented metric universe is `20` metric codes, with `REAL_YIELD_CPI` intentionally omitted.
+- A1b: Raw annual metrics remain unchanged in DuckDB. Do not overwrite them with fuzzy-transformed values.
+- A2: Derive diagnostics per ticker-period from `calc_status` at build time.
+- A2a: `null_count` = count rows where `calc_status = 'MISSING_INPUT'`.
+- A2b: `non_ok_count` = count rows where `calc_status <> 'OK'`.
+- A2c: Do not store either count as fake metric rows inside `fact_metric_value`.
 - A3: Compute daily REIT returns from ticker CSV `close` prices.
 - A4: Compute daily SGX iEdge REIT index returns from `SGX_DLY_REIT, 1D.csv`.
 - A4a: Ignore `REITN` and `REITR`.
-- A4b: Do not rescale index price levels to REIT price levels.
-- A4c: Compare returns, not raw OHLC levels.
+- A4b: Compare returns, not raw OHLC levels.
 - A5: Compute daily abnormal return = REIT daily return - index daily return.
-- A6: Anchor each annual observation to `dim_period.fiscal_year_end_date`.
-- A6a: If the anchor date is not a trading day, roll to the next available trading day.
-- A7: Compute forward windows from the annual anchor.
-- A7a: `CAR_63wd`
-- A7b: `CAR_126wd`
-- A7c: Prefer compounded form: `prod(1 + abnormal_return) - 1`.
-- A8: Store label artifacts in a separate downstream table, not in the raw metric fact table.
-- A8x: DuckDB table name: `reit_labels.fact_distress_label`.
-- A8a: Minimum fields: `ticker`, `period_id`, `anchor_date`, `car_63wd`, `car_126wd`, `null_count`, `non_ok_count`, `label_scheme_version`, `label_126wd`.
+- A6: Anchor each annual observation to `reit_metrics.dim_period.fiscal_year_end_date`.
+- A6a: If the anchor date is not a trading day, roll to the first available trading day on or after the anchor date.
+- A7: Build forward abnormal-return windows from the annual anchor.
+- A7a: `car_63wd`
+- A7b: `car_126wd`
+- A7c: Use compounded form `prod(1 + abnormal_return) - 1`.
+- A8: Persist label artifacts in downstream table `reit_labels.fact_distress_label`.
+- A8a: Implemented fields include `ticker`, `period_id`, `anchor_date`, `anchor_trade_date`, `window_63_end_date`, `window_126_end_date`, `car_63wd`, `car_126wd`, `null_count`, `non_ok_count`, `label_scheme_version`, `label_126wd`, `source_index_code`, `notes`.
 - A8b: Write label outputs to separate parquet shard `distresslabels.parquet`.
-- A8c: Do not mix label outputs into existing raw financial or metric shards.
-- A9: Convert `CAR_126wd` into labels with adjustable thresholds.
-- A9a: Initial placeholder only: `< -15% = DISTRESSED`, `> +5% = HEALTHY`, else `WATCH`.
-- A10: Optional clustering check may be run after labels exist.
+- A9: Convert `car_126wd` into labels using the implemented threshold scheme.
+- A9a: Implemented thresholds are strict comparisons:
+- A9a1: `car_126wd < -15%` -> `DISTRESSED`
+- A9a2: `car_126wd > +5%` -> `HEALTHY`
+- A9a3: otherwise -> `WATCH`
+- A9b: Exactly `-15%` and exactly `+5%` currently resolve to `WATCH`.
+- A10: Keep `label_scheme_version` explicit in the persisted label table.
 
 **B - Mamdani Rule Induction**
 - B0: Use frozen annual DuckDB data as the Mamdani base input.
-- B1: Store rule definitions and membership boundaries in Neo4j.
-- B1a: Use `.env` in repo root for Neo4j connection settings.
-- B1b: Use local instance `PracticeModule_IRS`.
-- B1c: One local Neo4j database is sufficient for this POC.
-- B2: Core Mamdani inputs:
+- B1: Store Mamdani rule definitions and membership boundaries in Neo4j.
+- B1a: Use repo-root `.env` for Neo4j connection settings.
+- B1b: Seed one local model graph from `mamdani_rule_seed.json`.
+- B2: Implemented Mamdani inputs are:
 - B2a: `ICR`
 - B2b: `GEARING`
-- B2c: `PAYOUT_RATIO`
-- B2d: `DSCR`
-- B2e: `REFI_RISK`
-- B3: Supporting inputs:
-- B3a: `NET_DEBT_EBITDA`
-- B3b: `FFO_COVERAGE`
-- B3c: other annual metrics only where clearly justified
-- B4: `null_count` is a derived meta-risk input, not a raw financial ratio.
-- B4a: It may be used as a separate Mamdani input.
-- B4b: Initial thresholds may start as `0 = healthy`, `>5 = weak distress`, `>10 = strong distress`.
-- B4c: Validate or adjust these thresholds after label comparison.
-- B5: Mamdani preprocessing must use both `metric_value` and `calc_status`.
-- B5a: Handle `NEGATIVE_BASE` as distress-state input, not as a normal continuous ratio.
-- B5b: Handle `DISTRESS_BASE` as distress-state input, not as a normal payout/coverage ratio.
-- B5c: Handle `LOW_DENOMINATOR`, `PARTIAL`, and `CLIPPED_SOURCE_SHARE` as lower-confidence inputs where needed.
-- B5d: Keep preprocessing outputs separate from raw warehouse values.
-- B6: Run fuzzy inference in Python.
-- B6a: Read rules from Neo4j.
-- B6b: Fuzzify annual inputs.
-- B6c: Apply rule firing and aggregation.
-- B6d: Defuzzify to final score.
-- B7: Output `distress_score_mamdani` in range `0-1` per ticker-period.
-- B7a: Freeze each score until the next annual checkpoint.
-- B7b: Persist results back to DuckDB in a downstream table.
-- B7c: This persistence is mandatory for auditability and cacheing.
-- B7d: Purpose of the persisted copy is auditability and cacheing only.
-- B7dx: DuckDB table name: `reit_fuzzy.fact_fuzzy_cache`.
-- B7e: Do not mix Mamdani persisted outputs into existing raw financial or metric shards.
-- B7f: Write Mamdani persisted outputs to separate parquet shard `fuzzycache.parquet` under `_annual_warehouse/parquet`.
-- B7g: Keep the existing shard set intact, including per-ticker financial shards and `metrics.parquet`.
+- B2c: `DSCR`
+- B2d: `REFI_RISK`
+- B2e: `PAYOUT_RATIO`
+- B2f: `FFO_COVERAGE`
+- B2g: `NET_DEBT_EBITDA`
+- B2h: `NULL_COUNT`
+- B3: `NULL_COUNT` is a derived meta-risk input, not a raw financial ratio.
+- B3a: It is derived from annual `calc_status = 'MISSING_INPUT'`.
+- B3b: Implemented fuzzy memberships are:
+- B3b1: `healthy` trapezoid `[0, 0, 1, 3]`
+- B3b2: `watch` triangle `[2, 5, 8]`
+- B3b3: `distress` trapezoid `[6, 9, 19, 19]`
+- B3c: Implemented null-related rules are:
+- B3c1: `R10`: `NULL_COUNT = distress` -> output `high`, weight `0.65`
+- B3c2: `R11`: `NULL_COUNT = watch` AND `ICR = watch` -> output `high`, weight `0.65`
+- B3d: `non_ok_count` is currently persisted for diagnostics and app display only. It is not currently a Mamdani input or rule antecedent.
+- B4: Mamdani preprocessing must use both `metric_value` and `calc_status`.
+- B4a: Handle `NEGATIVE_BASE` as a distress-state override for applicable metrics.
+- B4b: Handle `DISTRESS_BASE` as a distress-state override for applicable metrics.
+- B4c: Handle `LOW_DENOMINATOR`, `PARTIAL`, and `CLIPPED_SOURCE_SHARE` as lower-confidence inputs through confidence scaling where applicable.
+- B4d: Keep preprocessing outputs separate from raw warehouse values.
+- B5: Run fuzzy inference in Python.
+- B5a: Read rules from Neo4j after seeding from `mamdani_rule_seed.json`.
+- B5b: Fuzzify annual inputs.
+- B5c: Apply rule firing and aggregation.
+- B5d: Defuzzify to final Mamdani score with the implemented confidence-aware blend toward neutral when activation confidence is weak.
+- B6: Output `distress_score_mamdani` in range `0-1` per ticker-period.
+- B6a: Freeze each Mamdani score until the next annual checkpoint.
+- B6b: Persist results to downstream table `reit_fuzzy.fact_fuzzy_cache`.
+- B6c: Persistence is mandatory for auditability and app/runtime reuse.
+- B6d: Write Mamdani persisted outputs to separate parquet shard `fuzzycache.parquet`.
+- B6e: Keep persisted outputs separate from `fact_metric_value`, `metrics.parquet`, and raw financial shards.
 
-**C - Dashboard**
-- C0: Entirely local. Use local DuckDB, local Neo4j, and local model files only.
-- C1: Streamlit fetches frozen annual metrics and frozen Mamdani outputs from DuckDB.
-- C2: Streamlit fetches rule definitions from Neo4j.
-- C3: XGBoost model source is under `Common/Macro/IO/Model_Train/Use/run_21`.
-- C3a: Use `fwd_10_days` first.
-- C3b: Keep the model wiring modular so `fwd_15_days` can be tested later without redesign.
-- C3c: Use the local trained model artifacts from that path.
-- C3d: Daily recomputation is a simulated walk-forward over the frozen test window, not live market deployment.
-- C4: Daily layer recomputes:
-- C4a: predicted SORA
-- C4b: distress_sora or SORA modifier
-- C4c: accumulated CAR path
-- C4d: final combined distress
-- C5: Final combined score uses:
-- C5a: `distress_score_mamdani`
-- C5b: `predicted_sora`
-- C5c: `distress_sora`
-- C5d: `final_distress`
-- C6: App should display per ticker:
-- C6a: filing-date `distress_score_mamdani`
-- C6b: current simulated `predicted_sora`
-- C6c: current simulated `distress_sora`
-- C6d: `final_distress`
-- C6e: rule firing panel with firing strengths and silenced rules
-- C6f: CAR panel with future `CAR_63wd` and `CAR_126wd`
-- C7: Do not overwrite frozen annual values during daily simulation.
+**C - Daily CAR Path Overlay**
+- C0: Build a separate daily CAR-path table from the same annual anchor plus daily abnormal returns.
+- C1: Persist daily path rows to `reit_labels.fact_car_path_daily`.
+- C2: For each ticker-period:
+- C2a: store the anchor trading day with `accum_car_to_date = 0.0`
+- C2b: compound abnormal returns forward by trading day
+- C2c: map `accum_car_to_date` to `car_path_distress` using the same `-15%` / `+5%` thresholds as the label scheme, but as a continuous `0-1` score
+- C3: This daily CAR-path overlay is not part of Mamdani rule firing.
 
-**D - Evaluation**
-- D1: Ground truth = `CAR_126wd` label.
-- D2: Baseline model = single-threshold rule such as `ICR < 1.5`.
-- D3: Compare:
-- D3a: `distress_baseline`
-- D3b: `distress_score_mamdani`
-- D3c: `distress_score_refi`
-- D3d: `final_distress`
-- D4: Evaluate these:
-- D4a: label accuracy against `DISTRESSED/WATCH/HEALTHY`
-- D4b: continuous gap between normalized CAR target and predicted distress score
-- D5: Run disagreement analysis for mismatched cases.
-- D6: Keep versioning on threshold scheme and score generation logic.
+**D - Dashboard / Runtime**
+- D0: Entirely local. Use local DuckDB, local Neo4j, and local model files only.
+- D1: Streamlit fetches frozen annual metrics and frozen Mamdani outputs from DuckDB.
+- D1a: The app does not fetch rule definitions from Neo4j at runtime.
+- D1b: The app reads persisted Mamdani outputs including `rule_trace_text` from DuckDB.
+- D2: XGBoost model source is under `Common/Macro/IO/Model_Train/Use/run_21`.
+- D2a: Current implemented runtime uses `fwd_10_days` direct XGBoost inference.
+- D2b: Keep the wiring modular so `fwd_15_days` can be tested later.
+- D3: Runtime simulation date behavior:
+- D3a: resolve the latest eligible annual ticker-period row on or before the selected simulation date
+- D3b: resolve the latest eligible macro snapshot on or before the selected simulation date
+- D3c: resolve the latest eligible daily CAR-path row on or before the selected simulation date for the chosen ticker-period
+- D4: Final runtime distress score uses:
+- D4a: frozen `distress_score_mamdani`
+- D4b: runtime `distress_sora`
+- D4c: `REFI_RISK` as the macro sensitivity bridge
+- D4d: runtime `car_path_distress`
+- D4e: neutral dead zone on small CAR-path shocks before applying the path overlay
+- D5: App pages currently implemented:
+- D5a: `Ranking`
+- D5b: `Individual REIT Navigator`
+- D5c: `Time Series (Rates)`
+- D6: App currently displays:
+- D6a: annual Mamdani base score
+- D6b: runtime macro overlay fields
+- D6c: runtime CAR-path overlay fields
+- D6d: annual metric tables and selected annual diagnostics
+- D6e: persisted rule-trace text, not a full structured rule-strength visualizer
+- D6f: future `car_63wd`, `car_126wd`, and `label_126wd` for POC demonstration
+- D7: Do not overwrite frozen annual values during runtime simulation.
+
+**E - Evaluation**
+- E1: Ground truth = `label_126wd`, derived from `car_126wd`.
+- E2: Compare:
+- E2a: `distress_baseline`
+- E2b: `distress_score_mamdani`
+- E2c: `distress_score_refi`
+- E2d: `final_distress`
+- E3: Implemented evaluation outputs include:
+- E3a: summary metrics
+- E3b: per-class metrics
+- E3c: confusion matrices
+- E3d: ranking metrics
+- E3e: disagreement exports
+- E3f: detailed row-level outputs
+- E4: Current evaluation compares discrete label accuracy and continuous score-vs-normalized-CAR gaps.
+- E5: Keep versioning explicit on label thresholds, Mamdani scoring logic, and final distress logic.
 
 **Execution Order**
-- E1: Build abnormal return and CAR pipeline first.
-- E2: Build downstream label table.
-- E3: Build derived annual feature view with `null_count` and `non_ok_count`.
-- E4: Seed Neo4j rule graph.
-- E5: Build Python Mamdani inference and persist `distress_score_mamdani`.
-- E6: Integrate Streamlit daily simulation layer.
-- E7: Add evaluation outputs.
+- F1: Build abnormal return and label pipeline first.
+- F2: Build daily CAR-path table.
+- F3: Build derived annual Mamdani input frame with `null_count` and `non_ok_count`.
+- F4: Seed Neo4j rule graph.
+- F5: Run Python Mamdani inference and persist `distress_score_mamdani`.
+- F6: Run local Streamlit app with date-resolved annual, macro, and CAR-path layers.
+- F7: Run evaluation outputs under `Common\Eval\IO\run_n`.
 
 **Known Limits**
 - L1: Test window is frozen and simulated, not live.
-- L2: SORA-side contribution is constrained by the available train/test split.
-- L3: This doc is secondary to actual DuckDB contents and implemented code.
+- L2: Some annual anchors lack full forward 126-trading-day coverage, so some `label_126wd` values remain `NULL`.
+- L3: `non_ok_count` is not yet incorporated into scoring logic beyond being persisted and displayed diagnostically.
+- L4: App rule explanation is currently persisted text trace rather than a structured rule-strength explorer.
+- L5: This doc is subordinate to implemented code and live DuckDB contents.
