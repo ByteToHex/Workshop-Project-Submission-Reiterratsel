@@ -62,6 +62,80 @@ st.markdown(
     .reit-muted {
         color: #bfb7b2;
     }
+    .reit-header-grid {
+        display: grid;
+        grid-template-columns: minmax(220px, 0.95fr) minmax(180px, 0.8fr) repeat(6, minmax(110px, 1fr));
+        gap: 0.85rem;
+        align-items: stretch;
+    }
+    .reit-header-score {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .reit-label {
+        color: #7f7a76;
+        font-size: 0.82rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-weight: 700;
+        margin-bottom: 0.35rem;
+    }
+    .reit-value {
+        font-size: 2.1rem;
+        line-height: 1.05;
+        font-weight: 800;
+        color: #f6f2ee;
+    }
+    .reit-value-score {
+        font-size: 4.4rem;
+        color: #ff4a4a;
+    }
+    .reit-subvalue {
+        margin-top: 0.35rem;
+        color: #bfb7b2;
+        font-size: 0.92rem;
+    }
+    .reit-thresholds {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        justify-content: center;
+    }
+    .reit-pill {
+        border-radius: 8px;
+        border: 1px solid #574c4c;
+        padding: 0.4rem 0.65rem;
+        font-size: 0.86rem;
+        font-weight: 700;
+        color: #efe9e4;
+        background: rgba(255, 255, 255, 0.03);
+    }
+    .reit-pill-active {
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+    }
+    .reit-pill-stable.reit-pill-active {
+        background: rgba(34, 197, 94, 0.18);
+        border-color: #22c55e;
+    }
+    .reit-pill-watch.reit-pill-active {
+        background: rgba(234, 179, 8, 0.18);
+        border-color: #eab308;
+    }
+    .reit-pill-high.reit-pill-active {
+        background: rgba(249, 115, 22, 0.20);
+        border-color: #f97316;
+    }
+    .reit-pill-critical.reit-pill-active {
+        background: rgba(239, 68, 68, 0.22);
+        border-color: #ef4444;
+    }
+    .reit-metric-box {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 118px;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -69,7 +143,7 @@ st.markdown(
 
 
 @st.cache_data(show_spinner=False)
-def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     con = duckdb.connect(str(DUCKDB_PATH), read_only=True)
     try:
         ranking_df = con.execute(
@@ -99,6 +173,7 @@ def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             )
             SELECT
                 f.ticker,
+                f.period_id,
                 f.reit_name,
                 f.sector,
                 f.fiscal_year,
@@ -124,6 +199,7 @@ def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             """
             SELECT
                 v.ticker,
+                v.period_id,
                 p.fiscal_year,
                 p.fiscal_year_end_date,
                 v.metric_code,
@@ -138,6 +214,7 @@ def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             """
             SELECT
                 l.ticker,
+                l.period_id,
                 p.fiscal_year,
                 l.anchor_date,
                 l.anchor_trade_date,
@@ -152,12 +229,51 @@ def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             ORDER BY l.ticker, p.fiscal_year
             """
         ).fetchdf()
+        component_df = con.execute(
+            """
+            SELECT
+                c.ticker,
+                c.period_id,
+                p.fiscal_year,
+                p.fiscal_year_end_date,
+                c.metric_code,
+                c.component_role,
+                c.component_name,
+                c.component_value,
+                c.component_text,
+                c.source_label
+            FROM reit_metrics.fact_metric_component c
+            JOIN reit_metrics.dim_period p ON p.period_id = c.period_id
+            WHERE (c.metric_code = 'REFI_RISK' AND c.component_name = 'Short Term Debt')
+               OR (c.metric_code = 'REV_CONC_TOPGEO' AND c.component_name = 'top_geography_value')
+            ORDER BY c.ticker, p.fiscal_year_end_date, c.metric_code, c.component_name
+            """
+        ).fetchdf()
+        dividend_df = con.execute(
+            """
+            SELECT
+                d.ticker,
+                p.period_id,
+                p.fiscal_year,
+                p.fiscal_year_end_date,
+                TRY_CAST(f.value AS DOUBLE) AS dps_fy
+            FROM main.financials f
+            JOIN main.schema_rows s USING (row_id)
+            JOIN reit_metrics.dim_period p
+              ON p.ticker = f.ticker
+             AND p.fiscal_year = TRY_CAST(f.period AS INTEGER)
+            JOIN reit_metrics.dim_reit d ON d.ticker = f.ticker
+            WHERE s.section = 'dividends'
+              AND s.label = 'Dividends per share (FY)'
+            ORDER BY d.ticker, p.fiscal_year_end_date
+            """
+        ).fetchdf()
     finally:
         con.close()
-    return ranking_df, metric_df, label_df
+    return ranking_df, metric_df, label_df, component_df, dividend_df
 
 
-ranking_df, metric_df, label_df = load_app_frames()
+ranking_df, metric_df, label_df, component_df, dividend_df = load_app_frames()
 macro_df = load_macro_prediction_frame(DEFAULT_HORIZON_DAYS)
 if macro_df["prediction_source"].nunique() != 1 or macro_df["prediction_source"].iloc[0] != "xgboost_final_model":
     raise RuntimeError(
@@ -196,6 +312,120 @@ def build_ranking_view() -> pd.DataFrame:
     )
     ranking_view["level"] = ranking_view["final_distress"].map(score_to_level)
     return ranking_view.sort_values("final_distress", ascending=False).reset_index(drop=True)
+
+
+def format_currency_compact(value: float | None) -> str:
+    if value is None or pd.isna(value):
+        return "N/A"
+    abs_value = abs(float(value))
+    if abs_value >= 1_000_000_000:
+        return f"SGD {value / 1_000_000_000:.2f}B"
+    if abs_value >= 1_000_000:
+        return f"SGD {value / 1_000_000:.0f}M"
+    if abs_value >= 1_000:
+        return f"SGD {value / 1_000:.0f}K"
+    return f"SGD {value:,.0f}"
+
+
+def derive_absolute_trend(values: pd.Series, *, threshold: float, up_label: str, down_label: str) -> str:
+    clean = pd.to_numeric(values, errors="coerce").dropna().reset_index(drop=True)
+    if len(clean) < 2:
+        return "N/A"
+    baseline = clean.iloc[:-1].mean() if len(clean) >= 3 else clean.iloc[-2]
+    delta = float(clean.iloc[-1] - baseline)
+    if abs(delta) < threshold:
+        return "Flat"
+    return up_label if delta > 0 else down_label
+
+
+def derive_relative_trend(values: pd.Series, *, threshold_ratio: float, up_label: str, down_label: str) -> str:
+    clean = pd.to_numeric(values, errors="coerce").dropna().reset_index(drop=True)
+    if len(clean) < 2:
+        return "N/A"
+    baseline = float(clean.iloc[:-1].mean() if len(clean) >= 3 else clean.iloc[-2])
+    if baseline == 0:
+        latest_delta = float(clean.iloc[-1] - clean.iloc[-2])
+        if abs(latest_delta) < threshold_ratio:
+            return "Flat"
+        return up_label if latest_delta > 0 else down_label
+    delta_ratio = float((clean.iloc[-1] - baseline) / abs(baseline))
+    if abs(delta_ratio) < threshold_ratio:
+        return "Flat"
+    return up_label if delta_ratio > 0 else down_label
+
+
+def build_threshold_pills(final_level: str) -> str:
+    level_key = final_level.lower()
+    levels = [
+        ("stable", "0.00-0.34 Stable"),
+        ("watch", "0.35-0.54 Watch"),
+        ("high", "0.55-0.74 High"),
+        ("critical", "0.75-1.00 Critical"),
+    ]
+    pills: list[str] = []
+    for css_key, label in levels:
+        active_class = " reit-pill-active" if css_key == level_key else ""
+        pills.append(f'<div class="reit-pill reit-pill-{css_key}{active_class}">{label}</div>')
+    return "".join(pills)
+
+
+def render_expanded_reit_header(
+    *,
+    final_distress: float,
+    final_level: str,
+    latest_metrics: pd.Series,
+    icr_trend: str,
+    top_geo_label: str,
+    top_geo_share: float | None,
+    refi_cliff_value: float | None,
+    dpu_trend: str,
+) -> None:
+    top_geo_display = top_geo_label or "N/A"
+    if top_geo_share is not None and not pd.isna(top_geo_share):
+        top_geo_subvalue = f"{top_geo_share:.0%} of revenue"
+    else:
+        top_geo_subvalue = "Share unavailable"
+    header_html = f"""
+    <div class="reit-card">
+      <div class="reit-header-grid">
+        <div class="reit-header-score">
+          <div class="reit-label">Distress Score</div>
+          <div class="reit-value reit-value-score">{final_distress:.2f}</div>
+          <div class="reit-subvalue">Final level: {final_level}</div>
+        </div>
+        <div class="reit-thresholds">
+          {build_threshold_pills(final_level)}
+        </div>
+        <div class="reit-metric-box">
+          <div class="reit-label">ICR</div>
+          <div class="reit-value">{latest_metrics.get('ICR', float('nan')):.2f}</div>
+        </div>
+        <div class="reit-metric-box">
+          <div class="reit-label">Gearing</div>
+          <div class="reit-value">{latest_metrics.get('GEARING', float('nan')):.1%}</div>
+        </div>
+        <div class="reit-metric-box">
+          <div class="reit-label">ICR Trend</div>
+          <div class="reit-value" style="font-size: 1.7rem;">{icr_trend}</div>
+        </div>
+        <div class="reit-metric-box">
+          <div class="reit-label">TOPGEO</div>
+          <div class="reit-value" style="font-size: 1.7rem;">{top_geo_display}</div>
+          <div class="reit-subvalue">{top_geo_subvalue}</div>
+        </div>
+        <div class="reit-metric-box">
+          <div class="reit-label">Refi Cliff</div>
+          <div class="reit-value" style="font-size: 1.8rem;">{format_currency_compact(refi_cliff_value)}</div>
+          <div class="reit-subvalue">Short-term debt</div>
+        </div>
+        <div class="reit-metric-box">
+          <div class="reit-label">DPU Trend</div>
+          <div class="reit-value" style="font-size: 1.7rem;">{dpu_trend}</div>
+        </div>
+      </div>
+    </div>
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
 
 
 def render_ranking_page() -> None:
@@ -245,6 +475,9 @@ def render_reit_page() -> None:
     selected_row = ranking_df.loc[ranking_df["ticker"] == selected_ticker].iloc[0]
     selected_metric_df = metric_df.loc[metric_df["ticker"] == selected_ticker].copy()
     selected_label_df = label_df.loc[label_df["ticker"] == selected_ticker].copy()
+    selected_component_df = component_df.loc[component_df["ticker"] == selected_ticker].copy()
+    selected_dividend_df = dividend_df.loc[dividend_df["ticker"] == selected_ticker].copy()
+    selected_period_id = int(selected_row["period_id"])
 
     selected_refi = selected_metric_df.loc[
         selected_metric_df["metric_code"] == "REFI_RISK"
@@ -260,11 +493,49 @@ def render_reit_page() -> None:
 
     with tab_score:
         metric_pivot = (
-            selected_metric_df.sort_values("fiscal_year")
-            .pivot_table(index="fiscal_year", columns="metric_code", values="metric_value", aggfunc="first")
+            selected_metric_df.sort_values(["fiscal_year_end_date", "metric_code"])
+            .pivot_table(
+                index=["period_id", "fiscal_year", "fiscal_year_end_date"],
+                columns="metric_code",
+                values="metric_value",
+                aggfunc="first",
+            )
             .reset_index()
         )
-        latest_metrics = metric_pivot.iloc[-1]
+        latest_metrics = metric_pivot.loc[metric_pivot["period_id"] == selected_period_id].iloc[0]
+        icr_trend = derive_absolute_trend(
+            metric_pivot["ICR"],
+            threshold=0.15,
+            up_label="Improving",
+            down_label="Deteriorating",
+        )
+        dpu_trend = derive_relative_trend(
+            selected_dividend_df.sort_values("fiscal_year_end_date")["dps_fy"],
+            threshold_ratio=0.05,
+            up_label="Rising",
+            down_label="Falling",
+        )
+        top_geo_share = latest_metrics.get("REV_CONC_TOPGEO", float("nan"))
+        top_geo_component = selected_component_df.loc[
+            (selected_component_df["period_id"] == selected_period_id)
+            & (selected_component_df["metric_code"] == "REV_CONC_TOPGEO")
+            & (selected_component_df["component_name"] == "top_geography_value")
+        ]
+        top_geo_label = (
+            str(top_geo_component.iloc[0]["component_text"])
+            if not top_geo_component.empty and pd.notna(top_geo_component.iloc[0]["component_text"])
+            else "N/A"
+        )
+        refi_cliff_component = selected_component_df.loc[
+            (selected_component_df["period_id"] == selected_period_id)
+            & (selected_component_df["metric_code"] == "REFI_RISK")
+            & (selected_component_df["component_name"] == "Short Term Debt")
+        ]
+        refi_cliff_value = (
+            float(refi_cliff_component.iloc[0]["component_value"])
+            if not refi_cliff_component.empty and pd.notna(refi_cliff_component.iloc[0]["component_value"])
+            else None
+        )
         st.markdown(
             f"""
             <div class="reit-card">
@@ -274,6 +545,16 @@ def render_reit_page() -> None:
             </div>
             """,
             unsafe_allow_html=True,
+        )
+        render_expanded_reit_header(
+            final_distress=final_distress,
+            final_level=final_level,
+            latest_metrics=latest_metrics,
+            icr_trend=icr_trend,
+            top_geo_label=top_geo_label,
+            top_geo_share=(None if pd.isna(top_geo_share) else float(top_geo_share)),
+            refi_cliff_value=refi_cliff_value,
+            dpu_trend=dpu_trend,
         )
         c1, c2 = st.columns([1.05, 1.4])
         with c1:
