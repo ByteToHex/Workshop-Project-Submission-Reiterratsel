@@ -709,7 +709,7 @@ def render_rates_page() -> None:
     render_macro_header()
     st.markdown("**SORA macro walk-forward**")
 
-    hover_change = alt.selection_point(
+    hover_change_oos = alt.selection_point(
         fields=["date"],
         nearest=True,
         on="mouseover",
@@ -724,7 +724,7 @@ def render_rates_page() -> None:
         columns={"snapshot_ts": "date", "y_pred": "predicted_change_10d"}
     )
     change_chart = change_actual.merge(change_pred, on="date", how="left", validate="one_to_one")
-    st.markdown("**Predicted 10D change vs actual 10D change**")
+    st.markdown("**OOS holdout: Predicted 10D change vs actual 10D change**")
     change_long = change_chart.melt(
         id_vars="date",
         value_vars=["predicted_change_10d", "actual_sora_fwd_10d_change"],
@@ -751,7 +751,7 @@ def render_rates_page() -> None:
         + alt.Chart(train_rule_df)
         .mark_text(color="#ff4a4a", align="left", dx=6, dy=-120)
         .encode(x="date:T", text="label:N")
-        + change_hover_base.mark_point(opacity=0, size=120).add_params(hover_change).encode(
+        + change_hover_base.mark_point(opacity=0, size=120).add_params(hover_change_oos).encode(
             y=alt.value(0),
             tooltip=[
                 alt.Tooltip("date:T", title="Date"),
@@ -759,14 +759,63 @@ def render_rates_page() -> None:
                 alt.Tooltip("actual_sora_fwd_10d_change:Q", title="Actual 10D Change", format=".3f"),
             ],
         )
-        + change_base.mark_circle(size=60).transform_filter(hover_change)
+        + change_base.mark_circle(size=60).transform_filter(hover_change_oos)
         + change_hover_base.mark_rule(color="#8b949e")
-        .transform_filter(hover_change)
+        .transform_filter(hover_change_oos)
     )
     st.altair_chart(change_plot.properties(height=260), use_container_width=True)
 
+    hover_change_full = alt.selection_point(
+        fields=["date"],
+        nearest=True,
+        on="mouseover",
+        empty=False,
+        clear="mouseout",
+    )
+    change_full_chart = macro_df[["snapshot_ts", "y_pred", "y_true"]].copy().rename(
+        columns={
+            "snapshot_ts": "date",
+            "y_pred": "predicted_change_10d",
+            "y_true": "actual_sora_fwd_10d_change",
+        }
+    )
+    change_full_long = change_full_chart.melt(
+        id_vars="date",
+        value_vars=["predicted_change_10d", "actual_sora_fwd_10d_change"],
+        var_name="series",
+        value_name="value",
+    )
+    change_full_base = alt.Chart(change_full_long).encode(
+        x=alt.X("date:T", title="Date"),
+        y=alt.Y("value:Q", title="Change"),
+        color=alt.Color("series:N", title="Series"),
+    )
+    change_full_hover_base = alt.Chart(change_full_chart).encode(
+        x=alt.X("date:T", title="Date"),
+    )
+    change_full_plot = (
+        change_full_base.mark_line()
+        + alt.Chart(train_rule_df).mark_rule(color="#ff4a4a", strokeDash=[6, 4]).encode(x="date:T")
+        + alt.Chart(train_rule_df)
+        .mark_text(color="#ff4a4a", align="left", dx=6, dy=-120)
+        .encode(x="date:T", text="label:N")
+        + change_full_hover_base.mark_point(opacity=0, size=120).add_params(hover_change_full).encode(
+            y=alt.value(0),
+            tooltip=[
+                alt.Tooltip("date:T", title="Date"),
+                alt.Tooltip("predicted_change_10d:Q", title="Predicted 10D Change", format=".3f"),
+                alt.Tooltip("actual_sora_fwd_10d_change:Q", title="Actual 10D Change", format=".3f"),
+            ],
+        )
+        + change_full_base.mark_circle(size=60).transform_filter(hover_change_full)
+        + change_full_hover_base.mark_rule(color="#8b949e")
+        .transform_filter(hover_change_full)
+    )
+    st.markdown("**Refit full-model: Predicted 10D change vs actual 10D change**")
+    st.altair_chart(change_full_plot.properties(height=260), use_container_width=True)
+
     horizon = DEFAULT_HORIZON_DAYS
-    hover_level = alt.selection_point(
+    hover_level_oos = alt.selection_point(
         fields=["target_date"],
         nearest=True,
         on="mouseover",
@@ -795,7 +844,7 @@ def render_rates_page() -> None:
             "to a target_date in the full future level chart."
         )
     boundary_target_date = pd.Timestamp(boundary_target_matches.iloc[0])
-    st.markdown("**Horizon-shifted predicted 10D level vs actual future level**")
+    st.markdown("**OOS holdout: Horizon-shifted predicted 10D level vs actual future level**")
     level_long = future_level_chart.melt(
         id_vars="target_date",
         value_vars=["predicted_level_10d", "actual_future_level_10d"],
@@ -822,7 +871,7 @@ def render_rates_page() -> None:
         + alt.Chart(future_train_rule_df)
         .mark_text(color="#ff4a4a", align="left", dx=6, dy=-120)
         .encode(x="target_date:T", text="label:N")
-        + level_hover_base.mark_point(opacity=0, size=120).add_params(hover_level).encode(
+        + level_hover_base.mark_point(opacity=0, size=120).add_params(hover_level_oos).encode(
             y=alt.value(0),
             tooltip=[
                 alt.Tooltip("target_date:T", title="Forecast target date"),
@@ -830,16 +879,66 @@ def render_rates_page() -> None:
                 alt.Tooltip("actual_future_level_10d:Q", title="Actual Future Level", format=".3f"),
             ],
         )
-        + level_base.mark_circle(size=60).transform_filter(hover_level)
+        + level_base.mark_circle(size=60).transform_filter(hover_level_oos)
         + level_hover_base.mark_rule(color="#8b949e")
-        .transform_filter(hover_level)
+        .transform_filter(hover_level_oos)
     )
     st.altair_chart(level_plot.properties(height=260), use_container_width=True)
+
+    hover_level_full = alt.selection_point(
+        fields=["target_date"],
+        nearest=True,
+        on="mouseover",
+        empty=False,
+        clear="mouseout",
+    )
+    predicted_level_full_chart = full_target_dates.copy()
+    predicted_level_full_chart["predicted_level_10d"] = macro_df["predicted_level"]
+    predicted_level_full_chart = predicted_level_full_chart.dropna(subset=["target_date"])
+    future_level_full_chart = actual_level_chart.merge(
+        predicted_level_full_chart[["target_date", "predicted_level_10d"]],
+        on="target_date",
+        how="left",
+        validate="one_to_one",
+    )
+    level_full_long = future_level_full_chart.melt(
+        id_vars="target_date",
+        value_vars=["predicted_level_10d", "actual_future_level_10d"],
+        var_name="series",
+        value_name="value",
+    )
+    level_full_base = alt.Chart(level_full_long).encode(
+        x=alt.X("target_date:T", title="Forecast target date"),
+        y=alt.Y("value:Q", title="Level"),
+        color=alt.Color("series:N", title="Series"),
+    )
+    level_full_hover_base = alt.Chart(future_level_full_chart).encode(
+        x=alt.X("target_date:T", title="Forecast target date"),
+    )
+    level_full_plot = (
+        level_full_base.mark_line()
+        + alt.Chart(future_train_rule_df).mark_rule(color="#ff4a4a", strokeDash=[6, 4]).encode(x="target_date:T")
+        + alt.Chart(future_train_rule_df)
+        .mark_text(color="#ff4a4a", align="left", dx=6, dy=-120)
+        .encode(x="target_date:T", text="label:N")
+        + level_full_hover_base.mark_point(opacity=0, size=120).add_params(hover_level_full).encode(
+            y=alt.value(0),
+            tooltip=[
+                alt.Tooltip("target_date:T", title="Forecast target date"),
+                alt.Tooltip("predicted_level_10d:Q", title="Predicted 10D Level", format=".3f"),
+                alt.Tooltip("actual_future_level_10d:Q", title="Actual Future Level", format=".3f"),
+            ],
+        )
+        + level_full_base.mark_circle(size=60).transform_filter(hover_level_full)
+        + level_full_hover_base.mark_rule(color="#8b949e")
+        .transform_filter(hover_level_full)
+    )
+    st.markdown("**Refit full-model: Horizon-shifted predicted 10D level vs actual future level**")
+    st.altair_chart(level_full_plot.properties(height=260), use_container_width=True)
     st.caption(
-        "These charts use saved out-of-sample holdout predictions from the winning XGBoost run, not the refit "
-        "final model. The first chart compares the direct change forecast against its true holdout target. "
-        "The second chart shifts the derived level forecast forward by 10 trading rows so it is compared on "
-        "the date it is forecasting. The red dashed marker shows where the training period ended."
+        "Charts 1 and 3 use saved OOS holdout predictions from the winning XGBoost run. "
+        "Charts 2 and 4 use the original refit full-model predictions, which are not OOS. "
+        "The red dashed marker shows where the training period ended."
     )
 
 
