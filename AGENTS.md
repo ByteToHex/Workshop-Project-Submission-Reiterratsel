@@ -8,6 +8,15 @@
 - Do not add fallback behavior that masks the real problem unless the user explicitly asks for a fallback design.
 - Do not silently substitute cached outputs, local defaults, mock values, alternate code paths, or degraded behavior for required production or project-standard components.
 
+## Project Reference Map First
+
+- Always consult `Common\PROJECT_REFERENCE_MAP.md` first when orienting to this repository.
+- Treat `Common\PROJECT_REFERENCE_MAP.md` as the mandatory first-pass location map for existing app components, pipeline entrypoints, data assets, schema references, model artifacts, Docker/runtime assets, and related implementation documentation.
+- When the user asks about app components, always check the app-component paths referenced there first, including the active app / pipeline component section and any other relevant sections it points to.
+- Also scan the map for other relevant sections the user may not have explicitly named, such as data, schema, implementation, environment, model, and runtime references, before concluding what is relevant.
+- Do not claim that a file, component, dataset, schema, artifact, or reference does not exist until you have checked `Common\PROJECT_REFERENCE_MAP.md` and followed the relevant paths from it.
+- If the map and local files disagree, surface the mismatch clearly and continue using the repo's stated source-of-truth order plus direct user instruction.
+
 ## Python Environment
 
 - Always use Anaconda environment named `env` for Python execution in this repository.
