@@ -10,7 +10,7 @@ from reitteratsel_core import (
     build_distress_label_frame,
     build_fuzzy_cache_frame,
     connect_neo4j,
-    local_rule_bundle,
+    fetch_rule_bundle,
     persist_outputs_to_duckdb,
     seed_rules_to_neo4j,
 )
@@ -22,25 +22,16 @@ def main() -> None:
     if not ENV_PATH.exists():
         raise FileNotFoundError(f".env not found: {ENV_PATH}")
 
-    offline_note = None
-    rule_bundle = None
     driver, config = connect_neo4j()
     try:
         driver.verify_connectivity()
         seed_rules_to_neo4j(driver, config)
-        rule_bundle = local_rule_bundle()
-    except Exception as exc:
-        offline_note = (
-            "Neo4j was unavailable during build; using local seed rules. "
-            f"Pending graph seed retry. Error: {exc.__class__.__name__}"
-        )
-        rule_bundle = local_rule_bundle()
-        print(offline_note)
+        rule_bundle = fetch_rule_bundle(driver, config)
     finally:
         driver.close()
 
     label_df = build_distress_label_frame(DUCKDB_PATH)
-    fuzzy_df = build_fuzzy_cache_frame(DUCKDB_PATH, rule_bundle=rule_bundle, note=offline_note)
+    fuzzy_df = build_fuzzy_cache_frame(DUCKDB_PATH, rule_bundle=rule_bundle)
     persist_outputs_to_duckdb(label_df, fuzzy_df, DUCKDB_PATH)
 
     print(f"Seeded Neo4j rule model: {config.database}")

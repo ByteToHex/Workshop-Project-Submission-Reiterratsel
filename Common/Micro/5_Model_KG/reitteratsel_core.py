@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 import os
-import tempfile
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,6 +21,7 @@ FUZZY_CACHE_SHARD = PARQUET_DIR / "fuzzycache.parquet"
 CSV_TICKER_DIR = ROOT_DIR / "Common" / "Macro" / "IO" / "SRC" / "CSV_TICKER"
 ENV_PATH = ROOT_DIR / ".env"
 XGB_RUN_ROOT = ROOT_DIR / "Common" / "Macro" / "IO" / "Model_Train" / "Use" / "run_21"
+RULE_SEED_PATH = ROOT_DIR / "Common" / "Micro" / "5_Model_KG" / "mamdani_rule_seed.json"
 
 DEFAULT_INDEX_TICKER = "REIT"
 DEFAULT_HORIZON_DAYS = 10
@@ -32,12 +32,6 @@ LABEL_THRESHOLDS = {
     "DISTRESSED": -0.15,
     "HEALTHY": 0.05,
 }
-OUTPUT_BANDS = [
-    (0.00, 0.34, "STABLE"),
-    (0.35, 0.54, "WATCH"),
-    (0.55, 0.74, "HIGH"),
-    (0.75, 1.00, "CRITICAL"),
-]
 STATUS_CONFIDENCE = {
     "OK": 1.0,
     "PARTIAL": 0.85,
@@ -63,209 +57,36 @@ class Neo4jConfig:
     password: str
 
 
-INPUT_TERM_CONFIG: dict[str, list[dict[str, Any]]] = {
-    "ICR": [
-        {"term": "distress", "shape": "trapezoid", "params": [0.0, 0.0, 1.25, 1.60]},
-        {"term": "watch", "shape": "triangle", "params": [1.40, 2.25, 3.40]},
-        {"term": "healthy", "shape": "trapezoid", "params": [2.80, 3.60, 10.0, 10.0]},
-    ],
-    "GEARING": [
-        {"term": "healthy", "shape": "trapezoid", "params": [0.0, 0.0, 0.38, 0.42]},
-        {"term": "watch", "shape": "triangle", "params": [0.38, 0.45, 0.50]},
-        {"term": "distress", "shape": "trapezoid", "params": [0.45, 0.50, 1.00, 1.00]},
-    ],
-    "DSCR": [
-        {"term": "distress", "shape": "trapezoid", "params": [0.0, 0.0, 0.20, 0.35]},
-        {"term": "watch", "shape": "triangle", "params": [0.25, 0.50, 0.80]},
-        {"term": "healthy", "shape": "trapezoid", "params": [0.65, 0.90, 4.00, 4.00]},
-    ],
-    "REFI_RISK": [
-        {"term": "healthy", "shape": "trapezoid", "params": [0.0, 0.0, 0.08, 0.15]},
-        {"term": "watch", "shape": "triangle", "params": [0.10, 0.18, 0.30]},
-        {"term": "distress", "shape": "triangle", "params": [0.20, 0.35, 0.55]},
-        {"term": "critical", "shape": "trapezoid", "params": [0.55, 0.75, 1.00, 1.00]},
-    ],
-    "PAYOUT_RATIO": [
-        {"term": "under_distributing", "shape": "trapezoid", "params": [0.0, 0.0, 0.40, 0.60]},
-        {"term": "balanced", "shape": "triangle", "params": [0.40, 0.80, 1.00]},
-        {"term": "over_distributing", "shape": "trapezoid", "params": [0.95, 1.10, 2.00, 2.00]},
-    ],
-    "FFO_COVERAGE": [
-        {"term": "shortfall", "shape": "trapezoid", "params": [-1.00, -1.00, 0.00, 0.10]},
-        {"term": "thin", "shape": "triangle", "params": [0.00, 0.10, 0.25]},
-        {"term": "buffered", "shape": "trapezoid", "params": [0.10, 0.25, 1.00, 1.00]},
-    ],
-    "NET_DEBT_EBITDA": [
-        {"term": "healthy", "shape": "trapezoid", "params": [0.0, 0.0, 6.5, 7.5]},
-        {"term": "watch", "shape": "triangle", "params": [6.5, 8.5, 10.5]},
-        {"term": "distress", "shape": "trapezoid", "params": [9.0, 11.0, 30.0, 30.0]},
-    ],
-    "NULL_COUNT": [
-        {"term": "healthy", "shape": "trapezoid", "params": [0.0, 0.0, 1.0, 3.0]},
-        {"term": "watch", "shape": "triangle", "params": [2.0, 5.0, 8.0]},
-        {"term": "distress", "shape": "trapezoid", "params": [6.0, 9.0, 19.0, 19.0]},
-    ],
-}
-
-OUTPUT_TERM_CONFIG = {
-    "stable": {"shape": "trapezoid", "params": [0.00, 0.00, 0.20, 0.35]},
-    "watch": {"shape": "triangle", "params": [0.25, 0.45, 0.60]},
-    "high": {"shape": "triangle", "params": [0.55, 0.70, 0.85]},
-    "critical": {"shape": "trapezoid", "params": [0.75, 0.90, 1.00, 1.00]},
-}
-
-RULE_DEFINITIONS: list[dict[str, Any]] = [
-    {
-        "rule_id": "R1",
-        "operator": "AND",
-        "weight": 1.0,
-        "output_term": "critical",
-        "description": "ICR in distress zone is a direct solvency alarm.",
-        "antecedents": [{"metric_code": "ICR", "term": "distress"}],
-    },
-    {
-        "rule_id": "R2",
-        "operator": "AND",
-        "weight": 1.0,
-        "output_term": "critical",
-        "description": "DSCR in distress zone indicates debt service strain.",
-        "antecedents": [{"metric_code": "DSCR", "term": "distress"}],
-    },
-    {
-        "rule_id": "R3",
-        "operator": "AND",
-        "weight": 0.9,
-        "output_term": "high",
-        "description": "High gearing is a strong balance-sheet stress signal.",
-        "antecedents": [{"metric_code": "GEARING", "term": "distress"}],
-    },
-    {
-        "rule_id": "R4",
-        "operator": "AND",
-        "weight": 1.0,
-        "output_term": "critical",
-        "description": "Extreme refinancing concentration is a direct maturity wall alarm.",
-        "antecedents": [{"metric_code": "REFI_RISK", "term": "critical"}],
-    },
-    {
-        "rule_id": "R5",
-        "operator": "AND",
-        "weight": 0.9,
-        "output_term": "high",
-        "description": "Refinancing stress with weak leverage amplifies distress risk.",
-        "antecedents": [
-            {"metric_code": "REFI_RISK", "term": "distress"},
-            {"metric_code": "GEARING", "term": "watch"},
-        ],
-    },
-    {
-        "rule_id": "R6",
-        "operator": "AND",
-        "weight": 0.95,
-        "output_term": "critical",
-        "description": "Weak coverage plus stretched leverage is a high-severity combination.",
-        "antecedents": [
-            {"metric_code": "ICR", "term": "watch"},
-            {"metric_code": "GEARING", "term": "distress"},
-        ],
-    },
-    {
-        "rule_id": "R7",
-        "operator": "AND",
-        "weight": 0.85,
-        "output_term": "high",
-        "description": "ICR and DSCR both in the watch zone reinforce pressure.",
-        "antecedents": [
-            {"metric_code": "ICR", "term": "watch"},
-            {"metric_code": "DSCR", "term": "watch"},
-        ],
-    },
-    {
-        "rule_id": "R8",
-        "operator": "AND",
-        "weight": 0.75,
-        "output_term": "watch",
-        "description": "Over-distribution with FFO shortfall indicates payout strain.",
-        "antecedents": [
-            {"metric_code": "PAYOUT_RATIO", "term": "over_distributing"},
-            {"metric_code": "FFO_COVERAGE", "term": "shortfall"},
-        ],
-    },
-    {
-        "rule_id": "R9",
-        "operator": "AND",
-        "weight": 0.55,
-        "output_term": "watch",
-        "description": "High net debt with weak ICR corroborates leverage stress.",
-        "antecedents": [
-            {"metric_code": "NET_DEBT_EBITDA", "term": "distress"},
-            {"metric_code": "ICR", "term": "watch"},
-        ],
-    },
-    {
-        "rule_id": "R10",
-        "operator": "AND",
-        "weight": 0.65,
-        "output_term": "high",
-        "description": "High missingness count is treated as a material confidence penalty.",
-        "antecedents": [{"metric_code": "NULL_COUNT", "term": "distress"}],
-    },
-    {
-        "rule_id": "R11",
-        "operator": "AND",
-        "weight": 0.65,
-        "output_term": "high",
-        "description": "Moderate missingness plus weak coverage should not be ignored.",
-        "antecedents": [
-            {"metric_code": "NULL_COUNT", "term": "watch"},
-            {"metric_code": "ICR", "term": "watch"},
-        ],
-    },
-    {
-        "rule_id": "R12",
-        "operator": "AND",
-        "weight": 0.90,
-        "output_term": "stable",
-        "description": "Core balance-sheet and coverage metrics are all healthy.",
-        "antecedents": [
-            {"metric_code": "ICR", "term": "healthy"},
-            {"metric_code": "GEARING", "term": "healthy"},
-            {"metric_code": "DSCR", "term": "healthy"},
-            {"metric_code": "REFI_RISK", "term": "healthy"},
-        ],
-    },
-    {
-        "rule_id": "R13",
-        "operator": "AND",
-        "weight": 0.70,
-        "output_term": "watch",
-        "description": "Leverage is elevated, but coverage remains resilient.",
-        "antecedents": [
-            {"metric_code": "GEARING", "term": "watch"},
-            {"metric_code": "DSCR", "term": "healthy"},
-            {"metric_code": "ICR", "term": "healthy"},
-        ],
-    },
-    {
-        "rule_id": "R14",
-        "operator": "AND",
-        "weight": 0.70,
-        "output_term": "stable",
-        "description": "Balanced payout and positive FFO buffer support a stable reading.",
-        "antecedents": [
-            {"metric_code": "PAYOUT_RATIO", "term": "balanced"},
-            {"metric_code": "FFO_COVERAGE", "term": "buffered"},
-            {"metric_code": "ICR", "term": "healthy"},
-        ],
-    },
-]
+def load_rule_seed_bundle(seed_path: Path = RULE_SEED_PATH) -> dict[str, Any]:
+    if not seed_path.exists():
+        raise FileNotFoundError(f"Mamdani rule seed not found: {seed_path}")
+    with seed_path.open("r", encoding="utf-8") as fh:
+        bundle = json.load(fh)
+    required_keys = {"model_name", "input_terms", "output_terms", "rules"}
+    missing = required_keys.difference(bundle)
+    if missing:
+        missing_csv = ", ".join(sorted(missing))
+        raise KeyError(f"Mamdani rule seed is missing required keys: {missing_csv}")
+    return bundle
 
 
 def load_neo4j_config(env_path: Path = ENV_PATH) -> Neo4jConfig:
+    if not env_path.exists():
+        raise FileNotFoundError(f"Neo4j .env not found: {env_path}")
     values = dotenv_values(env_path)
+    required_keys = [
+        "NEO4J_URI",
+        "NEO4J_DATABASE",
+        "NEO4J_USERNAME",
+        "NEO4J_PASSWORD",
+    ]
+    missing = [key for key in required_keys if not values.get(key)]
+    if missing:
+        missing_csv = ", ".join(missing)
+        raise KeyError(f"Missing required Neo4j settings in {env_path}: {missing_csv}")
     return Neo4jConfig(
         uri=values["NEO4J_URI"],
-        database=values.get("NEO4J_DATABASE", "neo4j"),
+        database=values["NEO4J_DATABASE"],
         username=values["NEO4J_USERNAME"],
         password=values["NEO4J_PASSWORD"],
     )
@@ -490,8 +311,13 @@ def evaluate_term_shape(value: float, shape: str, params: list[float]) -> float:
     raise ValueError(f"Unknown membership shape: {shape}")
 
 
-def compute_memberships(metric_code: str, value: float | None, calc_status: str | None) -> dict[str, float]:
-    memberships = {item["term"]: 0.0 for item in INPUT_TERM_CONFIG[metric_code]}
+def compute_memberships(
+    metric_code: str,
+    value: float | None,
+    calc_status: str | None,
+    input_term_config: dict[str, list[dict[str, Any]]],
+) -> dict[str, float]:
+    memberships = {item["term"]: 0.0 for item in input_term_config[metric_code]}
     if calc_status in STATUS_TERM_OVERRIDE.get(metric_code, {}):
         memberships[STATUS_TERM_OVERRIDE[metric_code][calc_status]] = 1.0
         return memberships
@@ -499,7 +325,7 @@ def compute_memberships(metric_code: str, value: float | None, calc_status: str 
         return memberships
 
     confidence = STATUS_CONFIDENCE.get(calc_status or "OK", 1.0)
-    for item in INPUT_TERM_CONFIG[metric_code]:
+    for item in input_term_config[metric_code]:
         memberships[item["term"]] = evaluate_term_shape(float(value), item["shape"], item["params"]) * confidence
     return memberships
 
@@ -514,12 +340,14 @@ def score_to_level(score: float) -> str:
     return "CRITICAL"
 
 
-def output_term_membership(term: str, x_value: float) -> float:
-    cfg = OUTPUT_TERM_CONFIG[term]
+def output_term_membership(term: str, x_value: float, output_term_config: dict[str, dict[str, Any]]) -> float:
+    cfg = output_term_config[term]
     return evaluate_term_shape(x_value, cfg["shape"], cfg["params"])
 
 
 def seed_rules_to_neo4j(driver, config: Neo4jConfig) -> None:
+    seed_bundle = load_rule_seed_bundle()
+    model_name = seed_bundle["model_name"]
     with driver.session(database=config.database) as session:
         session.run(
             """
@@ -528,7 +356,7 @@ def seed_rules_to_neo4j(driver, config: Neo4jConfig) -> None:
                 model.score_version = $score_version,
                 model.updated_at = datetime()
             """,
-            model_name="REITterratsel",
+            model_name=model_name,
             rule_version=RULE_VERSION,
             score_version=SCORE_VERSION,
         )
@@ -538,7 +366,7 @@ def seed_rules_to_neo4j(driver, config: Neo4jConfig) -> None:
             WHERE n.model_name = $model_name OR n.rule_version = $rule_version
             DETACH DELETE n
             """,
-            model_name="REITterratsel",
+            model_name=model_name,
             rule_version=RULE_VERSION,
         )
         session.run(
@@ -548,11 +376,11 @@ def seed_rules_to_neo4j(driver, config: Neo4jConfig) -> None:
                 model.score_version = $score_version,
                 model.updated_at = datetime()
             """,
-            model_name="REITterratsel",
+            model_name=model_name,
             rule_version=RULE_VERSION,
             score_version=SCORE_VERSION,
         )
-        for metric_code, term_defs in INPUT_TERM_CONFIG.items():
+        for metric_code, term_defs in seed_bundle["input_terms"].items():
             session.run(
                 """
                 MATCH (model:IRSModel {model_name: $model_name})
@@ -560,7 +388,7 @@ def seed_rules_to_neo4j(driver, config: Neo4jConfig) -> None:
                 SET metric.rule_version = $rule_version
                 MERGE (model)-[:HAS_METRIC]->(metric)
                 """,
-                model_name="REITterratsel",
+                model_name=model_name,
                 rule_version=RULE_VERSION,
                 metric_code=metric_code,
             )
@@ -574,14 +402,14 @@ def seed_rules_to_neo4j(driver, config: Neo4jConfig) -> None:
                         term.params = $params
                     MERGE (metric)-[:HAS_TERM]->(term)
                     """,
-                    model_name="REITterratsel",
+                    model_name=model_name,
                     rule_version=RULE_VERSION,
                     metric_code=metric_code,
                     term=term_def["term"],
                     shape=term_def["shape"],
                     params=term_def["params"],
                 )
-        for output_term, cfg in OUTPUT_TERM_CONFIG.items():
+        for output_term, cfg in seed_bundle["output_terms"].items():
             session.run(
                 """
                 MATCH (model:IRSModel {model_name: $model_name})
@@ -591,13 +419,13 @@ def seed_rules_to_neo4j(driver, config: Neo4jConfig) -> None:
                     term.params = $params
                 MERGE (model)-[:HAS_OUTPUT_TERM]->(term)
                 """,
-                model_name="REITterratsel",
+                model_name=model_name,
                 rule_version=RULE_VERSION,
                 term=output_term,
                 shape=cfg["shape"],
                 params=cfg["params"],
             )
-        for rule in RULE_DEFINITIONS:
+        for rule in seed_bundle["rules"]:
             session.run(
                 """
                 MATCH (model:IRSModel {model_name: $model_name})
@@ -610,7 +438,7 @@ def seed_rules_to_neo4j(driver, config: Neo4jConfig) -> None:
                 MERGE (model)-[:HAS_RULE]->(rule)
                 MERGE (rule)-[:IMPLIES]->(output)
                 """,
-                model_name="REITterratsel",
+                model_name=model_name,
                 rule_version=RULE_VERSION,
                 rule_id=rule["rule_id"],
                 operator=rule["operator"],
@@ -629,7 +457,7 @@ def seed_rules_to_neo4j(driver, config: Neo4jConfig) -> None:
                     })
                     MERGE (rule)-[:USES_ANTECEDENT]->(term)
                     """,
-                    model_name="REITterratsel",
+                    model_name=model_name,
                     rule_id=rule["rule_id"],
                     metric_code=antecedent["metric_code"],
                     term=antecedent["term"],
@@ -638,6 +466,41 @@ def seed_rules_to_neo4j(driver, config: Neo4jConfig) -> None:
 
 def fetch_rule_bundle(driver, config: Neo4jConfig) -> dict[str, Any]:
     with driver.session(database=config.database) as session:
+        model_names = session.run(
+            """
+            MATCH (model:IRSModel)
+            RETURN model.model_name AS model_name
+            ORDER BY model.updated_at DESC
+            """
+        ).value()
+        if not model_names:
+            raise RuntimeError(
+                f"No IRSModel found in Neo4j database '{config.database}'. Seed the rule graph before scoring."
+            )
+        model_name = model_names[0]
+        input_terms_raw = session.run(
+            """
+            MATCH (term:InputTerm {model_name: $model_name})
+            RETURN
+                term.metric_code AS metric_code,
+                term.term AS term,
+                term.shape AS shape,
+                term.params AS params
+            ORDER BY term.metric_code, term.term
+            """,
+            model_name=model_name,
+        ).data()
+        output_terms_raw = session.run(
+            """
+            MATCH (term:OutputTerm {model_name: $model_name})
+            RETURN
+                term.term AS term,
+                term.shape AS shape,
+                term.params AS params
+            ORDER BY term.term
+            """,
+            model_name=model_name,
+        ).data()
         rules = session.run(
             """
             MATCH (rule:Rule {model_name: $model_name})-[:USES_ANTECEDENT]->(term:InputTerm)
@@ -651,25 +514,30 @@ def fetch_rule_bundle(driver, config: Neo4jConfig) -> dict[str, Any]:
                 collect({metric_code: term.metric_code, term: term.term}) AS antecedents
             ORDER BY rule.rule_id
             """,
-            model_name="REITterratsel",
+            model_name=model_name,
         ).data()
-    return {"rules": rules}
-
-
-def local_rule_bundle() -> dict[str, Any]:
-    rules: list[dict[str, Any]] = []
-    for rule in RULE_DEFINITIONS:
-        rules.append(
+    input_terms: dict[str, list[dict[str, Any]]] = {}
+    for row in input_terms_raw:
+        input_terms.setdefault(row["metric_code"], []).append(
             {
-                "rule_id": rule["rule_id"],
-                "operator": rule["operator"],
-                "weight": rule["weight"],
-                "description": rule["description"],
-                "output_term": rule["output_term"],
-                "antecedents": rule["antecedents"],
+                "term": row["term"],
+                "shape": row["shape"],
+                "params": row["params"],
             }
         )
-    return {"rules": rules}
+    output_terms = {
+        row["term"]: {
+            "shape": row["shape"],
+            "params": row["params"],
+        }
+        for row in output_terms_raw
+    }
+    return {
+        "model_name": model_name,
+        "input_terms": input_terms,
+        "output_terms": output_terms,
+        "rules": rules,
+    }
 
 
 def build_fuzzy_input_frame(db_path: Path = DUCKDB_PATH) -> pd.DataFrame:
@@ -701,22 +569,27 @@ def build_fuzzy_input_frame(db_path: Path = DUCKDB_PATH) -> pd.DataFrame:
 
 
 def evaluate_fuzzy_row(row: pd.Series, rule_bundle: dict[str, Any]) -> dict[str, Any]:
+    input_term_config = rule_bundle["input_terms"]
+    output_term_config = rule_bundle["output_terms"]
     membership_map: dict[tuple[str, str], float] = {}
     trace_memberships: dict[str, dict[str, float]] = {}
 
-    for metric_code in ["ICR", "GEARING", "DSCR", "REFI_RISK", "PAYOUT_RATIO", "FFO_COVERAGE", "NET_DEBT_EBITDA"]:
-        memberships = compute_memberships(metric_code, row.get(metric_code), row.get(f"{metric_code}_status"))
+    for metric_code in input_term_config:
+        if metric_code == "NULL_COUNT":
+            memberships = compute_memberships(metric_code, row.get("null_count"), "OK", input_term_config)
+        else:
+            memberships = compute_memberships(
+                metric_code,
+                row.get(metric_code),
+                row.get(f"{metric_code}_status"),
+                input_term_config,
+            )
         trace_memberships[metric_code] = memberships
         for term, strength in memberships.items():
             membership_map[(metric_code, term)] = strength
 
-    null_memberships = compute_memberships("NULL_COUNT", row.get("null_count"), "OK")
-    trace_memberships["NULL_COUNT"] = null_memberships
-    for term, strength in null_memberships.items():
-        membership_map[("NULL_COUNT", term)] = strength
-
     fired_rules: list[dict[str, Any]] = []
-    output_strengths = {term: 0.0 for term in OUTPUT_TERM_CONFIG}
+    output_strengths = {term: 0.0 for term in output_term_config}
     for rule in rule_bundle["rules"]:
         antecedent_strengths = [
             membership_map.get((item["metric_code"], item["term"]), 0.0)
@@ -748,7 +621,7 @@ def evaluate_fuzzy_row(row: pd.Series, rule_bundle: dict[str, Any]) -> dict[str,
         for term, strength in output_strengths.items():
             aggregate_membership = max(
                 aggregate_membership,
-                min(strength, output_term_membership(term, x_value)),
+                min(strength, output_term_membership(term, x_value, output_term_config)),
             )
         numerator += x_value * aggregate_membership
         denominator += aggregate_membership
@@ -777,7 +650,6 @@ def build_fuzzy_cache_frame(
     db_path: Path = DUCKDB_PATH,
     env_path: Path = ENV_PATH,
     rule_bundle: dict[str, Any] | None = None,
-    note: str | None = None,
 ) -> pd.DataFrame:
     inputs = build_fuzzy_input_frame(db_path)
     if rule_bundle is None:
@@ -803,7 +675,7 @@ def build_fuzzy_cache_frame(
                 "fired_rule_count": int(result["fired_rule_count"]),
                 "top_rule_ids": result["top_rule_ids"],
                 "rule_trace_text": result["rule_trace_text"],
-                "notes": note,
+                "notes": None,
             }
         )
     return pd.DataFrame(rows)
@@ -951,41 +823,34 @@ def load_macro_prediction_frame(horizon_days: int = DEFAULT_HORIZON_DAYS) -> pd.
     model_path = run_dir / "option2_change_final_model_xgb.json"
     joined_df = pd.read_csv(joined_path, parse_dates=["snapshot_ts", "fomc_decision_date"])
     engineered_df = _build_macro_feature_frame(joined_df)
-    try:
-        import xgboost as xgb
+    import xgboost as xgb
 
-        booster = xgb.Booster()
-        booster.load_model(str(model_path))
-        feature_names = booster.feature_names or []
-        if not feature_names:
-            with open(run_dir / "feature_manifest.json", "r", encoding="utf-8") as fh:
-                manifest = json.load(fh)
-            feature_names = [c for c in manifest["features"] if c not in ("sora_level_t2", "sora_3m_t2")]
-        feature_frame = engineered_df.reindex(columns=feature_names)
-        predictions = booster.predict(xgb.DMatrix(feature_frame, feature_names=feature_names))
-        macro_df = engineered_df.copy()
-        macro_df["fold"] = pd.NA
-        macro_df["target_col"] = f"sora_fwd_{horizon_days}d_change"
-        macro_df["y_true"] = macro_df.get(f"sora_fwd_{horizon_days}d_change")
-        macro_df["y_pred"] = predictions
-        macro_df["y_true_dir"] = (pd.to_numeric(macro_df["y_true"], errors="coerce") > 0).astype("Int64")
-        macro_df["y_pred_dir"] = (macro_df["y_pred"] > 0).astype(int)
-        macro_df["predicted_level"] = macro_df["sora_level_realized"] + macro_df["y_pred"]
-        macro_df["prediction_source"] = "xgboost_final_model"
-        return macro_df.sort_values("snapshot_ts").reset_index(drop=True)
-    except Exception:
-        pred_path = run_dir / "option2_change_deap_holdout_oos_predictions.csv"
-        pred_df = pd.read_csv(pred_path, parse_dates=["snapshot_ts", "fomc_decision_date"])
-        joined_cols = [
-            "snapshot_ts",
-            "sora_level_realized",
-            f"sora_fwd_{horizon_days}d_change",
-            f"sora_fwd_{horizon_days}d_level",
-        ]
-        macro_df = pred_df.merge(engineered_df[joined_cols], on="snapshot_ts", how="left")
-        macro_df["predicted_level"] = macro_df["sora_level_realized"] + macro_df["y_pred"]
-        macro_df["prediction_source"] = "cached_holdout_predictions"
-        return macro_df.sort_values("snapshot_ts").reset_index(drop=True)
+    booster = xgb.Booster()
+    booster.load_model(str(model_path))
+    feature_names = booster.feature_names or []
+    if not feature_names:
+        raise RuntimeError(
+            f"XGBoost model at {model_path} does not expose feature names. "
+            "Failing fast instead of guessing from a fallback manifest."
+        )
+    feature_frame = engineered_df.reindex(columns=feature_names)
+    missing_features = [name for name in feature_names if name not in engineered_df.columns]
+    if missing_features:
+        missing_csv = ", ".join(missing_features)
+        raise KeyError(
+            f"Engineered macro feature frame is missing required XGBoost features: {missing_csv}"
+        )
+    predictions = booster.predict(xgb.DMatrix(feature_frame, feature_names=feature_names))
+    macro_df = engineered_df.copy()
+    macro_df["fold"] = pd.NA
+    macro_df["target_col"] = f"sora_fwd_{horizon_days}d_change"
+    macro_df["y_true"] = macro_df.get(f"sora_fwd_{horizon_days}d_change")
+    macro_df["y_pred"] = predictions
+    macro_df["y_true_dir"] = (pd.to_numeric(macro_df["y_true"], errors="coerce") > 0).astype("Int64")
+    macro_df["y_pred_dir"] = (macro_df["y_pred"] > 0).astype(int)
+    macro_df["predicted_level"] = macro_df["sora_level_realized"] + macro_df["y_pred"]
+    macro_df["prediction_source"] = "xgboost_final_model"
+    return macro_df.sort_values("snapshot_ts").reset_index(drop=True)
 
 
 def _build_macro_feature_frame(df: pd.DataFrame) -> pd.DataFrame:

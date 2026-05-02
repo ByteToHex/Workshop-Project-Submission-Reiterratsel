@@ -1,0 +1,197 @@
+{
+  "model_name": "REITterratsel",
+  "input_terms": {
+    "ICR": [
+      {"term": "distress", "shape": "trapezoid", "params": [0.0, 0.0, 1.25, 1.6]},
+      {"term": "watch", "shape": "triangle", "params": [1.4, 2.25, 3.4]},
+      {"term": "healthy", "shape": "trapezoid", "params": [2.8, 3.6, 10.0, 10.0]}
+    ],
+    "GEARING": [
+      {"term": "healthy", "shape": "trapezoid", "params": [0.0, 0.0, 0.38, 0.42]},
+      {"term": "watch", "shape": "triangle", "params": [0.38, 0.45, 0.5]},
+      {"term": "distress", "shape": "trapezoid", "params": [0.45, 0.5, 1.0, 1.0]}
+    ],
+    "DSCR": [
+      {"term": "distress", "shape": "trapezoid", "params": [0.0, 0.0, 0.2, 0.35]},
+      {"term": "watch", "shape": "triangle", "params": [0.25, 0.5, 0.8]},
+      {"term": "healthy", "shape": "trapezoid", "params": [0.65, 0.9, 4.0, 4.0]}
+    ],
+    "REFI_RISK": [
+      {"term": "healthy", "shape": "trapezoid", "params": [0.0, 0.0, 0.08, 0.15]},
+      {"term": "watch", "shape": "triangle", "params": [0.1, 0.18, 0.3]},
+      {"term": "distress", "shape": "triangle", "params": [0.2, 0.35, 0.55]},
+      {"term": "critical", "shape": "trapezoid", "params": [0.55, 0.75, 1.0, 1.0]}
+    ],
+    "PAYOUT_RATIO": [
+      {"term": "under_distributing", "shape": "trapezoid", "params": [0.0, 0.0, 0.4, 0.6]},
+      {"term": "balanced", "shape": "triangle", "params": [0.4, 0.8, 1.0]},
+      {"term": "over_distributing", "shape": "trapezoid", "params": [0.95, 1.1, 2.0, 2.0]}
+    ],
+    "FFO_COVERAGE": [
+      {"term": "shortfall", "shape": "trapezoid", "params": [-1.0, -1.0, 0.0, 0.1]},
+      {"term": "thin", "shape": "triangle", "params": [0.0, 0.1, 0.25]},
+      {"term": "buffered", "shape": "trapezoid", "params": [0.1, 0.25, 1.0, 1.0]}
+    ],
+    "NET_DEBT_EBITDA": [
+      {"term": "healthy", "shape": "trapezoid", "params": [0.0, 0.0, 6.5, 7.5]},
+      {"term": "watch", "shape": "triangle", "params": [6.5, 8.5, 10.5]},
+      {"term": "distress", "shape": "trapezoid", "params": [9.0, 11.0, 30.0, 30.0]}
+    ],
+    "NULL_COUNT": [
+      {"term": "healthy", "shape": "trapezoid", "params": [0.0, 0.0, 1.0, 3.0]},
+      {"term": "watch", "shape": "triangle", "params": [2.0, 5.0, 8.0]},
+      {"term": "distress", "shape": "trapezoid", "params": [6.0, 9.0, 19.0, 19.0]}
+    ]
+  },
+  "output_terms": {
+    "stable": {"shape": "trapezoid", "params": [0.0, 0.0, 0.2, 0.35]},
+    "watch": {"shape": "triangle", "params": [0.25, 0.45, 0.6]},
+    "high": {"shape": "triangle", "params": [0.55, 0.7, 0.85]},
+    "critical": {"shape": "trapezoid", "params": [0.75, 0.9, 1.0, 1.0]}
+  },
+  "rules": [
+    {
+      "rule_id": "R1",
+      "operator": "AND",
+      "weight": 1.0,
+      "output_term": "critical",
+      "description": "ICR in distress zone is a direct solvency alarm.",
+      "antecedents": [{"metric_code": "ICR", "term": "distress"}]
+    },
+    {
+      "rule_id": "R2",
+      "operator": "AND",
+      "weight": 1.0,
+      "output_term": "critical",
+      "description": "DSCR in distress zone indicates debt service strain.",
+      "antecedents": [{"metric_code": "DSCR", "term": "distress"}]
+    },
+    {
+      "rule_id": "R3",
+      "operator": "AND",
+      "weight": 0.9,
+      "output_term": "high",
+      "description": "High gearing is a strong balance-sheet stress signal.",
+      "antecedents": [{"metric_code": "GEARING", "term": "distress"}]
+    },
+    {
+      "rule_id": "R4",
+      "operator": "AND",
+      "weight": 1.0,
+      "output_term": "critical",
+      "description": "Extreme refinancing concentration is a direct maturity wall alarm.",
+      "antecedents": [{"metric_code": "REFI_RISK", "term": "critical"}]
+    },
+    {
+      "rule_id": "R5",
+      "operator": "AND",
+      "weight": 0.9,
+      "output_term": "high",
+      "description": "Refinancing stress with weak leverage amplifies distress risk.",
+      "antecedents": [
+        {"metric_code": "REFI_RISK", "term": "distress"},
+        {"metric_code": "GEARING", "term": "watch"}
+      ]
+    },
+    {
+      "rule_id": "R6",
+      "operator": "AND",
+      "weight": 0.95,
+      "output_term": "critical",
+      "description": "Weak coverage plus stretched leverage is a high-severity combination.",
+      "antecedents": [
+        {"metric_code": "ICR", "term": "watch"},
+        {"metric_code": "GEARING", "term": "distress"}
+      ]
+    },
+    {
+      "rule_id": "R7",
+      "operator": "AND",
+      "weight": 0.85,
+      "output_term": "high",
+      "description": "ICR and DSCR both in the watch zone reinforce pressure.",
+      "antecedents": [
+        {"metric_code": "ICR", "term": "watch"},
+        {"metric_code": "DSCR", "term": "watch"}
+      ]
+    },
+    {
+      "rule_id": "R8",
+      "operator": "AND",
+      "weight": 0.75,
+      "output_term": "watch",
+      "description": "Over-distribution with FFO shortfall indicates payout strain.",
+      "antecedents": [
+        {"metric_code": "PAYOUT_RATIO", "term": "over_distributing"},
+        {"metric_code": "FFO_COVERAGE", "term": "shortfall"}
+      ]
+    },
+    {
+      "rule_id": "R9",
+      "operator": "AND",
+      "weight": 0.55,
+      "output_term": "watch",
+      "description": "High net debt with weak ICR corroborates leverage stress.",
+      "antecedents": [
+        {"metric_code": "NET_DEBT_EBITDA", "term": "distress"},
+        {"metric_code": "ICR", "term": "watch"}
+      ]
+    },
+    {
+      "rule_id": "R10",
+      "operator": "AND",
+      "weight": 0.65,
+      "output_term": "high",
+      "description": "High missingness count is treated as a material confidence penalty.",
+      "antecedents": [{"metric_code": "NULL_COUNT", "term": "distress"}]
+    },
+    {
+      "rule_id": "R11",
+      "operator": "AND",
+      "weight": 0.65,
+      "output_term": "high",
+      "description": "Moderate missingness plus weak coverage should not be ignored.",
+      "antecedents": [
+        {"metric_code": "NULL_COUNT", "term": "watch"},
+        {"metric_code": "ICR", "term": "watch"}
+      ]
+    },
+    {
+      "rule_id": "R12",
+      "operator": "AND",
+      "weight": 0.9,
+      "output_term": "stable",
+      "description": "Core balance-sheet and coverage metrics are all healthy.",
+      "antecedents": [
+        {"metric_code": "ICR", "term": "healthy"},
+        {"metric_code": "GEARING", "term": "healthy"},
+        {"metric_code": "DSCR", "term": "healthy"},
+        {"metric_code": "REFI_RISK", "term": "healthy"}
+      ]
+    },
+    {
+      "rule_id": "R13",
+      "operator": "AND",
+      "weight": 0.7,
+      "output_term": "watch",
+      "description": "Leverage is elevated, but coverage remains resilient.",
+      "antecedents": [
+        {"metric_code": "GEARING", "term": "watch"},
+        {"metric_code": "DSCR", "term": "healthy"},
+        {"metric_code": "ICR", "term": "healthy"}
+      ]
+    },
+    {
+      "rule_id": "R14",
+      "operator": "AND",
+      "weight": 0.7,
+      "output_term": "stable",
+      "description": "Balanced payout and positive FFO buffer support a stable reading.",
+      "antecedents": [
+        {"metric_code": "PAYOUT_RATIO", "term": "balanced"},
+        {"metric_code": "FFO_COVERAGE", "term": "buffered"},
+        {"metric_code": "ICR", "term": "healthy"}
+      ]
+    }
+  ]
+}

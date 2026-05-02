@@ -68,6 +68,7 @@ Critical override:
   `.env`
 
 - Use `.env` for the active Neo4j connection settings.
+- Neo4j configuration is expected to be explicit in `.env`; do not rely on silent code defaults.
 - Do not duplicate secrets into other docs unless necessary.
 - Current `.env` includes:
   - `NEO4J_URI`
@@ -151,6 +152,9 @@ Critical override:
 
 - Core implementation module:
   `Common\Micro\5_Model_KG\reitteratsel_core.py`
+
+- Mamdani rule seed artifact:
+  `Common\Micro\5_Model_KG\mamdani_rule_seed.json`
 
 - Streamlit app entrypoint:
   `Common\Frontend\reitteratsel_app.py`

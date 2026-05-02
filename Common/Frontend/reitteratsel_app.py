@@ -159,6 +159,10 @@ def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
 ranking_df, metric_df, label_df = load_app_frames()
 macro_df = load_macro_prediction_frame(DEFAULT_HORIZON_DAYS)
+if macro_df["prediction_source"].nunique() != 1 or macro_df["prediction_source"].iloc[0] != "xgboost_final_model":
+    raise RuntimeError(
+        "Macro runtime must use direct XGBoost inference from the run_21 model artifacts."
+    )
 latest_macro = macro_df.iloc[-1]
 latest_refi_by_ticker = (
     metric_df.loc[metric_df["metric_code"] == "REFI_RISK"]
@@ -313,4 +317,4 @@ with tab_timeseries:
         }
     ).set_index("date")
     st.line_chart(macro_chart, height=360)
-    st.caption("Current implementation uses local cached 10D holdout predictions from the run_21 artifacts.")
+    st.caption("Current implementation uses direct 10D XGBoost inference from the local run_21 model artifacts.")
