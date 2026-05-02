@@ -47,7 +47,8 @@
 - `[x]` Created a first working Streamlit app entrypoint.
 - `[x]` Wired the app to DuckDB outputs.
 - `[x]` Wired the app to the Mamdani cache outputs.
-- `[x]` Added ranking, score, financial, and time-series tabs.
+- `[x]` Added sidebar navigation for ranking, individual REIT navigation, and rates time series.
+- `[x]` Kept REIT detail content under per-REIT score and financial tabs.
 - `[x]` Used the provided design direction instead of the basic sample only.
 - `[~]` UI is functional but still first-pass and not a final fidelity implementation.
 
