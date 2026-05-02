@@ -8,12 +8,18 @@ Current script:
 
 Current outputs:
 
-- `reitteratsel_eval_detail.csv`
-- `reitteratsel_eval_summary.csv`
-- `reitteratsel_eval_disagreements.csv`
-- `reitteratsel_eval_confusion_matrices.csv`
-- `reitteratsel_eval_per_class_metrics.csv`
-- `reitteratsel_eval_ranking_metrics.csv`
+- each evaluation run writes into a fresh numbered folder:
+  - `run_1`
+  - `run_2`
+  - `run_3`
+  - etc.
+- each `run_n` folder contains:
+  - `reitteratsel_eval_detail.csv`
+  - `reitteratsel_eval_summary.csv`
+  - `reitteratsel_eval_disagreements.csv`
+  - `reitteratsel_eval_confusion_matrices.csv`
+  - `reitteratsel_eval_per_class_metrics.csv`
+  - `reitteratsel_eval_ranking_metrics.csv`
 
 The evaluation follows `Design_v1a.txt` section `D - Evaluation`:
 

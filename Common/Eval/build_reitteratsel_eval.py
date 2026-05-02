@@ -26,12 +26,6 @@ from reitteratsel_view_logic import build_ranking_view  # noqa: E402
 
 
 OUTPUT_DIR = ROOT_DIR / "Common" / "Eval"
-DETAIL_PATH = OUTPUT_DIR / "reitteratsel_eval_detail.csv"
-SUMMARY_PATH = OUTPUT_DIR / "reitteratsel_eval_summary.csv"
-DISAGREEMENT_PATH = OUTPUT_DIR / "reitteratsel_eval_disagreements.csv"
-CONFUSION_PATH = OUTPUT_DIR / "reitteratsel_eval_confusion_matrices.csv"
-PER_CLASS_PATH = OUTPUT_DIR / "reitteratsel_eval_per_class_metrics.csv"
-RANKING_PATH = OUTPUT_DIR / "reitteratsel_eval_ranking_metrics.csv"
 
 CLASS_ORDER = ["DISTRESSED", "WATCH", "HEALTHY"]
 MODEL_SCORE_COLS = {
@@ -47,6 +41,24 @@ MODEL_LEVEL_COLS = {
     "final_distress": "level",
 }
 TOP_K_VALUES = [1, 3, 5]
+
+
+def allocate_run_dir(output_root: Path = OUTPUT_DIR) -> Path:
+    output_root.mkdir(parents=True, exist_ok=True)
+    existing_numbers: list[int] = []
+    for child in output_root.iterdir():
+        if not child.is_dir():
+            continue
+        name = child.name
+        if not name.startswith("run_"):
+            continue
+        suffix = name[4:]
+        if suffix.isdigit():
+            existing_numbers.append(int(suffix))
+    next_number = max(existing_numbers, default=0) + 1
+    run_dir = output_root / f"run_{next_number}"
+    run_dir.mkdir(parents=True, exist_ok=False)
+    return run_dir
 
 
 def compute_baseline_level(icr_value: float | None) -> str:
@@ -331,26 +343,34 @@ def build_disagreement_export(detail_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def main() -> None:
-    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    run_dir = allocate_run_dir()
+    detail_path = run_dir / "reitteratsel_eval_detail.csv"
+    summary_path = run_dir / "reitteratsel_eval_summary.csv"
+    disagreement_path = run_dir / "reitteratsel_eval_disagreements.csv"
+    confusion_path = run_dir / "reitteratsel_eval_confusion_matrices.csv"
+    per_class_path = run_dir / "reitteratsel_eval_per_class_metrics.csv"
+    ranking_path = run_dir / "reitteratsel_eval_ranking_metrics.csv"
+
     detail_df = build_eval_detail()
     confusion_df = build_confusion_frame(detail_df)
     per_class_df, summary_df = build_per_class_and_summary(detail_df)
     ranking_df = build_ranking_metrics(detail_df)
     disagreement_df = build_disagreement_export(detail_df)
 
-    detail_df.to_csv(DETAIL_PATH, index=False)
-    summary_df.to_csv(SUMMARY_PATH, index=False)
-    disagreement_df.to_csv(DISAGREEMENT_PATH, index=False)
-    confusion_df.to_csv(CONFUSION_PATH, index=False)
-    per_class_df.to_csv(PER_CLASS_PATH, index=False)
-    ranking_df.to_csv(RANKING_PATH, index=False)
+    detail_df.to_csv(detail_path, index=False)
+    summary_df.to_csv(summary_path, index=False)
+    disagreement_df.to_csv(disagreement_path, index=False)
+    confusion_df.to_csv(confusion_path, index=False)
+    per_class_df.to_csv(per_class_path, index=False)
+    ranking_df.to_csv(ranking_path, index=False)
 
-    print(f"Wrote detail evaluation: {DETAIL_PATH}")
-    print(f"Wrote summary evaluation: {SUMMARY_PATH}")
-    print(f"Wrote disagreement export: {DISAGREEMENT_PATH}")
-    print(f"Wrote confusion matrices: {CONFUSION_PATH}")
-    print(f"Wrote per-class metrics: {PER_CLASS_PATH}")
-    print(f"Wrote ranking metrics: {RANKING_PATH}")
+    print(f"Allocated evaluation run directory: {run_dir}")
+    print(f"Wrote detail evaluation: {detail_path}")
+    print(f"Wrote summary evaluation: {summary_path}")
+    print(f"Wrote disagreement export: {disagreement_path}")
+    print(f"Wrote confusion matrices: {confusion_path}")
+    print(f"Wrote per-class metrics: {per_class_path}")
+    print(f"Wrote ranking metrics: {ranking_path}")
 
 
 if __name__ == "__main__":

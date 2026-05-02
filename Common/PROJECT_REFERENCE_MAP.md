@@ -280,12 +280,14 @@ CREATE TABLE financials (
   compares `distress_baseline`, `distress_score_mamdani`, `distress_score_refi`, and `final_distress`
 
 - Current evaluation outputs:
-  `Common\Eval\reitteratsel_eval_detail.csv`
-  `Common\Eval\reitteratsel_eval_summary.csv`
-  `Common\Eval\reitteratsel_eval_disagreements.csv`
-  `Common\Eval\reitteratsel_eval_confusion_matrices.csv`
-  `Common\Eval\reitteratsel_eval_per_class_metrics.csv`
-  `Common\Eval\reitteratsel_eval_ranking_metrics.csv`
+  each execution writes to a fresh numbered folder under `Common\Eval\run_n`
+  containing:
+  `reitteratsel_eval_detail.csv`
+  `reitteratsel_eval_summary.csv`
+  `reitteratsel_eval_disagreements.csv`
+  `reitteratsel_eval_confusion_matrices.csv`
+  `reitteratsel_eval_per_class_metrics.csv`
+  `reitteratsel_eval_ranking_metrics.csv`
 
 ### 12) Docker runtime assets
 
