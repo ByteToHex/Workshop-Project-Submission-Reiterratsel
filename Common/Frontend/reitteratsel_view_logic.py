@@ -133,6 +133,24 @@ def build_ranking_view(
         ),
         axis=1,
     )
+    resolved_rows["icr"] = resolved_rows.apply(
+        lambda row: get_metric_value_for_period(
+            metric_df,
+            ticker=str(row["ticker"]),
+            period_id=int(row["period_id"]),
+            metric_code="ICR",
+        ),
+        axis=1,
+    )
+    resolved_rows["gearing"] = resolved_rows.apply(
+        lambda row: get_metric_value_for_period(
+            metric_df,
+            ticker=str(row["ticker"]),
+            period_id=int(row["period_id"]),
+            metric_code="GEARING",
+        ),
+        axis=1,
+    )
     resolved_rows["distress_score_refi"] = resolved_rows["refi_risk"].map(compute_refi_distress_score)
     resolved_rows["macro_sensitivity"] = resolved_rows["refi_risk"].map(
         lambda value: 0.50 if value is None or pd.isna(value) else max(0.25, min(1.0, float(value) * 2.5))
