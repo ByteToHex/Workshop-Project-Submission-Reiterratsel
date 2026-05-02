@@ -288,6 +288,10 @@ CREATE TABLE financials (
   - the runtime `final_distress` score by combining frozen Mamdani output with:
     - a rate-shock macro layer using `REFI_RISK` as the sensitivity bridge
     - a daily CAR-path layer with a neutral dead zone so small path moves do not upgrade borderline names too early
+  - per-ticker ranking-page macro context fields including:
+    - `distress_score_refi` as a REFI-only stress proxy
+    - `macro_sensitivity` as the REFI-driven sensitivity weight
+    - `macro_overlay_adjustment` as the signed macro contribution added into `final_distress`
 
 - Usage note:
   these files and split pipeline methods are the fastest path for checking:

@@ -12,7 +12,12 @@ KG_DIR = ROOT_DIR / "Common" / "Micro" / "5_Model_KG"
 if str(KG_DIR) not in sys.path:
     sys.path.insert(0, str(KG_DIR))
 
-from reitteratsel_core import compute_final_distress_score, compute_sora_distress_score, score_to_level
+from reitteratsel_core import (
+    compute_final_distress_score,
+    compute_refi_distress_score,
+    compute_sora_distress_score,
+    score_to_level,
+)
 
 
 def normalize_selected_date(selected_date: Any) -> pd.Timestamp:
@@ -117,6 +122,7 @@ def build_ranking_view(
 ) -> tuple[pd.DataFrame, pd.Series, float]:
     macro_row = resolve_macro_row(macro_df, selected_date)
     distress_sora = compute_sora_distress_score(float(macro_row["y_pred"]))
+    macro_shock = float(distress_sora) - 0.5
     resolved_rows = resolve_latest_period_rows(fuzzy_df, selected_date).copy()
     resolved_rows["refi_risk"] = resolved_rows.apply(
         lambda row: get_metric_value_for_period(
@@ -126,6 +132,13 @@ def build_ranking_view(
             metric_code="REFI_RISK",
         ),
         axis=1,
+    )
+    resolved_rows["distress_score_refi"] = resolved_rows["refi_risk"].map(compute_refi_distress_score)
+    resolved_rows["macro_sensitivity"] = resolved_rows["refi_risk"].map(
+        lambda value: 0.50 if value is None or pd.isna(value) else max(0.25, min(1.0, float(value) * 2.5))
+    )
+    resolved_rows["macro_overlay_adjustment"] = resolved_rows["macro_sensitivity"].map(
+        lambda sensitivity: 0.15 * float(sensitivity) * macro_shock
     )
     resolved_rows["car_path_trade_date"] = resolved_rows.apply(
         lambda row: _extract_car_path_value(
