@@ -142,6 +142,10 @@ Critical override:
 - SGX iEdge REIT index CSV:
   `Common\Macro\IO\SRC\CSV_TICKER\SGX_DLY_REIT, 1D.csv`
 
+- SGX Universe of 15 REITs CSV:
+  `Common\Macro\IO\SRC\CSV_TICKER\*`
+  All files excluding `SGX_DLY_REIT, 1D.csv`, `SGX_DLY_REITN, 1D(2024_2025_ONLY).csv`, `SGX_DLY_REITR, 1D.csv`
+
 - Use this for:
   daily abnormal return = REIT daily return - SGX iEdge REIT index daily return
 
