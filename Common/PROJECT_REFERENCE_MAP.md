@@ -6,19 +6,21 @@ Use this first when orienting to the project so the same paths and precedence ru
 
 ## Current Design
 
-For development ONLY, current design assumes that the app is rebuilt (meaning the runner will rebuild the cache in reitteratsel_core.py) every time it is launched.
-For project submission ONLY, current design assumes that the committed DuckDB warehouse is shipped as-is and the app serves directly from that snapshot by default.
+Here, "development"/"development mode" refers to running of the app locally via regular methods like command-line or VSC. "Project submission"/"submission mode" refers to the version pushed to github intended for rebuild using docker-compose ONLY.
+- For development ONLY, current design assumes that the app is rebuilt (meaning the runner will rebuild the cache in reitteratsel_core.py) every time it is launched.
+- For project submission ONLY, current design assumes that the committed DuckDB warehouse is shipped as-is and the app serves directly from that snapshot by default.
 
 Current design caveats:
 
-- Cache freshness risk is intentionally reduced because startup rebuilds `fact_distress_label`, `fact_fuzzy_cache`, and `rule_trace_text` on each launch.
-- App startup now depends on build success. If the build step fails, the UI will not come up.
-- Docker startup can still hit Neo4j readiness races even with `depends_on` and health checks.
-- Current design reseeds Neo4j on each launch, which is workable for project submission/local use but can become awkward in future industry expansion eg. additions of shared or longer-lived graph state.
-- Host `.env` and Docker runtime env intentionally differ on `NEO4J_URI`, so local success does not automatically imply Docker success.
+- Development mode freshness risk is intentionally reduced because startup rebuilds `fact_distress_label`, `fact_fuzzy_cache`, and `rule_trace_text` on each launch.
+- Development mode app startup depends on build success. If the build step fails, the UI will not come up.
+- Development-mode Docker rebuild startup can still hit Neo4j readiness races even with `depends_on` and health checks.
+- Development mode reseeds Neo4j on each rebuild/run, which is workable for local use but can become awkward in future industry expansion eg. additions of shared or longer-lived graph state.
+- Submission mode freshness depends on the committed DuckDB snapshot; if upstream source data changes, the shipped warehouse must be rebuilt explicitly before resubmission.
+- Submission/app-deploy mode can succeed without proving that Neo4j-backed rebuild mode still works, because the default shipped app serves directly from the committed DuckDB snapshot.
+- Host `.env` and Docker runtime env intentionally differ on `NEO4J_URI`, so local success does not automatically imply Docker rebuild success.
 - Docker image rebuilds can drift over time because app Python dependencies are not pinned yet.
-- Cold-start time may grow as data volume or pipeline complexity grows, because rebuild happens before app serve.
-- The compose app command currently couples build and serve into one startup path, which is simpler for submission but less clean for long-term operations/debugging.
+- Cold-start time may grow as data volume or pipeline complexity grows when rebuild mode is used before app serve.
 
 ## Source-of-Truth Order
 
