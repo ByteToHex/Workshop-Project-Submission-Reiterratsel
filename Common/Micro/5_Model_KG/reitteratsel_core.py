@@ -907,12 +907,172 @@ def ensure_writable_duckdb_copy(source_path: Path = DUCKDB_PATH) -> Path:
     return temp_path
 
 
+def _canonicalize_frame(
+    df: pd.DataFrame,
+    *,
+    column_order: list[str],
+    sort_columns: list[str],
+) -> pd.DataFrame:
+    out = df.loc[:, column_order].copy()
+    out = out.sort_values(sort_columns, kind="stable").reset_index(drop=True)
+    for col in out.columns:
+        if pd.api.types.is_datetime64_any_dtype(out[col]):
+            out[col] = pd.to_datetime(out[col], errors="coerce")
+        elif out[col].dtype == object:
+            out[col] = out[col].where(pd.notna(out[col]), None)
+    return out
+
+
+def _existing_table_matches_frame(
+    con: duckdb.DuckDBPyConnection,
+    *,
+    table_name: str,
+    select_sql: str,
+    incoming_df: pd.DataFrame,
+    column_order: list[str],
+    sort_columns: list[str],
+) -> bool:
+    try:
+        existing_df = con.execute(select_sql).fetchdf()
+    except duckdb.Error:
+        return False
+
+    expected_df = _canonicalize_frame(
+        incoming_df,
+        column_order=column_order,
+        sort_columns=sort_columns,
+    )
+    actual_df = _canonicalize_frame(
+        existing_df,
+        column_order=column_order,
+        sort_columns=sort_columns,
+    )
+    return expected_df.equals(actual_df)
+
+
 def persist_outputs_to_duckdb(
     label_df: pd.DataFrame,
     fuzzy_df: pd.DataFrame,
     car_path_df: pd.DataFrame,
     db_path: Path = DUCKDB_PATH,
 ) -> None:
+    current_con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        labels_unchanged = _existing_table_matches_frame(
+            current_con,
+            table_name="reit_labels.fact_distress_label",
+            select_sql="""
+                SELECT
+                    ticker,
+                    period_id,
+                    anchor_date,
+                    anchor_trade_date,
+                    window_63_end_date,
+                    window_126_end_date,
+                    car_63wd,
+                    car_126wd,
+                    null_count,
+                    non_ok_count,
+                    label_scheme_version,
+                    label_126wd,
+                    source_index_code,
+                    notes
+                FROM reit_labels.fact_distress_label
+            """,
+            incoming_df=label_df,
+            column_order=[
+                "ticker",
+                "period_id",
+                "anchor_date",
+                "anchor_trade_date",
+                "window_63_end_date",
+                "window_126_end_date",
+                "car_63wd",
+                "car_126wd",
+                "null_count",
+                "non_ok_count",
+                "label_scheme_version",
+                "label_126wd",
+                "source_index_code",
+                "notes",
+            ],
+            sort_columns=["ticker", "period_id"],
+        )
+        fuzzy_unchanged = _existing_table_matches_frame(
+            current_con,
+            table_name="reit_fuzzy.fact_fuzzy_cache",
+            select_sql="""
+                SELECT
+                    ticker,
+                    period_id,
+                    rule_version,
+                    score_version,
+                    distress_score_mamdani,
+                    distress_level,
+                    null_count,
+                    non_ok_count,
+                    fired_rule_count,
+                    top_rule_ids,
+                    rule_trace_text,
+                    notes
+                FROM reit_fuzzy.fact_fuzzy_cache
+            """,
+            incoming_df=fuzzy_df,
+            column_order=[
+                "ticker",
+                "period_id",
+                "rule_version",
+                "score_version",
+                "distress_score_mamdani",
+                "distress_level",
+                "null_count",
+                "non_ok_count",
+                "fired_rule_count",
+                "top_rule_ids",
+                "rule_trace_text",
+                "notes",
+            ],
+            sort_columns=["ticker", "period_id"],
+        )
+        car_path_unchanged = _existing_table_matches_frame(
+            current_con,
+            table_name="reit_labels.fact_car_path_daily",
+            select_sql="""
+                SELECT
+                    ticker,
+                    period_id,
+                    anchor_date,
+                    anchor_trade_date,
+                    trade_date,
+                    days_from_anchor,
+                    abnormal_return,
+                    accum_car_to_date,
+                    car_path_distress,
+                    notes
+                FROM reit_labels.fact_car_path_daily
+            """,
+            incoming_df=car_path_df,
+            column_order=[
+                "ticker",
+                "period_id",
+                "anchor_date",
+                "anchor_trade_date",
+                "trade_date",
+                "days_from_anchor",
+                "abnormal_return",
+                "accum_car_to_date",
+                "car_path_distress",
+                "notes",
+            ],
+            sort_columns=["ticker", "period_id", "trade_date", "days_from_anchor"],
+        )
+    finally:
+        current_con.close()
+
+    if labels_unchanged and fuzzy_unchanged and car_path_unchanged:
+        print("Derived DuckDB/parquet cache unchanged; leaving shipped artifacts untouched.")
+        return
+
     work_path = ensure_writable_duckdb_copy(db_path)
     con = duckdb.connect(str(work_path))
     try:

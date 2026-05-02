@@ -26,6 +26,8 @@ Current design caveats:
   Docker rebuild startup can still hit Neo4j readiness races even with `depends_on` and health checks.
 - Development mode:
   Neo4j is reseeded on each rebuild/run, which is workable for local use but can become awkward in future industry expansion eg. additions of shared or longer-lived graph state.
+- Development mode:
+  rebuild now leaves the shipped DuckDB/parquet cache untouched when derived outputs are unchanged, which reduces metadata-only git churn across `fundamentals.duckdb`, `carpathdaily.parquet`, `distresslabels.parquet`, and `fuzzycache.parquet`.
 - Submission mode:
   freshness depends on the committed DuckDB snapshot; if upstream source data changes, the shipped warehouse must be rebuilt explicitly before resubmission.
 - Submission mode / app-deploy mode:
