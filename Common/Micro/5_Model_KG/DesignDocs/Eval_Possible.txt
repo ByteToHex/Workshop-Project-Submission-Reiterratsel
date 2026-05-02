@@ -1,0 +1,63 @@
+[Eval_Possible]
+what do my files say about evaluation?
+
+like F1 score, P@K (rankings)? (not just these, others too)
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+The sources provide a comprehensive overview of evaluation metrics and methodologies across different machine reasoning tasks, including supervised learning, clustering, recommender systems, and search techniques.
+
+### **1. Supervised Learning Evaluation**
+The files distinguish between metrics for classification (categorical outcomes) and regression (continuous values).
+
+**Classification Metrics:**
+*   **Confusion Matrix:** A primary tool used to display the correct and incorrect rates of a classifier for different classes.
+*   **Accuracy:** Calculated as $(TP + TN) / \text{Total } P+N$; it measures the overall correctness but may not reflect performance on imbalanced data.
+*   **Precision and Recall:** Precision ($TP / (TP+FP)$) measures accuracy among positive predictions, while Recall ($TP / (TP+FN)$) measures the ability to find all positive instances.
+*   **F1 Score (F-measure):** Defined as the **harmonic mean of precision and recall**, providing a single score that balances both.
+*   **AUC (Area Under the Curve) & ROC Curve:** The ROC curve plots the true positive rate (TPR) against the false positive rate (FPR). **AUC** summarizes this performance across all possible thresholds, representing the probability that a model ranks a random positive instance higher than a negative one.
+*   **MCC (Matthews Correlation Coefficient):** Noted as more reliable than accuracy or F1 score for **imbalanced datasets** because it considers all four values of the confusion matrix.
+
+**Regression Metrics:**
+*   **MSE (Mean Squared Error):** A common measure of model accuracy that calculates the average squared difference between predicted and actual values.
+*   **RMSE (Root Mean Square Error):** The square root of MSE, used to measure prediction error magnitude.
+*   **MAE (Mean Absolute Error):** Measures the average absolute difference between predictions and actual values.
+*   **$R^2$ (Coefficient of Determination):** Identified as the **most used score for regression performance** because it accounts for data variation by comparing model error to a simple average.
+
+---
+
+### **2. Recommender System Evaluation**
+Evaluation for recommender systems covers both the accuracy of rating predictions and the relevance of ranked item lists.
+
+**Ranking Metrics:**
+*   **Precision at K (P@K):** The proportion of recommended items in the top-K set that are relevant (e.g., items the user is known to like with a rating $\ge 4$).
+*   **AP@K (Average Precision at K):** The mean of $P@i$ for $i=1, \dots, K$, typically calculated for a single user.
+*   **MAP@K (Mean Average Precision at K):** The mean of the AP@K scores across all users in the system.
+
+**Rating and Similarity Metrics:**
+*   **MAE and RMSE:** Used to test the accuracy of predicted ratings against known values in a test set.
+*   **Similarity Measures:** Used to rank unrated items, including **Cosine Similarity**, **Euclidean Distance**, **Pearson Correlation**, and **Jaccard Similarity** (for binary/set-based data).
+
+---
+
+### **3. Clustering and Unsupervised Evaluation**
+Evaluation in clustering focuses on the internal structure of the formed groups.
+*   **Silhouette Coefficient:** A measure of both **cohesion** (how close elements are within a cluster) and **separation** (how far clusters are from each other). A higher score generally indicates better clustering.
+*   **Dispersion:** Measured by the sum of distances (or squared Euclidean distances) of records from their cluster centroid.
+*   **Qualitative Review:** Validating clusters through **interpretability** (human examination) and **stability** (testing if clusters remain consistent when the data is partitioned).
+
+---
+
+### **4. Search, Optimization, and Knowledge Graphs**
+*   **Informed Search:** Uses an **evaluation function $f(n)$**, often incorporating a **heuristic function $h(n)$**, which estimates the cost from node $n$ to the goal. A heuristic of $0$ indicates the goal has been reached.
+*   **Knowledge Graph Embeddings:** Models like **TransE** use a **score function** $r(h, t) = -\|h+r-t\|$ to evaluate triples; lower values indicate a better representation of the relationship.
+*   **Reinforcement Learning:** Evaluated via **reward functions** and **Q functions**.
+
+---
+
+### **5. General Validation Methodologies**
+*   **Data Splitting:** The standard practice is randomly dividing data into **training sets** (e.g., 75%) and **test sets** (e.g., 25%).
+*   **Empirical Risk:** Defined as the measured error rate specifically on the training set.
+*   **Cross-Validation:** 
+    *   **LOOCV (Leave-One-Out):** Training on $n-1$ samples and validating on $1$, repeated $n$ times.
+    *   **k-fold:** Partitioning data into $k$ folds, training on $k-1$ and testing on $1$, then averaging the results to estimate the validation error rate.

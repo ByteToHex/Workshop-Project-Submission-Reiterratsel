@@ -103,8 +103,9 @@
 - D3: Compare:
 - D3a: `distress_baseline`
 - D3b: `distress_score_mamdani`
-- D3c: `final_distress`
-- D4: Evaluate both:
+- D3c: `distress_score_refi`
+- D3d: `final_distress`
+- D4: Evaluate these:
 - D4a: label accuracy against `DISTRESSED/WATCH/HEALTHY`
 - D4b: continuous gap between normalized CAR target and predicted distress score
 - D5: Run disagreement analysis for mismatched cases.
