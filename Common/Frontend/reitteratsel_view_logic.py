@@ -152,6 +152,15 @@ def build_ranking_view(
         ),
         axis=1,
     )
+    resolved_rows["dscr"] = resolved_rows.apply(
+        lambda row: get_metric_value_for_period(
+            metric_df,
+            ticker=str(row["ticker"]),
+            period_id=int(row["period_id"]),
+            metric_code="DSCR",
+        ),
+        axis=1,
+    )
     resolved_rows["top_revenue_geo_share"] = resolved_rows.apply(
         lambda row: get_metric_value_for_period(
             metric_df,

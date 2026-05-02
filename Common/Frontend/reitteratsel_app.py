@@ -830,12 +830,13 @@ def render_ranking_page() -> None:
                 "reit_name",
                 "sector",
                 "fiscal_year_end_date",
-                "distress_score_mamdani",
                 "icr",
                 "gearing",
+                "dscr",
                 "top_revenue_geography",
                 "top_revenue_geo_share",
                 "refi_risk",
+                "distress_score_mamdani",
                 "distress_score_refi",
                 "macro_sensitivity",
                 "macro_overlay_adjustment",
@@ -850,12 +851,13 @@ def render_ranking_page() -> None:
                 "reit_name": "REIT Name",
                 "sector": "Sector",
                 "fiscal_year_end_date": "Annual Filing Anchor",
-                "distress_score_mamdani": "Annual Mamdani Base Score",
                 "icr": "Interest Coverage Ratio (ICR)",
                 "gearing": "Gearing Ratio",
+                "dscr": "Debt Service Coverage Ratio (DSCR)",
                 "top_revenue_geography": "Top Revenue Geography",
                 "top_revenue_geo_share": "% Of Revenue",
                 "refi_risk": "Refinancing Risk Ratio",
+                "distress_score_mamdani": "Annual Mamdani Base Score",
                 "distress_score_refi": "REFI-Only Stress Proxy",
                 "macro_sensitivity": "Macro Sensitivity Weight",
                 "macro_overlay_adjustment": "Macro Score Adjustment",
@@ -870,11 +872,6 @@ def render_ranking_page() -> None:
                 "Annual Filing Anchor",
                 help="Fiscal-year-end anchor date from reit_metrics.dim_period used to select the annual filing row."
             ),
-            "Annual Mamdani Base Score": st.column_config.NumberColumn(
-                "Annual Mamdani Base Score",
-                help=ANNUAL_MAMDANI_HELP,
-                format="%.2f",
-            ),
             "Interest Coverage Ratio (ICR)": st.column_config.NumberColumn(
                 "Interest Coverage Ratio (ICR)",
                 help=ICR_HELP,
@@ -884,6 +881,11 @@ def render_ranking_page() -> None:
                 "Gearing Ratio",
                 help=GEARING_HELP,
                 format="%.3f%%",
+            ),
+            "Debt Service Coverage Ratio (DSCR)": st.column_config.NumberColumn(
+                "Debt Service Coverage Ratio (DSCR)",
+                help=DSCR_HELP,
+                format="%.3f",
             ),
             "Top Revenue Geography": st.column_config.TextColumn(
                 "Top Revenue Geography",
@@ -897,6 +899,11 @@ def render_ranking_page() -> None:
             "Refinancing Risk Ratio": st.column_config.NumberColumn(
                 "Refinancing Risk Ratio",
                 help=REFI_HELP,
+                format="%.2f",
+            ),
+            "Annual Mamdani Base Score": st.column_config.NumberColumn(
+                "Annual Mamdani Base Score",
+                help=ANNUAL_MAMDANI_HELP,
                 format="%.2f",
             ),
             "REFI-Only Stress Proxy": st.column_config.NumberColumn(
