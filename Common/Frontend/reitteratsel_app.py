@@ -1070,9 +1070,9 @@ def render_rates_page() -> None:
 render_sidebar_brand()
 navigation = st.navigation(
     [
-        st.Page(render_ranking_page, title="Ranking"),
-        st.Page(render_reit_page, title="Individual REIT Navigator"),
-        st.Page(render_rates_page, title="Time Series (Rates)"),
+        st.Page(render_ranking_page, title="Ranking", icon=":material/leaderboard:"),
+        st.Page(render_reit_page, title="Individual REIT Navigator", icon=":material/apartment:"),
+        st.Page(render_rates_page, title="Time Series (Rates)", icon=":material/show_chart:"),
     ],
     position="sidebar",
     expanded=True,
