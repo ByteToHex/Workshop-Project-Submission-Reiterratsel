@@ -17,12 +17,14 @@ if str(KG_DIR) not in sys.path:
 from reitteratsel_core import (  # noqa: E402
     DEFAULT_HORIZON_DAYS,
     DUCKDB_PATH,
-    compute_final_distress_score,
     compute_sora_distress_score,
     load_macro_holdout_frame,
     load_macro_prediction_frame,
     load_macro_train_end,
-    score_to_level,
+)
+from reitteratsel_view_logic import (  # noqa: E402
+    build_ranking_view,
+    get_label_row_for_period,
 )
 
 
@@ -190,38 +192,15 @@ st.markdown(
 def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     con = duckdb.connect(str(DUCKDB_PATH), read_only=True)
     try:
-        ranking_df = con.execute(
+        fuzzy_df = con.execute(
             """
-            WITH latest_fuzzy AS (
-                SELECT
-                    f.*,
-                    p.fiscal_year,
-                    p.fiscal_year_end_date,
-                    r.reit_name,
-                    r.sector,
-                    ROW_NUMBER() OVER (PARTITION BY f.ticker ORDER BY p.fiscal_year_end_date DESC) AS rn
-                FROM reit_fuzzy.fact_fuzzy_cache f
-                JOIN reit_metrics.dim_period p ON p.period_id = f.period_id
-                JOIN reit_metrics.dim_reit r ON r.ticker = f.ticker
-            ),
-            latest_labels AS (
-                SELECT
-                    l.ticker,
-                    l.period_id,
-                    l.car_63wd,
-                    l.car_126wd,
-                    l.label_126wd,
-                    ROW_NUMBER() OVER (PARTITION BY l.ticker ORDER BY p.fiscal_year_end_date DESC) AS rn
-                FROM reit_labels.fact_distress_label l
-                JOIN reit_metrics.dim_period p ON p.period_id = l.period_id
-            )
             SELECT
                 f.ticker,
                 f.period_id,
-                f.reit_name,
-                f.sector,
-                f.fiscal_year,
-                f.fiscal_year_end_date,
+                r.reit_name,
+                r.sector,
+                p.fiscal_year,
+                p.fiscal_year_end_date,
                 f.distress_score_mamdani,
                 f.distress_level,
                 f.null_count,
@@ -231,12 +210,13 @@ def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Data
                 l.car_63wd,
                 l.car_126wd,
                 l.label_126wd
-            FROM latest_fuzzy f
-            LEFT JOIN latest_labels l
+            FROM reit_fuzzy.fact_fuzzy_cache f
+            JOIN reit_metrics.dim_period p ON p.period_id = f.period_id
+            JOIN reit_metrics.dim_reit r ON r.ticker = f.ticker
+            LEFT JOIN reit_labels.fact_distress_label l
               ON l.ticker = f.ticker
-             AND l.rn = 1
-            WHERE f.rn = 1
-            ORDER BY f.distress_score_mamdani DESC, f.ticker
+             AND l.period_id = f.period_id
+            ORDER BY f.ticker, p.fiscal_year_end_date
             """
         ).fetchdf()
         metric_df = con.execute(
@@ -314,10 +294,10 @@ def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Data
         ).fetchdf()
     finally:
         con.close()
-    return ranking_df, metric_df, label_df, component_df, dividend_df
+    return fuzzy_df, metric_df, label_df, component_df, dividend_df
 
 
-ranking_df, metric_df, label_df, component_df, dividend_df = load_app_frames()
+fuzzy_df, metric_df, label_df, component_df, dividend_df = load_app_frames()
 macro_df = load_macro_prediction_frame(DEFAULT_HORIZON_DAYS)
 macro_holdout_df = load_macro_holdout_frame(DEFAULT_HORIZON_DAYS)
 macro_train_end = load_macro_train_end(DEFAULT_HORIZON_DAYS)
@@ -326,38 +306,28 @@ if macro_df["prediction_source"].nunique() != 1 or macro_df["prediction_source"]
         "Macro runtime must use direct XGBoost inference from the run_21 model artifacts."
     )
 latest_macro = macro_df.iloc[-1]
-latest_refi_by_ticker = (
-    metric_df.loc[metric_df["metric_code"] == "REFI_RISK"]
-    .sort_values(["ticker", "fiscal_year"])
-    .groupby("ticker", as_index=False)
-    .tail(1)[["ticker", "metric_value"]]
-    .rename(columns={"metric_value": "latest_refi_risk"})
-)
-ranking_df = ranking_df.merge(latest_refi_by_ticker, on="ticker", how="left")
-distress_sora = compute_sora_distress_score(float(latest_macro["y_pred"]))
+MIN_MACRO_DATE = macro_df["snapshot_ts"].min().date()
+MAX_MACRO_DATE = macro_df["snapshot_ts"].max().date()
 
 
-def render_macro_header() -> None:
+def get_selected_simulation_date() -> object:
+    return st.date_input(
+        "Simulation Date",
+        value=MAX_MACRO_DATE,
+        min_value=MIN_MACRO_DATE,
+        max_value=MAX_MACRO_DATE,
+        key="selected_simulation_date",
+        help="Resolve annual filing rows and macro snapshots on or before this date.",
+    )
+
+
+def render_macro_header(*, macro_row: pd.Series, distress_sora: float) -> None:
     st.markdown('<div class="reit-kicker">Prediction from overnight bank rates</div>', unsafe_allow_html=True)
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("10D Predicted SORA Change", f"{latest_macro['y_pred']:+.3f}")
-    m2.metric("Predicted SORA Level", f"{latest_macro['predicted_level']:.3f}")
+    m1.metric("10D Predicted SORA Change", f"{macro_row['y_pred']:+.3f}")
+    m2.metric("Predicted SORA Level", f"{macro_row['predicted_level']:.3f}")
     m3.metric("Macro Distress", f"{distress_sora:.2f}")
-    m4.metric("Snapshot Date", latest_macro["snapshot_ts"].strftime("%Y-%m-%d"))
-
-
-def build_ranking_view() -> pd.DataFrame:
-    ranking_view = ranking_df.copy()
-    ranking_view["final_distress"] = ranking_view.apply(
-        lambda row: compute_final_distress_score(
-            float(row["distress_score_mamdani"]),
-            distress_sora,
-            row["latest_refi_risk"],
-        ),
-        axis=1,
-    )
-    ranking_view["level"] = ranking_view["final_distress"].map(score_to_level)
-    return ranking_view.sort_values("final_distress", ascending=False).reset_index(drop=True)
+    m4.metric("Snapshot Date", macro_row["snapshot_ts"].strftime("%Y-%m-%d"))
 
 
 def format_currency_compact(value: float | None) -> str:
@@ -537,8 +507,15 @@ def build_reit_header_context(
     - TOPGEO:
       latest annual top geography label/share from `REV_CONC_TOPGEO`
     """
+    selected_period_end = pd.Timestamp(selected_row["fiscal_year_end_date"])
+    metric_history_df = selected_metric_df.loc[
+        selected_metric_df["fiscal_year_end_date"] <= selected_period_end
+    ].copy()
+    dividend_history_df = selected_dividend_df.loc[
+        selected_dividend_df["fiscal_year_end_date"] <= selected_period_end
+    ].copy()
     metric_pivot = (
-        selected_metric_df.sort_values(["fiscal_year_end_date", "metric_code"])
+        metric_history_df.sort_values(["fiscal_year_end_date", "metric_code"])
         .pivot_table(
             index=["period_id", "fiscal_year", "fiscal_year_end_date"],
             columns="metric_code",
@@ -555,7 +532,7 @@ def build_reit_header_context(
         down_label="Deteriorating",
     )
     dpu_trend = derive_relative_trend(
-        selected_dividend_df.sort_values("fiscal_year_end_date")["dps_fy"],
+        dividend_history_df.sort_values("fiscal_year_end_date")["dps_fy"],
         threshold_ratio=0.05,
         up_label="Rising",
         down_label="Falling",
@@ -603,27 +580,30 @@ def build_reit_header_context(
 
 
 def render_ranking_page() -> None:
-    render_macro_header()
+    selected_date = get_selected_simulation_date()
+    ranking_view, macro_row, distress_sora = build_ranking_view(fuzzy_df, metric_df, macro_df, selected_date)
+    render_macro_header(macro_row=macro_row, distress_sora=distress_sora)
     st.markdown(
         """
         <div class="reit-card">
         <div class="reit-kicker">REITs Ranking</div>
-        <div class="reit-muted">Runtime ranking combines frozen Mamdani score with the current 10D macro layer.</div>
+        <div class="reit-muted">Runtime ranking combines filing-date Mamdani with the macro snapshot resolved on or before the selected simulation date.</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    ranking_view = build_ranking_view()
     ranking_view.index = ranking_view.index + 1
     st.dataframe(
         ranking_view[
-            ["ticker", "reit_name", "sector", "distress_score_mamdani", "final_distress", "level", "label_126wd"]
+            ["ticker", "reit_name", "sector", "fiscal_year_end_date", "distress_score_mamdani", "refi_risk", "final_distress", "level", "label_126wd"]
         ].rename(
             columns={
                 "ticker": "Ticker",
                 "reit_name": "Name",
                 "sector": "Sector",
+                "fiscal_year_end_date": "Annual Anchor",
                 "distress_score_mamdani": "Mamdani",
+                "refi_risk": "REFI RISK",
                 "final_distress": "Final Score",
                 "level": "Level",
                 "label_126wd": "CAR Label",
@@ -634,8 +614,9 @@ def render_ranking_page() -> None:
 
 
 def render_reit_page() -> None:
-    render_macro_header()
-    ranking_view = build_ranking_view()
+    selected_date = get_selected_simulation_date()
+    ranking_view, macro_row, distress_sora = build_ranking_view(fuzzy_df, metric_df, macro_df, selected_date)
+    render_macro_header(macro_row=macro_row, distress_sora=distress_sora)
     ticker_options = ranking_view["ticker"].tolist()
     default_ticker = st.session_state.get("selected_ticker", ticker_options[0])
     if default_ticker not in ticker_options:
@@ -646,22 +627,15 @@ def render_reit_page() -> None:
         index=ticker_options.index(default_ticker),
         key="selected_ticker",
     )
-    selected_row = ranking_df.loc[ranking_df["ticker"] == selected_ticker].iloc[0]
+    selected_row = ranking_view.loc[ranking_view["ticker"] == selected_ticker].iloc[0]
     selected_metric_df = metric_df.loc[metric_df["ticker"] == selected_ticker].copy()
     selected_label_df = label_df.loc[label_df["ticker"] == selected_ticker].copy()
     selected_component_df = component_df.loc[component_df["ticker"] == selected_ticker].copy()
     selected_dividend_df = dividend_df.loc[dividend_df["ticker"] == selected_ticker].copy()
     selected_period_id = int(selected_row["period_id"])
 
-    selected_refi = selected_metric_df.loc[
-        selected_metric_df["metric_code"] == "REFI_RISK"
-    ].sort_values("fiscal_year").iloc[-1]["metric_value"]
-    final_distress = compute_final_distress_score(
-        float(selected_row["distress_score_mamdani"]),
-        distress_sora,
-        selected_refi,
-    )
-    final_level = score_to_level(final_distress)
+    final_distress = float(selected_row["final_distress"])
+    final_level = str(selected_row["level"])
     header_ctx = build_reit_header_context(
         selected_ticker=selected_ticker,
         selected_period_id=selected_period_id,
@@ -706,6 +680,7 @@ def render_reit_page() -> None:
                 <div class="reit-muted">Level: {final_level}</div>
                 <div class="reit-muted">Frozen Mamdani: {header_ctx['distress_score_mamdani']:.2f}</div>
                 <div class="reit-muted">Macro layer: {distress_sora:.2f}</div>
+                <div class="reit-muted">Annual anchor: {pd.Timestamp(selected_row['fiscal_year_end_date']).strftime("%Y-%m-%d")}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
@@ -722,16 +697,20 @@ def render_reit_page() -> None:
                 st.text(selected_row["rule_trace_text"] or "No rule trace available.")
         c3, c4 = st.columns(2)
         with c3:
-            latest_label = selected_label_df.iloc[-1]
+            selected_label = get_label_row_for_period(
+                selected_label_df,
+                ticker=selected_ticker,
+                period_id=selected_period_id,
+            )
             st.markdown("**Forward CAR Panel**")
-            st.metric("CAR 63wd", "N/A" if pd.isna(latest_label["car_63wd"]) else f"{latest_label['car_63wd']:.2%}")
-            st.metric("CAR 126wd", "N/A" if pd.isna(latest_label["car_126wd"]) else f"{latest_label['car_126wd']:.2%}")
-            st.metric("CAR Label", latest_label["label_126wd"] or "PENDING")
+            st.metric("CAR 63wd", "N/A" if pd.isna(selected_label["car_63wd"]) else f"{selected_label['car_63wd']:.2%}")
+            st.metric("CAR 126wd", "N/A" if pd.isna(selected_label["car_126wd"]) else f"{selected_label['car_126wd']:.2%}")
+            st.metric("CAR Label", selected_label["label_126wd"] or "PENDING")
         with c4:
             st.markdown("**Macro Layer**")
-            st.metric("Predicted 10D Change", f"{latest_macro['y_pred']:+.3f}")
-            st.metric("Predicted 10D Level", f"{latest_macro['predicted_level']:.3f}")
-            st.metric("FOMC Decision", latest_macro["fomc_decision_date"].strftime("%Y-%m-%d"))
+            st.metric("Predicted 10D Change", f"{macro_row['y_pred']:+.3f}")
+            st.metric("Predicted 10D Level", f"{macro_row['predicted_level']:.3f}")
+            st.metric("FOMC Decision", macro_row["fomc_decision_date"].strftime("%Y-%m-%d"))
 
     with tab_financials:
         st.markdown("**Annual metric history**")
@@ -747,7 +726,8 @@ def render_reit_page() -> None:
 
 
 def render_rates_page() -> None:
-    render_macro_header()
+    latest_distress_sora = compute_sora_distress_score(float(latest_macro["y_pred"]))
+    render_macro_header(macro_row=latest_macro, distress_sora=latest_distress_sora)
     st.markdown("**SORA macro walk-forward**")
     st.markdown(
         """
