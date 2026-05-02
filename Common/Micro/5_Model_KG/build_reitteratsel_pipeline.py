@@ -7,6 +7,8 @@ from reitteratsel_core import (
     ENV_PATH,
     FUZZY_CACHE_SHARD,
     DISTRESS_LABEL_SHARD,
+    CAR_PATH_DAILY_SHARD,
+    build_car_path_daily_frame,
     build_distress_label_frame,
     build_fuzzy_cache_frame,
     connect_neo4j,
@@ -31,13 +33,16 @@ def main() -> None:
         driver.close()
 
     label_df = build_distress_label_frame(DUCKDB_PATH)
+    car_path_df = build_car_path_daily_frame(DUCKDB_PATH)
     fuzzy_df = build_fuzzy_cache_frame(DUCKDB_PATH, rule_bundle=rule_bundle)
-    persist_outputs_to_duckdb(label_df, fuzzy_df, DUCKDB_PATH)
+    persist_outputs_to_duckdb(label_df, fuzzy_df, car_path_df, DUCKDB_PATH)
 
     print(f"Seeded Neo4j rule model: {config.database}")
     print(f"Built label rows: {len(label_df)}")
+    print(f"Built daily CAR path rows: {len(car_path_df)}")
     print(f"Built fuzzy cache rows: {len(fuzzy_df)}")
     print(f"Wrote label shard: {DISTRESS_LABEL_SHARD}")
+    print(f"Wrote CAR path shard: {CAR_PATH_DAILY_SHARD}")
     print(f"Wrote fuzzy shard: {FUZZY_CACHE_SHARD}")
 
 

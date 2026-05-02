@@ -19,6 +19,7 @@ from reitteratsel_view_logic import (
     build_macro_panel_context,
     build_ranking_view,
     get_label_row_for_period,
+    get_latest_car_path_row_for_period,
     get_metric_value_for_period,
     resolve_macro_row,
 )
@@ -79,6 +80,15 @@ class ReitteratselViewLogicTests(unittest.TestCase):
                 "notes": [None, None],
             }
         )
+        self.car_path_df = pd.DataFrame(
+            {
+                "ticker": ["AAA", "AAA", "AAA", "BBB", "BBB"],
+                "period_id": [1, 1, 2, 3, 4],
+                "trade_date": pd.to_datetime(["2024-04-01", "2025-02-10", "2025-04-01", "2024-07-01", "2025-07-01"]),
+                "accum_car_to_date": [0.00, -0.12, 0.00, -0.04, 0.00],
+                "car_path_distress": [0.50, 0.85, 0.50, 0.45, 0.50],
+            }
+        )
 
     def test_resolve_macro_row_uses_selected_date_not_latest_overall(self) -> None:
         resolved = resolve_macro_row(self.macro_df, "2025-02-20")
@@ -89,6 +99,7 @@ class ReitteratselViewLogicTests(unittest.TestCase):
             self.fuzzy_df,
             self.metric_df,
             self.macro_df,
+            self.car_path_df,
             "2025-02-20",
         )
         aaa_row = ranking_view.loc[ranking_view["ticker"] == "AAA"].iloc[0]
@@ -102,6 +113,7 @@ class ReitteratselViewLogicTests(unittest.TestCase):
             self.fuzzy_df,
             self.metric_df,
             self.macro_df,
+            self.car_path_df,
             "2025-02-20",
         )
         self.assertEqual(pd.Timestamp("2025-02-15"), macro_row["snapshot_ts"])
@@ -112,12 +124,15 @@ class ReitteratselViewLogicTests(unittest.TestCase):
             self.fuzzy_df,
             self.metric_df,
             self.macro_df,
+            self.car_path_df,
             "2025-02-20",
         )
         aaa_row = ranking_view.loc[ranking_view["ticker"] == "AAA"].iloc[0]
         self.assertAlmostEqual(0.10, float(aaa_row["refi_risk"]))
-        expected = compute_final_distress_score(0.20, distress_sora, 0.10)
+        expected = compute_final_distress_score(0.20, distress_sora, 0.10, 0.85)
         self.assertAlmostEqual(expected, float(aaa_row["final_distress"]))
+        self.assertAlmostEqual(-0.12, float(aaa_row["accum_car_to_date"]))
+        self.assertAlmostEqual(0.85, float(aaa_row["car_path_distress"]))
 
     def test_get_metric_value_for_period_uses_exact_period(self) -> None:
         value = get_metric_value_for_period(
@@ -132,6 +147,17 @@ class ReitteratselViewLogicTests(unittest.TestCase):
         row = get_label_row_for_period(self.label_df, ticker="AAA", period_id=1)
         self.assertEqual("HEALTHY", row["label_126wd"])
         self.assertAlmostEqual(0.05, float(row["car_126wd"]))
+
+    def test_get_latest_car_path_row_for_period_uses_selected_date(self) -> None:
+        row = get_latest_car_path_row_for_period(
+            self.car_path_df,
+            ticker="AAA",
+            period_id=1,
+            selected_date="2025-02-20",
+        )
+        assert row is not None
+        self.assertEqual(pd.Timestamp("2025-02-10"), pd.Timestamp(row["trade_date"]))
+        self.assertAlmostEqual(0.85, float(row["car_path_distress"]))
 
     def test_build_macro_panel_context_uses_resolved_macro_row_not_latest_overall(self) -> None:
         macro_row = resolve_macro_row(self.macro_df, "2025-02-20")

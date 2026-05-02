@@ -71,10 +71,48 @@ def get_label_row_for_period(label_df: pd.DataFrame, *, ticker: str, period_id: 
     return matches.iloc[0]
 
 
+def get_latest_car_path_row_for_period(
+    car_path_df: pd.DataFrame,
+    *,
+    ticker: str,
+    period_id: int,
+    selected_date: Any,
+) -> pd.Series | None:
+    target_ts = normalize_selected_date(selected_date)
+    matches = car_path_df.loc[
+        (car_path_df["ticker"] == ticker)
+        & (car_path_df["period_id"] == period_id)
+        & (pd.to_datetime(car_path_df["trade_date"]) <= target_ts)
+    ].sort_values("trade_date")
+    if matches.empty:
+        return None
+    return matches.iloc[-1]
+
+
+def _extract_car_path_value(
+    car_path_df: pd.DataFrame,
+    *,
+    ticker: str,
+    period_id: int,
+    selected_date: Any,
+    field: str,
+) -> Any:
+    row = get_latest_car_path_row_for_period(
+        car_path_df,
+        ticker=ticker,
+        period_id=period_id,
+        selected_date=selected_date,
+    )
+    if row is None:
+        return None
+    return row[field]
+
+
 def build_ranking_view(
     fuzzy_df: pd.DataFrame,
     metric_df: pd.DataFrame,
     macro_df: pd.DataFrame,
+    car_path_df: pd.DataFrame,
     selected_date: Any,
 ) -> tuple[pd.DataFrame, pd.Series, float]:
     macro_row = resolve_macro_row(macro_df, selected_date)
@@ -89,11 +127,42 @@ def build_ranking_view(
         ),
         axis=1,
     )
+    resolved_rows["car_path_trade_date"] = resolved_rows.apply(
+        lambda row: _extract_car_path_value(
+            car_path_df,
+            ticker=str(row["ticker"]),
+            period_id=int(row["period_id"]),
+            selected_date=selected_date,
+            field="trade_date",
+        ),
+        axis=1,
+    )
+    resolved_rows["accum_car_to_date"] = resolved_rows.apply(
+        lambda row: _extract_car_path_value(
+            car_path_df,
+            ticker=str(row["ticker"]),
+            period_id=int(row["period_id"]),
+            selected_date=selected_date,
+            field="accum_car_to_date",
+        ),
+        axis=1,
+    )
+    resolved_rows["car_path_distress"] = resolved_rows.apply(
+        lambda row: _extract_car_path_value(
+            car_path_df,
+            ticker=str(row["ticker"]),
+            period_id=int(row["period_id"]),
+            selected_date=selected_date,
+            field="car_path_distress",
+        ),
+        axis=1,
+    )
     resolved_rows["final_distress"] = resolved_rows.apply(
         lambda row: compute_final_distress_score(
             float(row["distress_score_mamdani"]),
             distress_sora,
             row["refi_risk"],
+            row["car_path_distress"],
         ),
         axis=1,
     )

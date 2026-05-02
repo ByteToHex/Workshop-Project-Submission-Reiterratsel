@@ -190,7 +190,7 @@ st.markdown(
 
 
 @st.cache_data(show_spinner=False)
-def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     con = duckdb.connect(str(DUCKDB_PATH), read_only=True)
     try:
         fuzzy_df = con.execute(
@@ -254,6 +254,24 @@ def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Data
             ORDER BY l.ticker, p.fiscal_year
             """
         ).fetchdf()
+        car_path_df = con.execute(
+            """
+            SELECT
+                c.ticker,
+                c.period_id,
+                p.fiscal_year,
+                c.anchor_date,
+                c.anchor_trade_date,
+                c.trade_date,
+                c.days_from_anchor,
+                c.abnormal_return,
+                c.accum_car_to_date,
+                c.car_path_distress
+            FROM reit_labels.fact_car_path_daily c
+            JOIN reit_metrics.dim_period p ON p.period_id = c.period_id
+            ORDER BY c.ticker, p.fiscal_year, c.trade_date
+            """
+        ).fetchdf()
         component_df = con.execute(
             """
             SELECT
@@ -295,10 +313,10 @@ def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Data
         ).fetchdf()
     finally:
         con.close()
-    return fuzzy_df, metric_df, label_df, component_df, dividend_df
+    return fuzzy_df, metric_df, label_df, car_path_df, component_df, dividend_df
 
 
-fuzzy_df, metric_df, label_df, component_df, dividend_df = load_app_frames()
+fuzzy_df, metric_df, label_df, car_path_df, component_df, dividend_df = load_app_frames()
 macro_df = load_macro_prediction_frame(DEFAULT_HORIZON_DAYS)
 macro_holdout_df = load_macro_holdout_frame(DEFAULT_HORIZON_DAYS)
 macro_train_end = load_macro_train_end(DEFAULT_HORIZON_DAYS)
@@ -342,6 +360,7 @@ def resolve_simulation_context() -> tuple[object, pd.DataFrame, pd.Series, float
         fuzzy_df,
         metric_df,
         macro_df,
+        car_path_df,
         selected_date,
     )
     return selected_date, ranking_view, macro_row, distress_sora
@@ -617,7 +636,7 @@ def render_ranking_intro_card() -> None:
         <div class="reit-card">
         <div class="reit-kicker">REITs Ranking</div>
         <div class="reit-muted">Runtime ranking combines filing-date Mamdani with the macro snapshot resolved on or before the selected simulation date.</div>
-        <div class="reit-muted" style="font-size: 0.85rem;"><em>REFI RISK</em> is shown here because it acts as the SORA sensitivity bridge in <em>final_distress</em>: REITs with higher refinancing risk are more affected by the macro layer.</div>
+        <div class="reit-muted" style="font-size: 0.85rem;"><em>REFI RISK</em> scales the macro-rate shock, while the daily accumulated abnormal-return path adds the REIT-specific market signal between annual filings.</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -631,7 +650,7 @@ def render_ranking_page() -> None:
     ranking_view.index = ranking_view.index + 1
     st.dataframe(
         ranking_view[
-            ["ticker", "reit_name", "sector", "fiscal_year_end_date", "distress_score_mamdani", "refi_risk", "final_distress", "level", "label_126wd"]
+            ["ticker", "reit_name", "sector", "fiscal_year_end_date", "distress_score_mamdani", "refi_risk", "accum_car_to_date", "final_distress", "level", "label_126wd"]
         ].rename(
             columns={
                 "ticker": "Ticker",
@@ -640,6 +659,7 @@ def render_ranking_page() -> None:
                 "fiscal_year_end_date": "Annual Anchor",
                 "distress_score_mamdani": "Mamdani",
                 "refi_risk": "REFI RISK",
+                "accum_car_to_date": "Accum CAR",
                 "final_distress": "Final Score",
                 "level": "Level",
                 "label_126wd": "CAR Label",
@@ -720,6 +740,7 @@ def render_reit_page() -> None:
                 <div class="reit-muted">Level: {final_level}</div>
                 <div class="reit-muted">Frozen Mamdani: {header_ctx['distress_score_mamdani']:.2f}</div>
                 <div class="reit-muted">Macro layer: {distress_sora:.2f}</div>
+                <div class="reit-muted">CAR path distress: {selected_row['car_path_distress']:.2f}</div>
                 <div class="reit-muted">Annual anchor: {pd.Timestamp(selected_row['fiscal_year_end_date']).strftime("%Y-%m-%d")}</div>
                 </div>
                 """,
@@ -742,7 +763,15 @@ def render_reit_page() -> None:
                 ticker=selected_ticker,
                 period_id=selected_period_id,
             )
-            st.markdown("**Forward CAR Panel**")
+            st.markdown("**CAR Panels**")
+            st.metric(
+                "Accum CAR To Date",
+                "N/A" if pd.isna(selected_row["accum_car_to_date"]) else f"{selected_row['accum_car_to_date']:.2%}",
+            )
+            st.metric(
+                "CAR Path Distress",
+                "N/A" if pd.isna(selected_row["car_path_distress"]) else f"{selected_row['car_path_distress']:.2f}",
+            )
             st.metric("CAR 63wd", "N/A" if pd.isna(selected_label["car_63wd"]) else f"{selected_label['car_63wd']:.2%}")
             st.metric("CAR 126wd", "N/A" if pd.isna(selected_label["car_126wd"]) else f"{selected_label['car_126wd']:.2%}")
             st.metric("CAR Label", selected_label["label_126wd"] or "PENDING")

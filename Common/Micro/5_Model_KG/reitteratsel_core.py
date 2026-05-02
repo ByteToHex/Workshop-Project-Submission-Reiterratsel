@@ -18,6 +18,7 @@ DUCKDB_PATH = ROOT_DIR / "Common" / "Micro" / "IO" / "out" / "_annual_warehouse"
 PARQUET_DIR = DUCKDB_PATH.parent / "parquet"
 DISTRESS_LABEL_SHARD = PARQUET_DIR / "distresslabels.parquet"
 FUZZY_CACHE_SHARD = PARQUET_DIR / "fuzzycache.parquet"
+CAR_PATH_DAILY_SHARD = PARQUET_DIR / "carpathdaily.parquet"
 CSV_TICKER_DIR = ROOT_DIR / "Common" / "Macro" / "IO" / "SRC" / "CSV_TICKER"
 ENV_PATH = ROOT_DIR / ".env"
 XGB_RUN_ROOT = ROOT_DIR / "Common" / "Macro" / "IO" / "Model_Train" / "Use" / "run_21"
@@ -28,6 +29,7 @@ DEFAULT_HORIZON_DAYS = 10
 LABEL_VERSION = "v1_car126_2026_05_01"
 RULE_VERSION = "v1_seed_2026_05_01"
 SCORE_VERSION = "v1_mamdani_2026_05_01"
+FINAL_DISTRESS_VERSION = "v2_macro_refi_carpath_2026_05_02"
 LABEL_THRESHOLDS = {
     "DISTRESSED": -0.15,
     "HEALTHY": 0.05,
@@ -334,6 +336,97 @@ def build_distress_label_frame(
         for period in period_df.itertuples()
     ]
 
+    return pd.DataFrame(rows)
+
+
+def car_to_distress_score(
+    car_value: float | None,
+    *,
+    distressed_threshold: float = LABEL_THRESHOLDS["DISTRESSED"],
+    healthy_threshold: float = LABEL_THRESHOLDS["HEALTHY"],
+) -> float | None:
+    if car_value is None or pd.isna(car_value):
+        return None
+    car_float = float(car_value)
+    if car_float <= distressed_threshold:
+        return 1.0
+    if car_float >= healthy_threshold:
+        return 0.0
+    return (healthy_threshold - car_float) / (healthy_threshold - distressed_threshold)
+
+
+def derive_car_path_daily_rows(
+    period: Any,
+    abnormal_map: dict[str, pd.DataFrame],
+) -> list[dict[str, Any]]:
+    """
+    Derive one ticker-period's daily accumulated CAR path rows.
+
+    Rows are anchored to the first available trading day on or after
+    `dim_period.fiscal_year_end_date`. The anchor trading day is stored with
+    `accum_car_to_date = 0.0`, and subsequent rows compound abnormal returns
+    forward from that anchor.
+    """
+    ticker_abnormal = abnormal_map[period.ticker]
+    anchor_date = pd.Timestamp(period.fiscal_year_end_date).date()
+    forward_slice = ticker_abnormal.loc[ticker_abnormal["trade_date"] >= anchor_date].copy()
+    if forward_slice.empty:
+        return []
+
+    anchor_trade_date = forward_slice.iloc[0]["trade_date"]
+    future_returns = forward_slice.loc[forward_slice["trade_date"] > anchor_trade_date].reset_index(drop=True)
+    rows = [
+        {
+            "ticker": period.ticker,
+            "period_id": int(period.period_id),
+            "anchor_date": anchor_date,
+            "anchor_trade_date": anchor_trade_date,
+            "trade_date": anchor_trade_date,
+            "days_from_anchor": 0,
+            "abnormal_return": 0.0,
+            "accum_car_to_date": 0.0,
+            "car_path_distress": 0.5,
+            "notes": None,
+        }
+    ]
+    running_car = 0.0
+    for idx, future_row in future_returns.iterrows():
+        running_car = float((1.0 + running_car) * (1.0 + float(future_row["abnormal_return"])) - 1.0)
+        rows.append(
+            {
+                "ticker": period.ticker,
+                "period_id": int(period.period_id),
+                "anchor_date": anchor_date,
+                "anchor_trade_date": anchor_trade_date,
+                "trade_date": future_row["trade_date"],
+                "days_from_anchor": int(idx + 1),
+                "abnormal_return": float(future_row["abnormal_return"]),
+                "accum_car_to_date": running_car,
+                "car_path_distress": float(car_to_distress_score(running_car) or 0.5),
+                "notes": None,
+            }
+        )
+    return rows
+
+
+def build_car_path_daily_frame(db_path: Path = DUCKDB_PATH) -> pd.DataFrame:
+    """
+    Build the full dataframe for downstream `reit_labels.fact_car_path_daily`.
+
+    Reads from:
+    - DuckDB `reit_metrics.dim_period`
+    - REIT daily CSVs
+    - SGX REIT index daily CSV
+
+    Returns:
+    - a dataframe ready to be written into DuckDB `reit_labels.fact_car_path_daily`
+    - the same rows are later exported to `parquet/carpathdaily.parquet`
+    """
+    _, period_df = load_distress_label_source_frames(db_path)
+    abnormal_map = build_abnormal_return_frame(sorted(period_df["ticker"].unique().tolist()))
+    rows: list[dict[str, Any]] = []
+    for period in period_df.itertuples():
+        rows.extend(derive_car_path_daily_rows(period, abnormal_map))
     return pd.DataFrame(rows)
 
 
@@ -817,6 +910,7 @@ def ensure_writable_duckdb_copy(source_path: Path = DUCKDB_PATH) -> Path:
 def persist_outputs_to_duckdb(
     label_df: pd.DataFrame,
     fuzzy_df: pd.DataFrame,
+    car_path_df: pd.DataFrame,
     db_path: Path = DUCKDB_PATH,
 ) -> None:
     work_path = ensure_writable_duckdb_copy(db_path)
@@ -826,6 +920,7 @@ def persist_outputs_to_duckdb(
         con.execute("CREATE SCHEMA IF NOT EXISTS reit_fuzzy")
         con.register("label_df", label_df)
         con.register("fuzzy_df", fuzzy_df)
+        con.register("car_path_df", car_path_df)
         con.execute(
             """
             CREATE OR REPLACE TABLE reit_labels.fact_distress_label AS
@@ -868,11 +963,31 @@ def persist_outputs_to_duckdb(
             FROM fuzzy_df
             """
         )
+        con.execute(
+            """
+            CREATE OR REPLACE TABLE reit_labels.fact_car_path_daily AS
+            SELECT
+                ticker::VARCHAR AS ticker,
+                period_id::BIGINT AS period_id,
+                anchor_date::DATE AS anchor_date,
+                anchor_trade_date::DATE AS anchor_trade_date,
+                trade_date::DATE AS trade_date,
+                days_from_anchor::INTEGER AS days_from_anchor,
+                abnormal_return::DOUBLE AS abnormal_return,
+                accum_car_to_date::DOUBLE AS accum_car_to_date,
+                car_path_distress::DOUBLE AS car_path_distress,
+                current_timestamp AS asof_ts,
+                notes::VARCHAR AS notes
+            FROM car_path_df
+            """
+        )
         DISTRESS_LABEL_SHARD.parent.mkdir(parents=True, exist_ok=True)
         if DISTRESS_LABEL_SHARD.exists():
             DISTRESS_LABEL_SHARD.unlink()
         if FUZZY_CACHE_SHARD.exists():
             FUZZY_CACHE_SHARD.unlink()
+        if CAR_PATH_DAILY_SHARD.exists():
+            CAR_PATH_DAILY_SHARD.unlink()
         con.execute(
             f"""
             COPY (
@@ -901,6 +1016,32 @@ def persist_outputs_to_duckdb(
                 JOIN reit_metrics.dim_period p ON p.period_id = l.period_id
                 ORDER BY l.ticker, p.fiscal_year_end_date
             ) TO '{DISTRESS_LABEL_SHARD.as_posix()}' (FORMAT PARQUET)
+            """
+        )
+        con.execute(
+            f"""
+            COPY (
+                SELECT
+                    c.ticker,
+                    r.reit_name,
+                    r.sector,
+                    r.health_bucket,
+                    p.fiscal_year,
+                    p.fiscal_year_end_date,
+                    c.period_id,
+                    c.anchor_date,
+                    c.anchor_trade_date,
+                    c.trade_date,
+                    c.days_from_anchor,
+                    c.abnormal_return,
+                    c.accum_car_to_date,
+                    c.car_path_distress,
+                    c.notes
+                FROM reit_labels.fact_car_path_daily c
+                JOIN reit_metrics.dim_reit r ON r.ticker = c.ticker
+                JOIN reit_metrics.dim_period p ON p.period_id = c.period_id
+                ORDER BY c.ticker, p.fiscal_year_end_date, c.trade_date
+            ) TO '{CAR_PATH_DAILY_SHARD.as_posix()}' (FORMAT PARQUET)
             """
         )
         con.execute(
@@ -1077,9 +1218,18 @@ def compute_final_distress_score(
     distress_score_mamdani: float,
     distress_sora: float,
     refi_risk: float | None,
+    car_path_distress: float | None = None,
 ) -> float:
     sensitivity = 0.50
     if refi_risk is not None and not pd.isna(refi_risk):
         sensitivity = max(0.25, min(1.0, float(refi_risk) * 2.5))
-    final_score = 0.80 * distress_score_mamdani + 0.20 * distress_sora * sensitivity
+    macro_shock = float(distress_sora) - 0.5
+    car_path_shock = 0.0
+    if car_path_distress is not None and not pd.isna(car_path_distress):
+        car_path_shock = float(car_path_distress) - 0.5
+    final_score = (
+        float(distress_score_mamdani)
+        + 0.25 * sensitivity * macro_shock
+        + 0.35 * car_path_shock
+    )
     return max(0.0, min(1.0, float(final_score)))
