@@ -116,6 +116,7 @@ def _extract_car_path_value(
 def build_ranking_view(
     fuzzy_df: pd.DataFrame,
     metric_df: pd.DataFrame,
+    component_df: pd.DataFrame,
     macro_df: pd.DataFrame,
     car_path_df: pd.DataFrame,
     selected_date: Any,
@@ -148,6 +149,37 @@ def build_ranking_view(
             ticker=str(row["ticker"]),
             period_id=int(row["period_id"]),
             metric_code="GEARING",
+        ),
+        axis=1,
+    )
+    resolved_rows["top_revenue_geo_share"] = resolved_rows.apply(
+        lambda row: get_metric_value_for_period(
+            metric_df,
+            ticker=str(row["ticker"]),
+            period_id=int(row["period_id"]),
+            metric_code="REV_CONC_TOPGEO",
+        ),
+        axis=1,
+    )
+    resolved_rows["top_revenue_geography"] = resolved_rows.apply(
+        lambda row: (
+            str(
+                component_df.loc[
+                    (component_df["ticker"] == str(row["ticker"]))
+                    & (component_df["period_id"] == int(row["period_id"]))
+                    & (component_df["metric_code"] == "REV_CONC_TOPGEO")
+                    & (component_df["component_name"] == "top_geography_value"),
+                    "component_text",
+                ].iloc[0]
+            )
+            if not component_df.loc[
+                (component_df["ticker"] == str(row["ticker"]))
+                & (component_df["period_id"] == int(row["period_id"]))
+                & (component_df["metric_code"] == "REV_CONC_TOPGEO")
+                & (component_df["component_name"] == "top_geography_value")
+                & (component_df["component_text"].notna())
+            ].empty
+            else "N/A"
         ),
         axis=1,
     )

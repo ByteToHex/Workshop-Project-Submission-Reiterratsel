@@ -98,6 +98,12 @@ MACRO_ADJUSTMENT_HELP = (
     "The actual signed macro contribution added to this REIT's final distress score, computed as "
     "0.15 * macro sensitivity * (distress_sora - 0.50)."
 )
+TOP_GEO_HELP = (
+    "Largest revenue-contributing geography for the selected annual filing row."
+)
+TOP_GEO_SHARE_HELP = (
+    "Share of revenue attributed to the top revenue geography for the selected annual filing row."
+)
 PAYOUT_HELP = (
     "Payout Ratio. Annual cash dividends paid divided by FFO. If FFO is non-positive, the raw number is still "
     "stored but should be read as a distress-style signal."
@@ -516,6 +522,7 @@ def resolve_simulation_context() -> tuple[object, pd.DataFrame, pd.Series, float
     ranking_view, macro_row, distress_sora = build_ranking_view(
         fuzzy_df,
         metric_df,
+        component_df,
         macro_df,
         car_path_df,
         selected_date,
@@ -808,6 +815,7 @@ def render_ranking_page() -> None:
     ranking_view, macro_row, distress_sora = build_ranking_view(
         fuzzy_df,
         metric_df,
+        component_df,
         macro_df,
         car_path_df,
         selected_date,
@@ -825,6 +833,8 @@ def render_ranking_page() -> None:
                 "distress_score_mamdani",
                 "icr",
                 "gearing",
+                "top_revenue_geography",
+                "top_revenue_geo_share",
                 "refi_risk",
                 "distress_score_refi",
                 "macro_sensitivity",
@@ -843,6 +853,8 @@ def render_ranking_page() -> None:
                 "distress_score_mamdani": "Annual Mamdani Base Score",
                 "icr": "Interest Coverage Ratio (ICR)",
                 "gearing": "Gearing Ratio",
+                "top_revenue_geography": "Top Revenue Geography",
+                "top_revenue_geo_share": "% Of Revenue",
                 "refi_risk": "Refinancing Risk Ratio",
                 "distress_score_refi": "REFI-Only Stress Proxy",
                 "macro_sensitivity": "Macro Sensitivity Weight",
@@ -871,6 +883,15 @@ def render_ranking_page() -> None:
             "Gearing Ratio": st.column_config.NumberColumn(
                 "Gearing Ratio",
                 help=GEARING_HELP,
+                format="%.3f%%",
+            ),
+            "Top Revenue Geography": st.column_config.TextColumn(
+                "Top Revenue Geography",
+                help=TOP_GEO_HELP,
+            ),
+            "% Of Revenue": st.column_config.NumberColumn(
+                "% Of Revenue",
+                help=TOP_GEO_SHARE_HELP,
                 format="%.3f%%",
             ),
             "Refinancing Risk Ratio": st.column_config.NumberColumn(
@@ -923,6 +944,7 @@ def render_reit_page() -> None:
     ranking_view, macro_row, distress_sora = build_ranking_view(
         fuzzy_df,
         metric_df,
+        component_df,
         macro_df,
         car_path_df,
         selected_date,
