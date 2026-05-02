@@ -193,10 +193,20 @@ def label_from_car(car_126wd: float | None) -> str | None:
     return "WATCH"
 
 
-def build_distress_label_frame(
-    db_path: Path = DUCKDB_PATH,
-    label_version: str = LABEL_VERSION,
-) -> pd.DataFrame:
+def load_distress_label_source_frames(db_path: Path = DUCKDB_PATH) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Load the authoritative source inputs for `reit_labels.fact_distress_label`.
+
+    Reads from DuckDB:
+    - `reit_metrics.fact_metric_value` to derive `null_count` / `non_ok_count`
+    - `reit_metrics.dim_period` to obtain annual ticker-period anchors
+
+    Returns:
+    - `counts_df`: per-ticker-period diagnostics derived from metric statuses
+    - `period_df`: annual anchor rows keyed by ticker and period
+
+    This function is read-only and does not write any data.
+    """
     con = duckdb.connect(str(db_path), read_only=True)
     try:
         counts_df = con.execute(
@@ -224,61 +234,105 @@ def build_distress_label_frame(
         ).fetchdf()
     finally:
         con.close()
+    return counts_df, period_df
 
-    abnormal_map = build_abnormal_return_frame(sorted(period_df["ticker"].unique().tolist()))
-    rows: list[dict[str, Any]] = []
 
-    for period in period_df.itertuples():
-        ticker_abnormal = abnormal_map[period.ticker]
-        anchor_date = pd.Timestamp(period.fiscal_year_end_date).date()
-        forward_slice = ticker_abnormal.loc[ticker_abnormal["trade_date"] >= anchor_date].copy()
+def derive_distress_label_row(
+    period: Any,
+    counts_df: pd.DataFrame,
+    abnormal_map: dict[str, pd.DataFrame],
+    label_version: str = LABEL_VERSION,
+) -> dict[str, Any]:
+    """
+    Derive one row for the downstream `reit_labels.fact_distress_label` table.
 
-        anchor_trade_date = None
-        car_63wd = None
-        car_126wd = None
-        window_63_end_date = None
-        window_126_end_date = None
-        notes: list[str] = []
+    Reads from:
+    - one annual period row from DuckDB `reit_metrics.dim_period`
+    - derived status-count diagnostics from DuckDB `reit_metrics.fact_metric_value`
+    - daily abnormal-return series built from REIT ticker CSVs and the SGX REIT index CSV
 
-        if forward_slice.empty:
-            notes.append("No trading data on or after anchor date.")
+    Returns:
+    - one label artifact row containing anchor dates, forward CAR windows,
+      derived counts, and `label_126wd`
+
+    This function does not write any data directly.
+    """
+    ticker_abnormal = abnormal_map[period.ticker]
+    anchor_date = pd.Timestamp(period.fiscal_year_end_date).date()
+    forward_slice = ticker_abnormal.loc[ticker_abnormal["trade_date"] >= anchor_date].copy()
+
+    anchor_trade_date = None
+    car_63wd = None
+    car_126wd = None
+    window_63_end_date = None
+    window_126_end_date = None
+    notes: list[str] = []
+
+    if forward_slice.empty:
+        notes.append("No trading data on or after anchor date.")
+    else:
+        anchor_trade_date = forward_slice.iloc[0]["trade_date"]
+        future_returns = forward_slice.loc[forward_slice["trade_date"] > anchor_trade_date].reset_index(drop=True)
+        if len(future_returns) >= 63:
+            car_63wd = _compound_return(future_returns.loc[:62, "abnormal_return"])
+            window_63_end_date = future_returns.iloc[62]["trade_date"]
         else:
-            anchor_trade_date = forward_slice.iloc[0]["trade_date"]
-            future_returns = forward_slice.loc[forward_slice["trade_date"] > anchor_trade_date].reset_index(drop=True)
-            if len(future_returns) >= 63:
-                car_63wd = _compound_return(future_returns.loc[:62, "abnormal_return"])
-                window_63_end_date = future_returns.iloc[62]["trade_date"]
-            else:
-                notes.append("Insufficient forward window for 63 trading days.")
+            notes.append("Insufficient forward window for 63 trading days.")
 
-            if len(future_returns) >= 126:
-                car_126wd = _compound_return(future_returns.loc[:125, "abnormal_return"])
-                window_126_end_date = future_returns.iloc[125]["trade_date"]
-            else:
-                notes.append("Insufficient forward window for 126 trading days.")
+        if len(future_returns) >= 126:
+            car_126wd = _compound_return(future_returns.loc[:125, "abnormal_return"])
+            window_126_end_date = future_returns.iloc[125]["trade_date"]
+        else:
+            notes.append("Insufficient forward window for 126 trading days.")
 
-        count_row = counts_df.loc[
-            (counts_df["ticker"] == period.ticker) & (counts_df["period_id"] == period.period_id)
-        ].iloc[0]
+    count_row = counts_df.loc[
+        (counts_df["ticker"] == period.ticker) & (counts_df["period_id"] == period.period_id)
+    ].iloc[0]
 
-        rows.append(
-            {
-                "ticker": period.ticker,
-                "period_id": int(period.period_id),
-                "anchor_date": anchor_date,
-                "anchor_trade_date": anchor_trade_date,
-                "window_63_end_date": window_63_end_date,
-                "window_126_end_date": window_126_end_date,
-                "car_63wd": car_63wd,
-                "car_126wd": car_126wd,
-                "null_count": int(count_row["null_count"]),
-                "non_ok_count": int(count_row["non_ok_count"]),
-                "label_scheme_version": label_version,
-                "label_126wd": label_from_car(car_126wd),
-                "source_index_code": DEFAULT_INDEX_TICKER,
-                "notes": " ".join(notes) if notes else None,
-            }
-        )
+    return {
+        "ticker": period.ticker,
+        "period_id": int(period.period_id),
+        "anchor_date": anchor_date,
+        "anchor_trade_date": anchor_trade_date,
+        "window_63_end_date": window_63_end_date,
+        "window_126_end_date": window_126_end_date,
+        "car_63wd": car_63wd,
+        "car_126wd": car_126wd,
+        "null_count": int(count_row["null_count"]),
+        "non_ok_count": int(count_row["non_ok_count"]),
+        "label_scheme_version": label_version,
+        "label_126wd": label_from_car(car_126wd),
+        "source_index_code": DEFAULT_INDEX_TICKER,
+        "notes": " ".join(notes) if notes else None,
+    }
+
+
+def build_distress_label_frame(
+    db_path: Path = DUCKDB_PATH,
+    label_version: str = LABEL_VERSION,
+) -> pd.DataFrame:
+    """
+    Build the full dataframe for downstream `reit_labels.fact_distress_label`.
+
+    Reads from:
+    - DuckDB `reit_metrics.dim_period`
+    - DuckDB `reit_metrics.fact_metric_value`
+    - REIT daily CSVs
+    - SGX REIT index daily CSV
+
+    Returns:
+    - a dataframe ready to be written into DuckDB `reit_labels.fact_distress_label`
+    - the same rows are later exported to `parquet/distresslabels.parquet`
+
+    This function derives rows only. Persistence happens later in
+    `persist_outputs_to_duckdb`.
+    """
+    counts_df, period_df = load_distress_label_source_frames(db_path)
+    abnormal_map = build_abnormal_return_frame(sorted(period_df["ticker"].unique().tolist()))
+    rows = [
+        derive_distress_label_row(period, counts_df, abnormal_map, label_version=label_version)
+        for period in period_df.itertuples()
+    ]
 
     return pd.DataFrame(rows)
 
@@ -540,7 +594,43 @@ def fetch_rule_bundle(driver, config: Neo4jConfig) -> dict[str, Any]:
     }
 
 
+def build_rule_trace_text(top_rules: list[dict[str, Any]]) -> str | None:
+    """
+    Build the persisted explanation text for `reit_fuzzy.fact_fuzzy_cache.rule_trace_text`.
+
+    Reads from:
+    - top fired-rule rows derived during Mamdani inference
+    - rule descriptions and output terms sourced from the Neo4j-backed rule bundle
+
+    Returns:
+    - newline-joined explanation text for one fuzzy result row
+
+    This function does not write any data directly.
+    """
+    if not top_rules:
+        return None
+    rule_trace_lines = [
+        f"{item['rule_id']} ({item['output_term']}, {item['strength']:.3f}): {item['description']}"
+        for item in top_rules
+    ]
+    return "\n".join(rule_trace_lines)
+
+
 def build_fuzzy_input_frame(db_path: Path = DUCKDB_PATH) -> pd.DataFrame:
+    """
+    Build the authoritative annual source frame for `reit_fuzzy.fact_fuzzy_cache`.
+
+    Reads from:
+    - DuckDB `reit_metrics.fact_metric_value`
+    - DuckDB `reit_metrics.dim_period`
+    - DuckDB `reit_metrics.dim_reit`
+
+    Returns:
+    - one wide annual input frame per ticker-period including metric values,
+      metric statuses, and derived `null_count` / `non_ok_count`
+
+    This function is read-only and does not write any data.
+    """
     metric_df = read_annual_metric_frame(db_path)
     value_wide = metric_df.pivot_table(
         index=["ticker", "period_id", "fiscal_year", "fiscal_year_end_date", "source_period_label", "reit_name", "sector", "health_bucket"],
@@ -569,6 +659,19 @@ def build_fuzzy_input_frame(db_path: Path = DUCKDB_PATH) -> pd.DataFrame:
 
 
 def evaluate_fuzzy_row(row: pd.Series, rule_bundle: dict[str, Any]) -> dict[str, Any]:
+    """
+    Derive one row-level Mamdani inference result for the fuzzy cache pipeline.
+
+    Reads from:
+    - one annual input row derived from DuckDB metrics
+    - one rule bundle read from Neo4j after seeding from `mamdani_rule_seed.json`
+
+    Returns:
+    - one row-level fuzzy result including score, level, fired-rule metadata,
+      and `rule_trace_text`
+
+    This function derives row outputs only and does not write any data.
+    """
     input_term_config = rule_bundle["input_terms"]
     output_term_config = rule_bundle["output_terms"]
     membership_map: dict[tuple[str, str], float] = {}
@@ -632,17 +735,43 @@ def evaluate_fuzzy_row(row: pd.Series, rule_bundle: dict[str, Any]) -> dict[str,
     level = score_to_level(score)
     fired_rules.sort(key=lambda item: item["strength"], reverse=True)
     top_rules = fired_rules[:5]
-    rule_trace_lines = [
-        f"{item['rule_id']} ({item['output_term']}, {item['strength']:.3f}): {item['description']}"
-        for item in top_rules
-    ]
     return {
         "distress_score_mamdani": float(score),
         "distress_level": level,
         "fired_rule_count": len(fired_rules),
         "top_rule_ids": ",".join(item["rule_id"] for item in top_rules) if top_rules else None,
-        "rule_trace_text": "\n".join(rule_trace_lines) if rule_trace_lines else None,
+        "rule_trace_text": build_rule_trace_text(top_rules),
         "trace_memberships": trace_memberships,
+    }
+
+
+def derive_fuzzy_cache_row(row: dict[str, Any], rule_bundle: dict[str, Any]) -> dict[str, Any]:
+    """
+    Derive one persisted row for downstream `reit_fuzzy.fact_fuzzy_cache`.
+
+    Reads from:
+    - one wide annual Mamdani input row derived from DuckDB
+    - one Neo4j-backed rule bundle
+
+    Returns:
+    - one dict-shaped fuzzy cache row ready for dataframe assembly and later persistence
+
+    This function does not write any data directly.
+    """
+    result = evaluate_fuzzy_row(pd.Series(row), rule_bundle)
+    return {
+        "ticker": row["ticker"],
+        "period_id": int(row["period_id"]),
+        "rule_version": RULE_VERSION,
+        "score_version": SCORE_VERSION,
+        "distress_score_mamdani": result["distress_score_mamdani"],
+        "distress_level": result["distress_level"],
+        "null_count": int(row["null_count"]),
+        "non_ok_count": int(row["non_ok_count"]),
+        "fired_rule_count": int(result["fired_rule_count"]),
+        "top_rule_ids": result["top_rule_ids"],
+        "rule_trace_text": result["rule_trace_text"],
+        "notes": None,
     }
 
 
@@ -651,6 +780,20 @@ def build_fuzzy_cache_frame(
     env_path: Path = ENV_PATH,
     rule_bundle: dict[str, Any] | None = None,
 ) -> pd.DataFrame:
+    """
+    Build the full dataframe for downstream `reit_fuzzy.fact_fuzzy_cache`.
+
+    Reads from:
+    - DuckDB annual metric inputs via `build_fuzzy_input_frame`
+    - Neo4j rule graph via `fetch_rule_bundle`
+
+    Returns:
+    - a dataframe ready to be written into DuckDB `reit_fuzzy.fact_fuzzy_cache`
+    - the same rows are later exported to `parquet/fuzzycache.parquet`
+
+    This function derives rows only. Persistence happens later in
+    `persist_outputs_to_duckdb`.
+    """
     inputs = build_fuzzy_input_frame(db_path)
     if rule_bundle is None:
         driver, config = connect_neo4j(env_path)
@@ -659,25 +802,7 @@ def build_fuzzy_cache_frame(
         finally:
             driver.close()
 
-    rows: list[dict[str, Any]] = []
-    for row in inputs.to_dict(orient="records"):
-        result = evaluate_fuzzy_row(pd.Series(row), rule_bundle)
-        rows.append(
-            {
-                "ticker": row["ticker"],
-                "period_id": int(row["period_id"]),
-                "rule_version": RULE_VERSION,
-                "score_version": SCORE_VERSION,
-                "distress_score_mamdani": result["distress_score_mamdani"],
-                "distress_level": result["distress_level"],
-                "null_count": int(row["null_count"]),
-                "non_ok_count": int(row["non_ok_count"]),
-                "fired_rule_count": int(result["fired_rule_count"]),
-                "top_rule_ids": result["top_rule_ids"],
-                "rule_trace_text": result["rule_trace_text"],
-                "notes": None,
-            }
-        )
+    rows = [derive_fuzzy_cache_row(row, rule_bundle) for row in inputs.to_dict(orient="records")]
     return pd.DataFrame(rows)
 
 

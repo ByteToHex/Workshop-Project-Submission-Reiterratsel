@@ -165,6 +165,20 @@ Critical override:
 - Core implementation module:
   `Common\Micro\5_Model_KG\reitteratsel_core.py`
 
+- Distress-label split pipeline methods in core:
+  `load_distress_label_source_frames()`
+  `derive_distress_label_row()`
+  `build_distress_label_frame()`
+
+- Fuzzy-cache split pipeline methods in core:
+  `build_fuzzy_input_frame()`
+  `evaluate_fuzzy_row()`
+  `derive_fuzzy_cache_row()`
+  `build_fuzzy_cache_frame()`
+
+- Rule-trace text derivation method in core:
+  `build_rule_trace_text()`
+
 - Mamdani rule seed artifact:
   `Common\Micro\5_Model_KG\mamdani_rule_seed.json`
 
@@ -172,7 +186,7 @@ Critical override:
   `Common\Frontend\reitteratsel_app.py`
 
 - Usage note:
-  these three files are the fastest path for checking what the live app actually reads, computes, persists, and displays.
+  these files and split pipeline methods are the fastest path for checking what the live app reads, and how `fact_distress_label`, `fact_fuzzy_cache`, and `rule_trace_text` are derived and persisted.
 
 ### 12) Docker runtime assets
 
