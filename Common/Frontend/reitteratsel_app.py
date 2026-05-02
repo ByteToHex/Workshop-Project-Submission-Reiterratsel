@@ -312,14 +312,19 @@ MAX_MACRO_DATE = macro_df["snapshot_ts"].max().date()
 
 
 def get_selected_simulation_date() -> object:
-    return st.date_input(
+    if "simulation_date_value" not in st.session_state:
+        st.session_state["simulation_date_value"] = MAX_MACRO_DATE
+
+    selected_date = st.date_input(
         "Simulation Date",
-        value=MAX_MACRO_DATE,
+        value=st.session_state["simulation_date_value"],
         min_value=MIN_MACRO_DATE,
         max_value=MAX_MACRO_DATE,
-        key="selected_simulation_date",
+        key="selected_simulation_date_widget",
         help="Resolve annual filing rows and macro snapshots on or before this date.",
     )
+    st.session_state["simulation_date_value"] = selected_date
+    return selected_date
 
 
 def render_macro_header(*, macro_row: pd.Series, distress_sora: float) -> None:
