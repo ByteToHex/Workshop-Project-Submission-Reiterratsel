@@ -35,12 +35,21 @@ st.markdown(
         background: linear-gradient(180deg, #181515 0%, #231f1f 100%);
         color: #f2f0ec;
     }
+    [data-testid="stHeader"] {
+        background: rgba(23, 20, 20, 0.92);
+        border-bottom: 1px solid #3d3434;
+        backdrop-filter: blur(10px);
+    }
+    [data-testid="stToolbar"] {
+        top: 0.65rem;
+        right: 0.9rem;
+    }
     [data-testid="stSidebar"] {
         background: #171414;
         border-right: 1px solid #3d3434;
     }
     .block-container {
-        padding-top: 1rem;
+        padding-top: 5.75rem;
         padding-bottom: 2rem;
     }
     .reit-card {
