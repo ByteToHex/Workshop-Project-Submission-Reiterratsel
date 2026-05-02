@@ -8,6 +8,17 @@ Use this first when orienting to the project so the same paths and precedence ru
 
 For project submission ONLY, current design assumes that the app is rebuilt (meaning the runner will rebuild the cache in reitteratsel_core.py) every time it is launched.
 
+Current design caveats:
+
+- Cache freshness risk is intentionally reduced because startup rebuilds `fact_distress_label`, `fact_fuzzy_cache`, and `rule_trace_text` on each launch.
+- App startup now depends on build success. If the build step fails, the UI will not come up.
+- Docker startup can still hit Neo4j readiness races even with `depends_on` and health checks.
+- Current design reseeds Neo4j on each launch, which is workable for project submission/local use but can become awkward in future industry expansion eg. additions of shared or longer-lived graph state.
+- Host `.env` and Docker runtime env intentionally differ on `NEO4J_URI`, so local success does not automatically imply Docker success.
+- Docker image rebuilds can drift over time because app Python dependencies are not pinned yet.
+- Cold-start time may grow as data volume or pipeline complexity grows, because rebuild happens before app serve.
+- The compose app command currently couples build and serve into one startup path, which is simpler for submission but less clean for long-term operations/debugging.
+
 ## Source-of-Truth Order
 
 When references conflict, use this order:
