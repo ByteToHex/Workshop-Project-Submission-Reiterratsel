@@ -13,10 +13,10 @@ Important distinction:
 - `rebuild` starts Neo4j and reruns `build_reitteratsel_pipeline.py` so the DuckDB/parquet cache is refreshed in place.
 - Rebuild is intentionally separate so the normal submission/demo path does not depend on Neo4j every time.
 
-From the repo root:
+From the repository root, meaning the folder that contains `README.md`, `Common/`, and the top-level `.git` folder:
 
 ```powershell
-cd D:\WS_NUS\SUBMIT\Workshop-Project-Submission-Working
+cd <path-to-this-repo>
 ```
 
 ### 1) App-Only Mode
