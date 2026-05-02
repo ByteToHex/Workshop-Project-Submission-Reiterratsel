@@ -110,7 +110,8 @@ RULE_TRACE_HELP = (
     "Top Mamdani rules that fired for the selected annual filing row, taken from reit_fuzzy.fact_fuzzy_cache.rule_trace_text."
 )
 NON_OK_COUNT_HELP = (
-    "Count of annual input metrics for this ticker-period whose calc_status was not OK when the fuzzy input row was built."
+    "Number of annual input metrics for this fiscal-year snapshot whose calculation status was not OK "
+    "(for example missing input, partial calculation, or error) when the Mamdani input row was built."
 )
 FIRED_RULE_COUNT_HELP = (
     "Number of Mamdani rules that fired with non-zero strength for the selected annual filing row."
@@ -984,7 +985,7 @@ def render_reit_page() -> None:
             stats[0].metric("Debt Service Coverage Ratio (DSCR)", f"{header_ctx['latest_metrics'].get('DSCR', float('nan')):.2f}", help=DSCR_HELP)
             stats[1].metric("Refinancing Risk Ratio", f"{header_ctx['latest_metrics'].get('REFI_RISK', float('nan')):.2f}", help=REFI_HELP)
             stats[2].metric("Payout Ratio", f"{header_ctx['latest_metrics'].get('PAYOUT_RATIO', float('nan')):.2f}", help=PAYOUT_HELP)
-            stats[3].metric("Non-OK Annual Metric Count", f"{int(selected_row['non_ok_count'])}", help=NON_OK_COUNT_HELP)
+            stats[3].metric("Annual Metric Issues", f"{int(selected_row['non_ok_count'])}", help=NON_OK_COUNT_HELP)
             stats[4].metric("Fired Fuzzy Rules", f"{int(selected_row['fired_rule_count'])}", help=FIRED_RULE_COUNT_HELP)
             with st.expander("Why did the fuzzy rule engine flag this REIT?", expanded=True):
                 st.caption(RULE_TRACE_HELP)
