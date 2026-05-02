@@ -1,1 +1,5 @@
-IO/
+IO/*
+!IO/out/
+IO/out/*
+!IO/out/_annual_warehouse/
+!IO/out/_annual_warehouse/**
