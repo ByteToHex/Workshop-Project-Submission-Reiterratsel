@@ -272,7 +272,7 @@ CREATE TABLE financials (
 
 - Streamlit app entrypoint:
   `Common\Frontend\reitteratsel_app.py`
-  Note: sidebar navigation now includes built-in Material icons for Ranking, Individual REIT Navigator, and Time Series (Rates), with the branded logo rendered above the nav.
+  Note: sidebar navigation now includes built-in Material icons for Ranking, Individual REIT Navigator, and Time Series (Rates), with the branded logo rendered above the nav via Streamlit's native logo API.
 
 - App view-logic module:
   `Common\Frontend\reitteratsel_view_logic.py`

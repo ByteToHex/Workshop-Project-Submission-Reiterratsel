@@ -33,6 +33,7 @@ from reitteratsel_view_logic import (  # noqa: E402
 
 
 st.set_page_config(page_title="REITterratsel", layout="wide")
+st.logo(str(LOGO_PATH), size="large")
 
 st.markdown(
     """
@@ -56,24 +57,10 @@ st.markdown(
     }
     [data-testid="stSidebarContent"] {
         padding-top: 0.35rem;
-        position: relative;
-    }
-    [data-testid="stSidebarNav"] {
-        padding-top: 4.7rem;
     }
     .block-container {
         padding-top: 5.75rem;
         padding-bottom: 2rem;
-    }
-    .reit-sidebar-brand {
-        position: absolute;
-        top: 0.35rem;
-        left: 0.9rem;
-        right: 0.9rem;
-        z-index: 10;
-        pointer-events: none;
-        background: #171414;
-        padding: 0.1rem 0 0.55rem 0;
     }
     .reit-card {
         background: #1e1a1a;
@@ -207,13 +194,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-
-def render_sidebar_brand() -> None:
-    with st.sidebar:
-        st.markdown('<div class="reit-sidebar-brand">', unsafe_allow_html=True)
-        st.image(str(LOGO_PATH), use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
 
 @st.cache_data(show_spinner=False)
@@ -1078,7 +1058,6 @@ def render_rates_page() -> None:
     )
 
 
-render_sidebar_brand()
 navigation = st.navigation(
     [
         st.Page(render_ranking_page, title="Ranking", icon=":material/leaderboard:"),
