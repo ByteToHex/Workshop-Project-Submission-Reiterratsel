@@ -80,7 +80,7 @@ GEARING_HELP = (
     "debt-to-assets ratio when required."
 )
 DSCR_HELP = (
-    "Debt Service Coverage Ratio. Annual FFO divided by cash interest paid plus short-term debt."
+    "Debt Service Coverage Ratio. Annual Funds From Operation (FFO) divided by cash interest paid plus short-term debt."
 )
 REFI_HELP = (
     "Refinancing Risk Ratio. Annual short-term debt divided by total debt. At runtime this scales how strongly "
