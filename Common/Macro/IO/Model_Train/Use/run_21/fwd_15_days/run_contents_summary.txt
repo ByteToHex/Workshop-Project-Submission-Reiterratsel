@@ -1,0 +1,72 @@
+train_p_1fold_pipeline.py output summary
+
+Dataset: D:\WS_NUS\REF_DATA\prediction-market-analysis\scripts\export\REF_Preprocessing\Step5_XGBoost_Test\out\run_21\fwd_15_days\sora_joined_to_xgb_pipeline.csv
+Joined export: D:\WS_NUS\REF_DATA\prediction-market-analysis\scripts\export\REF_Preprocessing\Step5_XGBoost_Test\out\run_21\fwd_15_days\sora_joined_to_xgb_pipeline.csv
+Forward horizon rows: 15
+Worker seed: 57
+Drop calendar by: sreit
+Output directory: D:\WS_NUS\REF_DATA\prediction-market-analysis\scripts\export\REF_Preprocessing\Step5_XGBoost_Test\out\run_21\fwd_15_days
+
+Default run flags in script: opt1=False opt2=True opt3=False per_horizon_seed_offset=True
+
+Targets in this run:
+  - option2_change: sora_fwd_15d_change :: Future SORA change over 15 SGX trading rows
+
+Base feature cols:
+  - sora_level_t2
+  - sora_3m_t2
+  - sora_term_spread_t2
+  - expected_bps
+  - p_no_change
+  - margin_over_second
+  - days_to_next_fomc
+  - p_no_change_missing
+  - margin_over_second_missing
+
+Spread feature cols:
+  - expected_bps_minus_sora_90d
+  - sora_curve_steepness
+
+Engineered SORA path cols (from sora_level_realized, diffs not pct_change):
+  - sora_lag_21d_diff
+  - sora_lag_63d_diff
+  - sora_lag_10d_diff
+  - sora_lag_5d_diff
+  - sora_realized_vol_21d
+  - sora_realized_vol_63d
+  - sora_below_63d_peak
+  - sora_dist_from_63d_ma
+  - sora_accel_21d
+
+option1_level: excludes (avoid tautology with forward level target):
+  - sora_level_t2
+  - sora_curve_steepness
+
+option2_change: excludes (regime-shift-heavy T-2 levels vs change target):
+  - sora_level_t2
+  - sora_3m_t2
+
+Output naming pattern:
+  <target_key>_optuna_best_params.json
+  <target_key>_deap_best_params.json
+  <target_key>_optuna_holdout_metrics.csv
+  <target_key>_deap_holdout_metrics.csv
+  <target_key>_optuna_holdout_oos_predictions.csv
+  <target_key>_deap_holdout_oos_predictions.csv
+  <target_key>_optuna_baseline_holdout_metrics.csv
+  <target_key>_deap_baseline_holdout_metrics.csv
+  <target_key>_optuna_baseline_holdout_oos_predictions.csv
+  <target_key>_deap_baseline_holdout_oos_predictions.csv
+  <target_key>_optuna_holdout_summary.json
+  <target_key>_deap_holdout_summary.json
+  <target_key>_shap_summary_values.csv
+  <target_key>_shap_summary_beeswarm.png
+  <target_key>_shap_summary_bar.png
+
+Run-level manifest files:
+  data_manifest.json
+  feature_manifest.json
+Cross-target consolidated files:
+  all_targets_optimizer_comparison.json
+  all_targets_selected_params.json
+  run_contents_summary.txt

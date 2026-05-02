@@ -1,0 +1,24 @@
+{
+  "target_key": "option2_change",
+  "target_col": "sora_fwd_10d_change",
+  "best_value_penalized_objective": 0.25276572560128774,
+  "best_params": {
+    "gamma": 0.36152531790324494,
+    "n_estimators": 350,
+    "max_depth": 2,
+    "learning_rate": 0.06737862136520323,
+    "min_child_weight": 4.0044071831713834,
+    "subsample": 0.9193097430474141,
+    "colsample_bytree": 0.9546164904043825,
+    "reg_alpha": 0.006801442946870292,
+    "reg_lambda": 2.343529075847652
+  },
+  "best_trial_number": 79,
+  "best_trial_user_attrs": {
+    "r2": 0.1927406134939713,
+    "rmse": 0.25276572560128774,
+    "mae": 0.2085761588720581,
+    "f1": 0.6575342465753424,
+    "penalized_score": 0.25276572560128774
+  }
+}

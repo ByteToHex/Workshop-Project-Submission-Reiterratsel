@@ -1,0 +1,72 @@
+{
+  "features": [
+    "sora_level_t2",
+    "sora_3m_t2",
+    "sora_term_spread_t2",
+    "expected_bps",
+    "p_no_change",
+    "margin_over_second",
+    "days_to_next_fomc",
+    "p_no_change_missing",
+    "margin_over_second_missing",
+    "expected_bps_minus_sora_90d",
+    "sora_curve_steepness",
+    "sora_lag_21d_diff",
+    "sora_lag_63d_diff",
+    "sora_lag_10d_diff",
+    "sora_lag_5d_diff",
+    "sora_realized_vol_21d",
+    "sora_realized_vol_63d",
+    "sora_below_63d_peak",
+    "sora_dist_from_63d_ma",
+    "sora_accel_21d"
+  ],
+  "base_features": [
+    "sora_level_t2",
+    "sora_3m_t2",
+    "sora_term_spread_t2",
+    "expected_bps",
+    "p_no_change",
+    "margin_over_second",
+    "days_to_next_fomc",
+    "p_no_change_missing",
+    "margin_over_second_missing"
+  ],
+  "spread_features": [
+    "expected_bps_minus_sora_90d",
+    "sora_curve_steepness"
+  ],
+  "engineered_sora_path": [
+    "sora_lag_21d_diff",
+    "sora_lag_63d_diff",
+    "sora_lag_10d_diff",
+    "sora_lag_5d_diff",
+    "sora_realized_vol_21d",
+    "sora_realized_vol_63d",
+    "sora_below_63d_peak",
+    "sora_dist_from_63d_ma",
+    "sora_accel_21d"
+  ],
+  "option1_level_excluded_features": [
+    "sora_level_t2",
+    "sora_curve_steepness"
+  ],
+  "option2_change_excluded_features": [
+    "sora_level_t2",
+    "sora_3m_t2"
+  ],
+  "trace_cols": [
+    "fomc_decision_date"
+  ],
+  "all_target_keys": [
+    "option1_level",
+    "option2_change",
+    "option3_abs_change"
+  ],
+  "run_target_keys": [
+    "option2_change"
+  ],
+  "drop_calendar_by": "sreit",
+  "forward_horizon_rows": 15,
+  "worker_seed": 57
+}
