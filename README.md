@@ -1,5 +1,108 @@
 # Workshop Project Submission Working
 
+## How To Run
+
+Use the compose file in two modes:
+
+- `app-only` for submission/demo
+- `rebuild` when Neo4j-backed cache regeneration is needed
+
+Important distinction:
+
+- `app-only` serves the app against the committed DuckDB snapshot already shipped in the repo.
+- `rebuild` starts Neo4j and reruns `build_reitteratsel_pipeline.py` so the DuckDB/parquet cache is refreshed in place.
+- Rebuild is intentionally separate so the normal submission/demo path does not depend on Neo4j every time.
+
+From the repo root:
+
+```powershell
+cd D:\WS_NUS\SUBMIT\Workshop-Project-Submission-Working
+```
+
+### 1) App-Only Mode
+
+This serves the app against the committed DuckDB snapshot and does not need `Common/docker-compose.env`.
+
+```powershell
+docker compose -f Common/docker-compose.yml up --build
+```
+
+Then open:
+
+```text
+http://localhost:8501
+```
+
+To stop it:
+
+```powershell
+docker compose -f Common/docker-compose.yml down
+```
+
+### 2) Rebuild Mode
+
+This starts Neo4j and reruns `build_reitteratsel_pipeline.py`, which refreshes the DuckDB/parquet cache in place.
+
+First create the runtime env file:
+
+```powershell
+Copy-Item Common\docker-compose.env.example Common\docker-compose.env
+```
+
+Then edit `Common/docker-compose.env` so it has the correct Neo4j container settings. At minimum it should stay aligned with the compose file:
+
+```env
+NEO4J_URI=neo4j://neo4j:7687
+NEO4J_DATABASE=neo4j
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=mamdaniXGBoost
+```
+
+Run the rebuild:
+
+```powershell
+docker compose -f Common/docker-compose.yml --profile rebuild up --build reitteratsel-rebuild
+```
+
+If that succeeds, start the app:
+
+```powershell
+docker compose -f Common/docker-compose.yml up --build
+```
+
+### Useful Checks
+
+View logs:
+
+```powershell
+docker compose -f Common/docker-compose.yml logs -f
+```
+
+View rebuild logs:
+
+```powershell
+docker compose -f Common/docker-compose.yml --profile rebuild logs -f reitteratsel-rebuild
+```
+
+Stop and remove containers:
+
+```powershell
+docker compose -f Common/docker-compose.yml down
+```
+
+Stop and also remove Neo4j named volumes:
+
+```powershell
+docker compose -f Common/docker-compose.yml --profile rebuild down -v
+```
+
+### Recommended First Run
+
+1. `Copy-Item Common\docker-compose.env.example Common\docker-compose.env`
+2. `docker compose -f Common/docker-compose.yml --profile rebuild up --build reitteratsel-rebuild`
+3. `docker compose -f Common/docker-compose.yml up --build`
+4. Open `http://localhost:8501`
+
 ## Local Git Note For Shipped DuckDB Cache Artifacts
 
 This repository intentionally ships the DuckDB warehouse and related derived parquet cache artifacts used by the app.
