@@ -1,5 +1,13 @@
 # Notebook / Jupytext Pairing Convention
 
+## High Priority Global Instruction
+
+- Do not bypass failures silently.
+- Fail fast and fail loudly when a required dependency, runtime, configuration value, file, model artifact, database, service, or integration is missing, unavailable, inconsistent, or malformed.
+- Error handling must state clearly what failed, where it failed, and which dependency or input caused the failure.
+- Do not add fallback behavior that masks the real problem unless the user explicitly asks for a fallback design.
+- Do not silently substitute cached outputs, local defaults, mock values, alternate code paths, or degraded behavior for required production or project-standard components.
+
 ## Python Environment
 
 - Always use Anaconda environment named `env` for Python execution in this repository.
