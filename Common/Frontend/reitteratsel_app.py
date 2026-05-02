@@ -708,6 +708,15 @@ def render_reit_page() -> None:
 def render_rates_page() -> None:
     render_macro_header()
     st.markdown("**SORA macro walk-forward**")
+
+    hover_change = alt.selection_point(
+        fields=["date"],
+        nearest=True,
+        on="mouseover",
+        empty=False,
+        clear="mouseout",
+    )
+
     change_actual = macro_df[["snapshot_ts", "y_true"]].copy().rename(
         columns={"snapshot_ts": "date", "y_true": "actual_sora_fwd_10d_change"}
     )
@@ -733,16 +742,37 @@ def render_rates_page() -> None:
         y=alt.Y("value:Q", title="Change"),
         color=alt.Color("series:N", title="Series"),
     )
+    change_hover_base = alt.Chart(change_chart).encode(
+        x=alt.X("date:T", title="Date"),
+    )
     change_plot = (
         change_base.mark_line()
         + alt.Chart(train_rule_df).mark_rule(color="#ff4a4a", strokeDash=[6, 4]).encode(x="date:T")
         + alt.Chart(train_rule_df)
         .mark_text(color="#ff4a4a", align="left", dx=6, dy=-120)
         .encode(x="date:T", text="label:N")
+        + change_hover_base.mark_point(opacity=0).add_params(hover_change)
+        + change_base.mark_circle(size=60).transform_filter(hover_change)
+        + change_hover_base.mark_rule(color="#8b949e")
+        .transform_filter(hover_change)
+        .encode(
+            tooltip=[
+                alt.Tooltip("date:T", title="Date"),
+                alt.Tooltip("predicted_change_10d:Q", title="Predicted 10D Change", format=".3f"),
+                alt.Tooltip("actual_sora_fwd_10d_change:Q", title="Actual 10D Change", format=".3f"),
+            ]
+        )
     )
     st.altair_chart(change_plot.properties(height=260), use_container_width=True)
 
     horizon = DEFAULT_HORIZON_DAYS
+    hover_level = alt.selection_point(
+        fields=["target_date"],
+        nearest=True,
+        on="mouseover",
+        empty=False,
+        clear="mouseout",
+    )
     full_target_dates = macro_df[["snapshot_ts"]].copy()
     full_target_dates["target_date"] = full_target_dates["snapshot_ts"].shift(-horizon)
     actual_level_chart = macro_df[[f"sora_fwd_{horizon}d_level"]].copy()
@@ -783,12 +813,26 @@ def render_rates_page() -> None:
         y=alt.Y("value:Q", title="Level"),
         color=alt.Color("series:N", title="Series"),
     )
+    level_hover_base = alt.Chart(future_level_chart).encode(
+        x=alt.X("target_date:T", title="Forecast target date"),
+    )
     level_plot = (
         level_base.mark_line()
         + alt.Chart(future_train_rule_df).mark_rule(color="#ff4a4a", strokeDash=[6, 4]).encode(x="target_date:T")
         + alt.Chart(future_train_rule_df)
         .mark_text(color="#ff4a4a", align="left", dx=6, dy=-120)
         .encode(x="target_date:T", text="label:N")
+        + level_hover_base.mark_point(opacity=0).add_params(hover_level)
+        + level_base.mark_circle(size=60).transform_filter(hover_level)
+        + level_hover_base.mark_rule(color="#8b949e")
+        .transform_filter(hover_level)
+        .encode(
+            tooltip=[
+                alt.Tooltip("target_date:T", title="Forecast target date"),
+                alt.Tooltip("predicted_level_10d:Q", title="Predicted 10D Level", format=".3f"),
+                alt.Tooltip("actual_future_level_10d:Q", title="Actual Future Level", format=".3f"),
+            ]
+        )
     )
     st.altair_chart(level_plot.properties(height=260), use_container_width=True)
     st.caption(
