@@ -6,21 +6,36 @@ Use this first when orienting to the project so the same paths and precedence ru
 
 ## Current Design
 
-Here, "development"/"development mode" refers to running of the app locally via regular methods like command-line or VSC. "Project submission"/"submission mode" refers to the version pushed to github intended for rebuild using docker-compose ONLY.
-- For development ONLY, current design assumes that the app is rebuilt (meaning the runner will rebuild the cache in reitteratsel_core.py) every time it is launched.
+Terminology used in this file:
+
+- "development" / "development mode" refers to running the app locally via regular methods such as the command line or VSC.
+- "project submission" / "submission mode" refers to the version pushed to github and intended for reproduction via docker-compose.
+
+Current design assumptions:
+
+- For development ONLY, current design assumes that the app is rebuilt, meaning the runner will rebuild the cache in `reitteratsel_core.py`, every time it is launched.
 - For project submission ONLY, current design assumes that the committed DuckDB warehouse is shipped as-is and the app serves directly from that snapshot by default.
 
 Current design caveats:
 
-- Development mode freshness risk is intentionally reduced because startup rebuilds `fact_distress_label`, `fact_fuzzy_cache`, and `rule_trace_text` on each launch.
-- Development mode app startup depends on build success. If the build step fails, the UI will not come up.
-- Development-mode Docker rebuild startup can still hit Neo4j readiness races even with `depends_on` and health checks.
-- Development mode reseeds Neo4j on each rebuild/run, which is workable for local use but can become awkward in future industry expansion eg. additions of shared or longer-lived graph state.
-- Submission mode freshness depends on the committed DuckDB snapshot; if upstream source data changes, the shipped warehouse must be rebuilt explicitly before resubmission.
-- Submission/app-deploy mode can succeed without proving that Neo4j-backed rebuild mode still works, because the default shipped app serves directly from the committed DuckDB snapshot.
-- Host `.env` and Docker runtime env intentionally differ on `NEO4J_URI`, so local success does not automatically imply Docker rebuild success.
-- Docker image rebuilds can drift over time because app Python dependencies are not pinned yet.
-- Cold-start time may grow as data volume or pipeline complexity grows when rebuild mode is used before app serve.
+- Development mode:
+  startup rebuilds `fact_distress_label`, `fact_fuzzy_cache`, and `rule_trace_text` on each launch, which intentionally reduces freshness risk.
+- Development mode:
+  app startup depends on build success. If the build step fails, the UI will not come up.
+- Development mode:
+  Docker rebuild startup can still hit Neo4j readiness races even with `depends_on` and health checks.
+- Development mode:
+  Neo4j is reseeded on each rebuild/run, which is workable for local use but can become awkward in future industry expansion eg. additions of shared or longer-lived graph state.
+- Submission mode:
+  freshness depends on the committed DuckDB snapshot; if upstream source data changes, the shipped warehouse must be rebuilt explicitly before resubmission.
+- Submission mode / app-deploy mode:
+  the app can succeed without proving that Neo4j-backed rebuild mode still works, because the default shipped app serves directly from the committed DuckDB snapshot.
+- Shared runtime caveat:
+  host `.env` and Docker runtime env intentionally differ on `NEO4J_URI`, so local success does not automatically imply Docker rebuild success.
+- Shared runtime caveat:
+  Docker image rebuilds can drift over time because app Python dependencies are not pinned yet.
+- Shared runtime caveat:
+  cold-start time may grow as data volume or pipeline complexity grows when rebuild mode is used before app serve.
 
 ## Source-of-Truth Order
 
@@ -37,16 +52,16 @@ When references conflict, use this order:
 Critical override:
 
 - Always defer to user instruction. Flag out significant differences (if any) between user instruction and DuckDB warehouse contents, if any.
-- After implementation, always update these items (where applicable):
-  - Warehouse schema and metric semantics -> Align it with any schema changes. Be specific; eg. changes to the mamdani fuzzy pipeline should update Current_Impl_Schema_Reference.md
-  - Draft design flow (Design_v1a.txt) -> Align it with the current design
-  - Progress checklist (Implementation_Checklist_v1a.md) -> Implementation progress/targets
-  - This file (PROJECT_REFERENCE_MAP.md) -> Paths that were added or changed
-  - Docker runtime assets -> Align docker-compose.yml, any container env override files, and container build files with the actual runtime design
-  // Please take care pay attention that they do not bloat; keep points succinct
 - Always override the draft design doc with the actual DuckDB state.
 - Treat the warehouse as authoritative for what already exists.
 - Do not assume a design-doc step is still pending just because it appears in the draft flow.
+- After implementation, always update these items where applicable:
+  - Warehouse schema and metric semantics -> Align them with any schema changes. Be specific; eg. changes to the mamdani fuzzy pipeline should update `Current_Impl_Schema_Reference.md`
+  - Draft design flow (`Design_v1a.txt`) -> Align it with the current design
+  - Progress checklist (`Implementation_Checklist_v1a.md`) -> Align it with implementation progress/targets
+  - This file (`PROJECT_REFERENCE_MAP.md`) -> Update paths that were added or changed
+  - Docker runtime assets -> Align `docker-compose.yml`, any container env override files, and container build files with the actual runtime design
+  - Please take care that they do not bloat; keep points succinct
 
 ## Core Project Map
 
@@ -86,7 +101,7 @@ Critical override:
 - Root environment file:
   `.env`
 
-- Use `.env` for the active Neo4j connection settings.
+- Active Neo4j connection settings should come from `.env`.
 - Neo4j configuration is expected to be explicit in `.env`; do not rely on silent code defaults.
 - Do not duplicate secrets into other docs unless necessary.
 - Current `.env` includes:
@@ -225,6 +240,7 @@ CREATE TABLE financials (
 
 - Build + app orchestrator:
   `Common\Micro\5_Model_KG\run_reitteratsel.py`
+  Note: this is the local development orchestrator path.
 
 - Core implementation module:
   `Common\Micro\5_Model_KG\reitteratsel_core.py`
@@ -313,7 +329,10 @@ CREATE TABLE financials (
   `Common\docker-compose.env.example`
 
 - Usage note:
-  this compose setup starts Neo4j plus the Streamlit app container, runs the KG build first, then launches the app.
+  this compose setup is now split by use case:
+  - default app/service path serves the Streamlit app directly against the committed DuckDB snapshot
+  - rebuild profile path starts Neo4j plus the rebuild container so `build_reitteratsel_pipeline.py` can refresh the shipped DuckDB/parquet cache in-place
+  - `Common\docker-compose.env` is needed for the rebuild profile path, not for the default app-only path
 
 ## Practical Working Rules
 
