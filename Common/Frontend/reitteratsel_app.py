@@ -19,6 +19,7 @@ from reitteratsel_core import (  # noqa: E402
     DUCKDB_PATH,
     compute_final_distress_score,
     compute_sora_distress_score,
+    load_macro_holdout_frame,
     load_macro_prediction_frame,
     load_macro_train_end,
     score_to_level,
@@ -277,6 +278,7 @@ def load_app_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Data
 
 ranking_df, metric_df, label_df, component_df, dividend_df = load_app_frames()
 macro_df = load_macro_prediction_frame(DEFAULT_HORIZON_DAYS)
+macro_holdout_df = load_macro_holdout_frame(DEFAULT_HORIZON_DAYS)
 macro_train_end = load_macro_train_end(DEFAULT_HORIZON_DAYS)
 if macro_df["prediction_source"].nunique() != 1 or macro_df["prediction_source"].iloc[0] != "xgboost_final_model":
     raise RuntimeError(
@@ -706,14 +708,13 @@ def render_reit_page() -> None:
 def render_rates_page() -> None:
     render_macro_header()
     st.markdown("**SORA macro walk-forward**")
-    change_chart = macro_df[["snapshot_ts", "y_pred", "y_true"]].copy()
-    change_chart = change_chart.rename(
-        columns={
-            "snapshot_ts": "date",
-            "y_pred": "predicted_change_10d",
-            "y_true": "actual_sora_fwd_10d_change",
-        }
+    change_actual = macro_df[["snapshot_ts", "y_true"]].copy().rename(
+        columns={"snapshot_ts": "date", "y_true": "actual_sora_fwd_10d_change"}
     )
+    change_pred = macro_holdout_df[["snapshot_ts", "y_pred"]].copy().rename(
+        columns={"snapshot_ts": "date", "y_pred": "predicted_change_10d"}
+    )
+    change_chart = change_actual.merge(change_pred, on="date", how="left", validate="one_to_one")
     st.markdown("**Predicted 10D change vs actual 10D change**")
     change_long = change_chart.melt(
         id_vars="date",
@@ -742,26 +743,28 @@ def render_rates_page() -> None:
     st.altair_chart(change_plot.properties(height=260), use_container_width=True)
 
     horizon = DEFAULT_HORIZON_DAYS
-    future_level_chart = macro_df[
-        ["snapshot_ts", "predicted_level", f"sora_fwd_{horizon}d_level"]
-    ].copy()
-    future_level_chart["target_date"] = future_level_chart["snapshot_ts"].shift(-horizon)
-    boundary_target_matches = future_level_chart.loc[
-        future_level_chart["snapshot_ts"] == macro_train_end, "target_date"
-    ]
-    if boundary_target_matches.empty:
-        raise ValueError(
-            f"Could not align train_end {macro_train_end.strftime('%Y-%m-%d')} "
-            "to a target_date in the future level chart."
-        )
-    boundary_target_date = pd.Timestamp(boundary_target_matches.iloc[0])
-    future_level_chart = future_level_chart.dropna(subset=["target_date"])
-    future_level_chart = future_level_chart.rename(
+    full_target_dates = macro_df[["snapshot_ts"]].copy()
+    full_target_dates["target_date"] = full_target_dates["snapshot_ts"].shift(-horizon)
+    actual_level_chart = macro_df[[f"sora_fwd_{horizon}d_level"]].copy()
+    actual_level_chart["target_date"] = full_target_dates["target_date"]
+    actual_level_chart = actual_level_chart.rename(
         columns={
-            "predicted_level": "predicted_level_10d",
             f"sora_fwd_{horizon}d_level": "actual_future_level_10d",
         }
-    )[["target_date", "predicted_level_10d", "actual_future_level_10d"]]
+    ).dropna(subset=["target_date"])
+    predicted_level_chart = macro_holdout_df[["target_date", "predicted_level"]].copy().rename(
+        columns={"predicted_level": "predicted_level_10d"}
+    )
+    future_level_chart = actual_level_chart.merge(
+        predicted_level_chart, on="target_date", how="left", validate="one_to_one"
+    )
+    boundary_target_matches = full_target_dates.loc[full_target_dates["snapshot_ts"] == macro_train_end, "target_date"]
+    if boundary_target_matches.empty or pd.isna(boundary_target_matches.iloc[0]):
+        raise ValueError(
+            f"Could not align train_end {macro_train_end.strftime('%Y-%m-%d')} "
+            "to a target_date in the full future level chart."
+        )
+    boundary_target_date = pd.Timestamp(boundary_target_matches.iloc[0])
     st.markdown("**Horizon-shifted predicted 10D level vs actual future level**")
     level_long = future_level_chart.melt(
         id_vars="target_date",
@@ -789,9 +792,10 @@ def render_rates_page() -> None:
     )
     st.altair_chart(level_plot.properties(height=260), use_container_width=True)
     st.caption(
-        "The first chart compares the direct XGBoost output against its true change target. "
-        "The second chart shifts the derived level forecast forward by 10 trading rows so it is "
-        "compared on the date it is forecasting. The red dashed marker shows where the training period ended."
+        "These charts use saved out-of-sample holdout predictions from the winning XGBoost run, not the refit "
+        "final model. The first chart compares the direct change forecast against its true holdout target. "
+        "The second chart shifts the derived level forecast forward by 10 trading rows so it is compared on "
+        "the date it is forecasting. The red dashed marker shows where the training period ended."
     )
 
 

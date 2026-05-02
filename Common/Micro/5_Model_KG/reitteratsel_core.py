@@ -992,6 +992,58 @@ def load_macro_train_end(horizon_days: int = DEFAULT_HORIZON_DAYS) -> pd.Timesta
     return pd.Timestamp(train_end)
 
 
+def load_macro_holdout_frame(horizon_days: int = DEFAULT_HORIZON_DAYS) -> pd.DataFrame:
+    run_dir = XGB_RUN_ROOT / f"fwd_{horizon_days}_days"
+    comparison_path = run_dir / "all_targets_optimizer_comparison.json"
+    joined_path = run_dir / "sora_joined_to_xgb_pipeline.csv"
+    if not comparison_path.exists():
+        raise FileNotFoundError(f"Optimizer comparison JSON not found: {comparison_path}")
+    if not joined_path.exists():
+        raise FileNotFoundError(f"Joined macro pipeline CSV not found: {joined_path}")
+
+    with comparison_path.open("r", encoding="utf-8") as fh:
+        comparison = json.load(fh)
+    option2 = comparison.get("option2_change")
+    if option2 is None:
+        raise KeyError(f"option2_change block missing in optimizer comparison JSON: {comparison_path}")
+    winner = option2.get("winner")
+    if winner not in {"optuna", "deap"}:
+        raise ValueError(f"Unsupported or missing winner '{winner}' in {comparison_path}")
+
+    oos_path = run_dir / f"option2_change_{winner}_holdout_oos_predictions.csv"
+    if not oos_path.exists():
+        raise FileNotFoundError(f"Holdout OOS predictions CSV not found: {oos_path}")
+
+    oos_df = pd.read_csv(oos_path, parse_dates=["snapshot_ts", "fomc_decision_date"])
+    joined_df = pd.read_csv(joined_path, parse_dates=["snapshot_ts", "fomc_decision_date"])
+    joined_df = joined_df.sort_values("snapshot_ts").reset_index(drop=True)
+    joined_df["target_date"] = joined_df["snapshot_ts"].shift(-horizon_days)
+    merged = oos_df.merge(
+        joined_df[
+            [
+                "snapshot_ts",
+                "fomc_decision_date",
+                "sora_level_realized",
+                f"sora_fwd_{horizon_days}d_level",
+                f"sora_fwd_{horizon_days}d_change",
+                "target_date",
+            ]
+        ],
+        on=["snapshot_ts", "fomc_decision_date"],
+        how="left",
+        validate="one_to_one",
+    )
+    required_cols = [f"sora_fwd_{horizon_days}d_level", f"sora_fwd_{horizon_days}d_change", "target_date"]
+    if merged[required_cols].isna().any().any():
+        raise ValueError(
+            f"Holdout merge left missing future target columns in {oos_path}; "
+            f"joined source was {joined_path}"
+        )
+    merged["predicted_level"] = merged["sora_level_realized"] + merged["y_pred"]
+    merged["prediction_source"] = f"{winner}_holdout_oos_predictions"
+    return merged.sort_values("snapshot_ts").reset_index(drop=True)
+
+
 def _build_macro_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
     out = df.sort_values("snapshot_ts").reset_index(drop=True).copy()
     out["p_no_change_missing"] = out["p_no_change"].isna().astype(int)
