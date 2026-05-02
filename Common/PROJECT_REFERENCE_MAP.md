@@ -24,6 +24,7 @@ Critical override:
   - Draft design flow (Design_v1a.txt) -> Align it with the current design
   - Progress checklist (Implementation_Checklist_v1a.md) -> Implementation progress/targets
   - This file (PROJECT_REFERENCE_MAP.md) -> Paths that were added or changed
+  - Docker runtime assets -> Align docker-compose.yml, any container env override files, and container build files with the actual runtime design
   // Please take care pay attention that they do not bloat; keep points succinct
 - Always override the draft design doc with the actual DuckDB state.
 - Treat the warehouse as authoritative for what already exists.
@@ -77,6 +78,10 @@ Critical override:
   - `NEO4J_DATABASE`
   - `NEO4J_USERNAME`
   - `NEO4J_PASSWORD`
+
+- Docker compose runtime override for container-to-container Neo4j hostname:
+  `Common\docker-compose.env`
+  Note: this is mounted as the runtime `.env` inside the app container because `127.0.0.1` from the host `.env` is not valid from inside Docker.
 
 ### 5) Authoritative DuckDB warehouse
 
@@ -164,6 +169,23 @@ Critical override:
 
 - Usage note:
   these three files are the fastest path for checking what the live app actually reads, computes, persists, and displays.
+
+### 12) Docker runtime assets
+
+- Docker compose entrypoint:
+  `Common\docker-compose.yml`
+
+- App image definition:
+  `Common\Frontend\Dockerfile.reitteratsel`
+
+- App container pip requirements:
+  `Common\Frontend\requirements.reitteratsel.txt`
+
+- Container runtime env override:
+  `Common\docker-compose.env`
+
+- Usage note:
+  this compose setup starts Neo4j plus the Streamlit app container, runs the KG build first, then launches the app.
 
 ## Practical Working Rules
 

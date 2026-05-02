@@ -1,0 +1,6 @@
+duckdb
+neo4j
+pandas
+python-dotenv
+streamlit
+xgboost

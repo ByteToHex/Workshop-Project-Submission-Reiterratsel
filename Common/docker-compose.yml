@@ -1,0 +1,44 @@
+services:
+  neo4j:
+    image: neo4j:5.26
+    container_name: reitteratsel-neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      NEO4J_AUTH: "neo4j/mamdaniXGBoost"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  reitteratsel-app:
+    build:
+      context: ..
+      dockerfile: Common/Frontend/Dockerfile.reitteratsel
+    container_name: reitteratsel-app
+    restart: unless-stopped
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    working_dir: /workspace
+    ports:
+      - "8501:8501"
+    volumes:
+      - ..:/workspace
+      - ./docker-compose.env:/workspace/.env:ro
+    command:
+      - /bin/sh
+      - -lc
+      - >
+        python Common/Micro/5_Model_KG/build_reitteratsel_pipeline.py &&
+        streamlit run Common/Frontend/reitteratsel_app.py --server.address 0.0.0.0 --server.port 8501
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
