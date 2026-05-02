@@ -1214,6 +1214,19 @@ def compute_sora_distress_score(predicted_change: float) -> float:
     return max(0.0, min(1.0, 0.5 + clipped))
 
 
+def compute_refi_distress_score(refi_risk: float | None) -> float | None:
+    if refi_risk is None or pd.isna(refi_risk):
+        return None
+    refi_float = float(refi_risk)
+    healthy_cap = 0.15
+    critical_floor = 0.55
+    if refi_float <= healthy_cap:
+        return 0.0
+    if refi_float >= critical_floor:
+        return 1.0
+    return (refi_float - healthy_cap) / (critical_floor - healthy_cap)
+
+
 def compute_final_distress_score(
     distress_score_mamdani: float,
     distress_sora: float,

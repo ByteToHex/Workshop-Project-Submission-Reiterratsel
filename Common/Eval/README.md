@@ -11,12 +11,17 @@ Current outputs:
 - `reitteratsel_eval_detail.csv`
 - `reitteratsel_eval_summary.csv`
 - `reitteratsel_eval_disagreements.csv`
+- `reitteratsel_eval_confusion_matrices.csv`
+- `reitteratsel_eval_per_class_metrics.csv`
+- `reitteratsel_eval_ranking_metrics.csv`
 
 The evaluation follows `Design_v1a.txt` section `D - Evaluation`:
 
 - compare `distress_baseline`
 - compare `distress_score_mamdani`
+- compare `distress_score_refi`
 - compare `final_distress`
 - evaluate discrete label agreement against `label_126wd`
 - evaluate continuous score gap against normalized `CAR_126wd`
 - export disagreement cases for structured review
+- include confusion matrices, per-class precision/recall/F1, macro F1, MCC, MAE, RMSE, and ranking metrics such as `P@K` and `MAP@K`

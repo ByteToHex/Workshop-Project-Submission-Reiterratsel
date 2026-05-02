@@ -240,6 +240,10 @@ CREATE TABLE financials (
 - Rule-trace text derivation method in core:
   `build_rule_trace_text()`
 
+- Daily REIT-specific CAR path methods in core:
+  `derive_car_path_daily_rows()`
+  `build_car_path_daily_frame()`
+
 - Mamdani rule seed artifact:
   `Common\Micro\5_Model_KG\mamdani_rule_seed.json`
 
@@ -253,14 +257,35 @@ CREATE TABLE financials (
   resolves the selected simulation date to:
   - the latest eligible macro snapshot on or before that date
   - the latest eligible annual ticker-period row on or before that date
+  - the latest eligible daily CAR-path row on or before that date for the resolved ticker-period
   - the runtime `final_distress` score by combining frozen Mamdani output with the macro layer using `REFI_RISK` as the sensitivity bridge
 
 - Usage note:
   these files and split pipeline methods are the fastest path for checking:
   - what the live app reads
   - how `fact_distress_label`, `fact_fuzzy_cache`, and `rule_trace_text` are derived and persisted
+  - how `fact_car_path_daily` is derived and persisted
   - how the selected simulation date resolves annual-anchor rows versus macro rows at runtime
   - how frozen Mamdani outputs are combined with the macro layer in the app
+
+### 11a) Evaluation outputs
+
+- Evaluation folder:
+  `Common\Eval`
+
+- Main evaluation script:
+  `Common\Eval\build_reitteratsel_eval.py`
+
+- Evaluation coverage:
+  compares `distress_baseline`, `distress_score_mamdani`, `distress_score_refi`, and `final_distress`
+
+- Current evaluation outputs:
+  `Common\Eval\reitteratsel_eval_detail.csv`
+  `Common\Eval\reitteratsel_eval_summary.csv`
+  `Common\Eval\reitteratsel_eval_disagreements.csv`
+  `Common\Eval\reitteratsel_eval_confusion_matrices.csv`
+  `Common\Eval\reitteratsel_eval_per_class_metrics.csv`
+  `Common\Eval\reitteratsel_eval_ranking_metrics.csv`
 
 ### 12) Docker runtime assets
 
