@@ -56,13 +56,24 @@ st.markdown(
     }
     [data-testid="stSidebarContent"] {
         padding-top: 0.35rem;
+        position: relative;
+    }
+    [data-testid="stSidebarNav"] {
+        padding-top: 4.7rem;
     }
     .block-container {
         padding-top: 5.75rem;
         padding-bottom: 2rem;
     }
     .reit-sidebar-brand {
-        padding: 0.2rem 0 0.95rem 0;
+        position: absolute;
+        top: 0.35rem;
+        left: 0.9rem;
+        right: 0.9rem;
+        z-index: 10;
+        pointer-events: none;
+        background: #171414;
+        padding: 0.1rem 0 0.55rem 0;
     }
     .reit-card {
         background: #1e1a1a;
