@@ -1151,7 +1151,7 @@ def render_rates_page() -> None:
         + change_hover_base.mark_rule(color="#8b949e")
         .transform_filter(hover_change_oos)
     )
-    st.altair_chart(change_plot.properties(height=260), use_container_width=True)
+    st.altair_chart(change_plot.properties(height=260), width="stretch")
 
     hover_change_full = alt.selection_point(
         fields=["date"],
@@ -1200,7 +1200,7 @@ def render_rates_page() -> None:
         .transform_filter(hover_change_full)
     )
     st.markdown("**Refit full-model: Predicted 10D change vs actual 10D change**")
-    st.altair_chart(change_full_plot.properties(height=260), use_container_width=True)
+    st.altair_chart(change_full_plot.properties(height=260), width="stretch")
 
     horizon = DEFAULT_HORIZON_DAYS
     st.markdown(
@@ -1280,7 +1280,7 @@ def render_rates_page() -> None:
         + level_hover_base.mark_rule(color="#8b949e")
         .transform_filter(hover_level_oos)
     )
-    st.altair_chart(level_plot.properties(height=260), use_container_width=True)
+    st.altair_chart(level_plot.properties(height=260), width="stretch")
 
     hover_level_full = alt.selection_point(
         fields=["target_date"],
@@ -1331,7 +1331,7 @@ def render_rates_page() -> None:
         .transform_filter(hover_level_full)
     )
     st.markdown("**Refit full-model: Horizon-shifted predicted 10D level vs actual future level**")
-    st.altair_chart(level_full_plot.properties(height=260), use_container_width=True)
+    st.altair_chart(level_full_plot.properties(height=260), width="stretch")
     st.caption(
         "Charts 1 and 3 use saved OOS holdout predictions from the winning XGBoost run. "
         "Charts 2 and 4 use the original refit full-model predictions, which are not OOS. "
