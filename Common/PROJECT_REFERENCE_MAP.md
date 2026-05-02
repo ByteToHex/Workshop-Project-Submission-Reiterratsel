@@ -276,6 +276,7 @@ CREATE TABLE financials (
   `Common\Frontend\reitteratsel_app.py`
   Note: sidebar navigation now includes built-in Material icons for Ranking, Individual REIT Navigator, and Time Series (Rates), with Streamlit's native logo API using `Reiterratsel_Wordmark.svg` for the expanded sidebar and `Ritteratsel_Logo.svg` for the minimized icon state.
   Note: dashboard labels now use longer human-readable names plus `help` tooltips for annual Mamdani, macro overlay, CAR-path, and core annual metrics so viewers can trace display terms back to warehouse and runtime sources.
+  Note: page-top selectors now use compact column-constrained layouts rather than full-width controls, and the REIT ticker uses a durable session-state value separate from the widget key so navigation between pages preserves the prior REIT choice when it remains valid for the current simulation date.
 
 - App view-logic module:
   `Common\Frontend\reitteratsel_view_logic.py`

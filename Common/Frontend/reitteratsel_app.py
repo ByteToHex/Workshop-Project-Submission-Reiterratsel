@@ -472,6 +472,31 @@ def get_selected_simulation_date() -> object:
     return selected_date
 
 
+def get_selected_ticker(ticker_options: list[str]) -> str:
+    if not ticker_options:
+        raise ValueError("Ticker selector requires at least one available ticker option.")
+
+    durable_key = "selected_ticker_value"
+    widget_key = "selected_ticker_widget"
+
+    default_ticker = st.session_state.get(durable_key, ticker_options[0])
+    if default_ticker not in ticker_options:
+        default_ticker = ticker_options[0]
+    st.session_state[durable_key] = default_ticker
+
+    widget_value = st.session_state.get(widget_key)
+    if widget_value not in ticker_options:
+        st.session_state[widget_key] = default_ticker
+
+    selected_ticker = st.selectbox(
+        "Select REIT",
+        ticker_options,
+        key=widget_key,
+    )
+    st.session_state[durable_key] = selected_ticker
+    return selected_ticker
+
+
 def render_macro_header(*, macro_row: pd.Series, distress_sora: float) -> None:
     st.markdown(f'<div class="reit-kicker">{MACRO_HEADER_KICKER}</div>', unsafe_allow_html=True)
     m1, m2, m3, m4 = st.columns(4)
@@ -772,7 +797,16 @@ def render_ranking_intro_card() -> None:
 
 
 def render_ranking_page() -> None:
-    _, ranking_view, macro_row, distress_sora = resolve_simulation_context()
+    filter_col, _ = st.columns([1.1, 4.2])
+    with filter_col:
+        selected_date = get_selected_simulation_date()
+    ranking_view, macro_row, distress_sora = build_ranking_view(
+        fuzzy_df,
+        metric_df,
+        macro_df,
+        car_path_df,
+        selected_date,
+    )
     render_macro_header(macro_row=macro_row, distress_sora=distress_sora)
     render_ranking_intro_card()
     ranking_view.index = ranking_view.index + 1
@@ -864,17 +898,19 @@ def render_ranking_page() -> None:
 
 
 def render_reit_page() -> None:
-    _, ranking_view, macro_row, distress_sora = resolve_simulation_context()
-    ticker_options = ranking_view["ticker"].tolist()
-    default_ticker = st.session_state.get("selected_ticker", ticker_options[0])
-    if default_ticker not in ticker_options:
-        default_ticker = ticker_options[0]
-    selected_ticker = st.selectbox(
-        "Select REIT",
-        ticker_options,
-        index=ticker_options.index(default_ticker),
-        key="selected_ticker",
+    filter_date_col, filter_ticker_col, _ = st.columns([1.1, 1.25, 2.65])
+    with filter_date_col:
+        selected_date = get_selected_simulation_date()
+    ranking_view, macro_row, distress_sora = build_ranking_view(
+        fuzzy_df,
+        metric_df,
+        macro_df,
+        car_path_df,
+        selected_date,
     )
+    ticker_options = ranking_view["ticker"].tolist()
+    with filter_ticker_col:
+        selected_ticker = get_selected_ticker(ticker_options)
     selected_row = ranking_view.loc[ranking_view["ticker"] == selected_ticker].iloc[0]
     selected_metric_df = metric_df.loc[metric_df["ticker"] == selected_ticker].copy()
     selected_label_df = label_df.loc[label_df["ticker"] == selected_ticker].copy()
