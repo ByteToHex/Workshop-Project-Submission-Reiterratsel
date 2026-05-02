@@ -978,6 +978,20 @@ def load_macro_prediction_frame(horizon_days: int = DEFAULT_HORIZON_DAYS) -> pd.
     return macro_df.sort_values("snapshot_ts").reset_index(drop=True)
 
 
+def load_macro_train_end(horizon_days: int = DEFAULT_HORIZON_DAYS) -> pd.Timestamp:
+    run_dir = XGB_RUN_ROOT / f"fwd_{horizon_days}_days"
+    metrics_path = run_dir / "option2_change_optuna_holdout_metrics.csv"
+    if not metrics_path.exists():
+        raise FileNotFoundError(f"Holdout metrics CSV not found: {metrics_path}")
+    metrics_df = pd.read_csv(metrics_path, parse_dates=["train_end"])
+    if metrics_df.empty:
+        raise ValueError(f"Holdout metrics CSV is empty: {metrics_path}")
+    train_end = metrics_df.loc[0, "train_end"]
+    if pd.isna(train_end):
+        raise ValueError(f"train_end is missing in holdout metrics CSV: {metrics_path}")
+    return pd.Timestamp(train_end)
+
+
 def _build_macro_feature_frame(df: pd.DataFrame) -> pd.DataFrame:
     out = df.sort_values("snapshot_ts").reset_index(drop=True).copy()
     out["p_no_change_missing"] = out["p_no_change"].isna().astype(int)
