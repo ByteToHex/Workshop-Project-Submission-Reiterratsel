@@ -13,8 +13,8 @@ When references conflict, use this order:
 3. Current implementation scripts
 4. Implementation checklist / progress tracker
 5. Draft design doc
-6. Older Neo4j workshop references
-7. Course-style Mamdani reference material
+6. Course-style Neo4j workshop reference material
+7. Course-style Mamdani workshop reference material
 
 Critical override:
 
@@ -45,7 +45,7 @@ Critical override:
 
 - Course / expectation reference for a basic Mamdani pipeline:
   `Common\Micro\5_Model_KG\DesignDocs\Mamdani_Pipeline_Ref.txt`
-  Note: perspective-alignment reference only, not the implementation source of truth.
+  Note: perspective-alignment reference only. Do not treat this folder as the active implementation source of truth.
 
 ### 3) Neo4j architecture references
 
