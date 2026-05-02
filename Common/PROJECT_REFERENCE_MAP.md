@@ -20,6 +20,7 @@ Critical override:
 
 - Always defer to user instruction. Flag out significant differences (if any) between user instruction and DuckDB warehouse contents, if any.
 - After implementation, always update these items (where applicable):
+  - Warehouse schema and metric semantics -> Align it with any schema changes. Be specific; eg. changes to the mamdani fuzzy pipeline should update Current_Impl_Schema_Reference.md
   - Draft design flow (Design_v1a.txt) -> Align it with the current design
   - Progress checklist (Implementation_Checklist_v1a.md) -> Implementation progress/targets
   - This file (PROJECT_REFERENCE_MAP.md) -> Paths that were added or changed

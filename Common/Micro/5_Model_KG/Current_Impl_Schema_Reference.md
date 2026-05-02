@@ -6,6 +6,10 @@ This document captures the current live schema used by the REITterratsel impleme
 - `Common\Micro\5_Model_KG\reitteratsel_core.py`
 - `Common\Frontend\reitteratsel_app.py`
 
+The shards written to in the annual warehouse for the mamdani pipeline are currently as follows:
+- `distresslabels.parquet`
+- `fuzzycache.parquet`
+
 It is intended as a practical reference for the current implementation, not as a historical design note.
 
 ## Scope
