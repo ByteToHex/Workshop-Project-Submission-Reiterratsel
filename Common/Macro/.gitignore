@@ -1,3 +1,10 @@
 IO/*
 !IO/SRC/
-!IO/SRC/**
+!IO/SRC/*
+!IO/Model_Train/
+IO/Model_Train/*
+!IO/Model_Train/Use/
+IO/Model_Train/Use/*
+!IO/Model_Train/Use/run_21/
+!IO/Model_Train/Use/run_21/**
+IO/Model_Train/Use/run_21/**/desktop.ini

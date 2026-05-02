@@ -1,0 +1,86 @@
+{
+  "data_path": "D:\\WS_NUS\\REF_DATA\\prediction-market-analysis\\scripts\\export\\REF_Preprocessing\\Step5_XGBoost_Test\\out\\run_21\\fwd_15_days\\sora_joined_to_xgb_pipeline.csv",
+  "rows_base": 869,
+  "date_min": "2022-07-28 00:00:00",
+  "date_max": "2026-01-28 00:00:00",
+  "feature_cols": [
+    "sora_level_t2",
+    "sora_3m_t2",
+    "sora_term_spread_t2",
+    "expected_bps",
+    "p_no_change",
+    "margin_over_second",
+    "days_to_next_fomc",
+    "p_no_change_missing",
+    "margin_over_second_missing",
+    "expected_bps_minus_sora_90d",
+    "sora_curve_steepness",
+    "sora_lag_21d_diff",
+    "sora_lag_63d_diff",
+    "sora_lag_10d_diff",
+    "sora_lag_5d_diff",
+    "sora_realized_vol_21d",
+    "sora_realized_vol_63d",
+    "sora_below_63d_peak",
+    "sora_dist_from_63d_ma",
+    "sora_accel_21d"
+  ],
+  "base_feature_cols": [
+    "sora_level_t2",
+    "sora_3m_t2",
+    "sora_term_spread_t2",
+    "expected_bps",
+    "p_no_change",
+    "margin_over_second",
+    "days_to_next_fomc",
+    "p_no_change_missing",
+    "margin_over_second_missing"
+  ],
+  "spread_feature_cols": [
+    "expected_bps_minus_sora_90d",
+    "sora_curve_steepness"
+  ],
+  "engineered_sora_path_cols": [
+    "sora_lag_21d_diff",
+    "sora_lag_63d_diff",
+    "sora_lag_10d_diff",
+    "sora_lag_5d_diff",
+    "sora_realized_vol_21d",
+    "sora_realized_vol_63d",
+    "sora_below_63d_peak",
+    "sora_dist_from_63d_ma",
+    "sora_accel_21d"
+  ],
+  "sora_path_level_col": "sora_level_realized",
+  "option1_level_excluded_features": [
+    "sora_level_t2",
+    "sora_curve_steepness"
+  ],
+  "option2_change_excluded_features": [
+    "sora_level_t2",
+    "sora_3m_t2"
+  ],
+  "split_mode": "custom_1fold",
+  "train_frac": 0.7,
+  "test_frac": 0.2,
+  "gap_rows": 63,
+  "forward_horizon_rows": 15,
+  "worker_seed": 57,
+  "run_target_keys": [
+    "option2_change"
+  ],
+  "drop_calendar_by": "sreit",
+  "joined_export_path": "D:\\WS_NUS\\REF_DATA\\prediction-market-analysis\\scripts\\export\\REF_Preprocessing\\Step5_XGBoost_Test\\out\\run_21\\fwd_15_days\\sora_joined_to_xgb_pipeline.csv",
+  "joined_source_paths": {
+    "xgb_ready": "D:\\WS_NUS\\REF_DATA\\prediction-market-analysis\\scripts\\export\\SQL\\out\\timeseries_2022-07-27_2026-03-18_xgb_ready.csv",
+    "sreit_index": "D:\\WS_NUS\\SUBMIT\\Workshop-Project-Submission-Private\\Data\\Data_Company\\SRC\\CSV_TICKER\\SGX_DLY_REIT, 1D.csv",
+    "sora_daily": "D:\\WS_NUS\\REF_DATA\\prediction-market-analysis\\scripts\\export\\REF_Preprocessing\\Step4_XGBoost\\sample_rates\\out\\sora_daily.csv",
+    "sora_3m_daily": "D:\\WS_NUS\\REF_DATA\\prediction-market-analysis\\scripts\\export\\REF_Preprocessing\\Step4_XGBoost\\sample_rates\\out\\sora_3m_daily.csv"
+  },
+  "run_flags_default": {
+    "RUN_TARGET_OPTION1_LEVEL": false,
+    "RUN_TARGET_OPTION2_CHANGE": true,
+    "RUN_TARGET_OPTION3_ABS_CHANGE": false,
+    "PER_HORIZON_SEED_OFFSET": true
+  }
+}
