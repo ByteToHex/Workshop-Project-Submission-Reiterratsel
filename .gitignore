@@ -11,3 +11,5 @@ __pycache__/
 .env
 Common/docker-compose.env
 **/desktop.ini
+
+SAMPLES/*
