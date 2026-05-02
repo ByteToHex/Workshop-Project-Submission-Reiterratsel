@@ -16,6 +16,7 @@ for path in (FRONTEND_DIR, KG_DIR):
 
 from reitteratsel_core import compute_final_distress_score, compute_sora_distress_score
 from reitteratsel_view_logic import (
+    build_macro_panel_context,
     build_ranking_view,
     get_label_row_for_period,
     get_metric_value_for_period,
@@ -95,6 +96,15 @@ class ReitteratselViewLogicTests(unittest.TestCase):
         self.assertEqual(1, int(aaa_row["period_id"]))
         self.assertEqual(3, int(bbb_row["period_id"]))
         self.assertEqual(pd.Timestamp("2025-02-15"), macro_row["snapshot_ts"])
+
+    def test_build_ranking_view_derives_distress_sora_from_resolved_macro_row(self) -> None:
+        _, macro_row, distress_sora = build_ranking_view(
+            self.fuzzy_df,
+            self.metric_df,
+            self.macro_df,
+            "2025-02-20",
+        )
+        self.assertEqual(pd.Timestamp("2025-02-15"), macro_row["snapshot_ts"])
         self.assertAlmostEqual(compute_sora_distress_score(-0.20), distress_sora)
 
     def test_build_ranking_view_uses_same_period_refi_not_latest_refi(self) -> None:
@@ -122,6 +132,16 @@ class ReitteratselViewLogicTests(unittest.TestCase):
         row = get_label_row_for_period(self.label_df, ticker="AAA", period_id=1)
         self.assertEqual("HEALTHY", row["label_126wd"])
         self.assertAlmostEqual(0.05, float(row["car_126wd"]))
+
+    def test_build_macro_panel_context_uses_resolved_macro_row_not_latest_overall(self) -> None:
+        macro_row = resolve_macro_row(self.macro_df, "2025-02-20")
+        distress_sora = compute_sora_distress_score(float(macro_row["y_pred"]))
+        context = build_macro_panel_context(macro_row, distress_sora)
+        self.assertEqual(pd.Timestamp("2025-02-15"), context["snapshot_ts"])
+        self.assertEqual(pd.Timestamp("2025-02-26"), context["fomc_decision_date"])
+        self.assertAlmostEqual(-0.20, context["predicted_change"])
+        self.assertAlmostEqual(2.8, context["predicted_level"])
+        self.assertAlmostEqual(compute_sora_distress_score(-0.20), context["distress_sora"])
 
 
 if __name__ == "__main__":

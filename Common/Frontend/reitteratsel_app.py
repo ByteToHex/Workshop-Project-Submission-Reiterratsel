@@ -23,6 +23,7 @@ from reitteratsel_core import (  # noqa: E402
     load_macro_train_end,
 )
 from reitteratsel_view_logic import (  # noqa: E402
+    build_macro_panel_context,
     build_ranking_view,
     get_label_row_for_period,
 )
@@ -707,10 +708,11 @@ def render_reit_page() -> None:
             st.metric("CAR 126wd", "N/A" if pd.isna(selected_label["car_126wd"]) else f"{selected_label['car_126wd']:.2%}")
             st.metric("CAR Label", selected_label["label_126wd"] or "PENDING")
         with c4:
+            macro_panel = build_macro_panel_context(macro_row, distress_sora)
             st.markdown("**Macro Layer**")
-            st.metric("Predicted 10D Change", f"{macro_row['y_pred']:+.3f}")
-            st.metric("Predicted 10D Level", f"{macro_row['predicted_level']:.3f}")
-            st.metric("FOMC Decision", macro_row["fomc_decision_date"].strftime("%Y-%m-%d"))
+            st.metric("Predicted 10D Change", f"{macro_panel['predicted_change']:+.3f}")
+            st.metric("Predicted 10D Level", f"{macro_panel['predicted_level']:.3f}")
+            st.metric("FOMC Decision", macro_panel["fomc_decision_date"].strftime("%Y-%m-%d"))
 
     with tab_financials:
         st.markdown("**Annual metric history**")

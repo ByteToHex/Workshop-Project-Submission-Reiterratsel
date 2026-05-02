@@ -100,3 +100,13 @@ def build_ranking_view(
     resolved_rows["level"] = resolved_rows["final_distress"].map(score_to_level)
     ranking_view = resolved_rows.sort_values("final_distress", ascending=False).reset_index(drop=True)
     return ranking_view, macro_row, distress_sora
+
+
+def build_macro_panel_context(macro_row: pd.Series, distress_sora: float) -> dict[str, Any]:
+    return {
+        "predicted_change": float(macro_row["y_pred"]),
+        "predicted_level": float(macro_row["predicted_level"]),
+        "fomc_decision_date": pd.Timestamp(macro_row["fomc_decision_date"]),
+        "snapshot_ts": pd.Timestamp(macro_row["snapshot_ts"]),
+        "distress_sora": float(distress_sora),
+    }
