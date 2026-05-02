@@ -134,6 +134,20 @@ Critical override:
   `Common\Frontend\DesignDoc\figma.png`
   `Common\Frontend\DesignDoc\Reitteratsel.pdf`
 
+### 11) Active app / pipeline components
+
+- Pipeline build entrypoint:
+  `Common\Micro\5_Model_KG\build_reitteratsel_pipeline.py`
+
+- Core implementation module:
+  `Common\Micro\5_Model_KG\reitteratsel_core.py`
+
+- Streamlit app entrypoint:
+  `Common\Frontend\reitteratsel_app.py`
+
+- Usage note:
+  these three files are the fastest path for checking what the live app actually reads, computes, persists, and displays.
+
 ## Practical Working Rules
 
 - If the design doc says something but DuckDB already shows a different reality, follow DuckDB.
@@ -157,6 +171,6 @@ For most implementation tasks, check these in order:
 
 You can simply refer to:
 
-- `PROJECT_REFERENCE_MAP.md`
+- `Common\PROJECT_REFERENCE_MAP.md`
 
 and instruct the agent to use it as the standing project location map instead of re-listing all paths from scratch.
