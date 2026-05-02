@@ -1240,9 +1240,12 @@ def compute_final_distress_score(
     car_path_shock = 0.0
     if car_path_distress is not None and not pd.isna(car_path_distress):
         car_path_shock = float(car_path_distress) - 0.5
+    # Ignore small path moves so borderline WATCH names are not upgraded too early.
+    if abs(car_path_shock) < 0.10:
+        car_path_shock = 0.0
     final_score = (
         float(distress_score_mamdani)
-        + 0.25 * sensitivity * macro_shock
-        + 0.35 * car_path_shock
+        + 0.15 * sensitivity * macro_shock
+        + 0.20 * car_path_shock
     )
     return max(0.0, min(1.0, float(final_score)))

@@ -277,7 +277,9 @@ CREATE TABLE financials (
   - the latest eligible macro snapshot on or before that date
   - the latest eligible annual ticker-period row on or before that date
   - the latest eligible daily CAR-path row on or before that date for the resolved ticker-period
-  - the runtime `final_distress` score by combining frozen Mamdani output with the macro layer using `REFI_RISK` as the sensitivity bridge
+  - the runtime `final_distress` score by combining frozen Mamdani output with:
+    - a rate-shock macro layer using `REFI_RISK` as the sensitivity bridge
+    - a daily CAR-path layer with a neutral dead zone so small path moves do not upgrade borderline names too early
 
 - Usage note:
   these files and split pipeline methods are the fastest path for checking:
