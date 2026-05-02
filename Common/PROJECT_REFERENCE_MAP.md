@@ -6,7 +6,8 @@ Use this first when orienting to the project so the same paths and precedence ru
 
 ## Current Design
 
-For project submission ONLY, current design assumes that the app is rebuilt (meaning the runner will rebuild the cache in reitteratsel_core.py) every time it is launched.
+For development ONLY, current design assumes that the app is rebuilt (meaning the runner will rebuild the cache in reitteratsel_core.py) every time it is launched.
+For project submission ONLY, current design assumes that the committed DuckDB warehouse is shipped as-is and the app serves directly from that snapshot by default.
 
 Current design caveats:
 
