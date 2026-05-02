@@ -231,7 +231,11 @@ CREATE TABLE financials (
 
 - Key assets currently present:
   `Common\Frontend\DesignDoc\figma.png`
+  `Common\Frontend\DesignDoc\Reiterratsel_Logo.png`
   `Common\Frontend\DesignDoc\Reitteratsel.pdf`
+
+- Active app branding asset now rendered in the Streamlit sidebar top-left:
+  `Common\Frontend\DesignDoc\Reiterratsel_Logo.png`
 
 ### 11) Active app / pipeline components
 

@@ -11,8 +11,11 @@ import streamlit as st
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 KG_DIR = ROOT_DIR / "Common" / "Micro" / "5_Model_KG"
+LOGO_PATH = ROOT_DIR / "Common" / "Frontend" / "DesignDoc" / "Reiterratsel_Logo.png"
 if str(KG_DIR) not in sys.path:
     sys.path.insert(0, str(KG_DIR))
+if not LOGO_PATH.exists():
+    raise FileNotFoundError(f"Required frontend logo asset is missing: {LOGO_PATH}")
 
 from reitteratsel_core import (  # noqa: E402
     DEFAULT_HORIZON_DAYS,
@@ -51,9 +54,15 @@ st.markdown(
         background: #171414;
         border-right: 1px solid #3d3434;
     }
+    [data-testid="stSidebarContent"] {
+        padding-top: 0.35rem;
+    }
     .block-container {
         padding-top: 5.75rem;
         padding-bottom: 2rem;
+    }
+    .reit-sidebar-brand {
+        padding: 0.2rem 0 0.95rem 0;
     }
     .reit-card {
         background: #1e1a1a;
@@ -187,6 +196,13 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+def render_sidebar_brand() -> None:
+    with st.sidebar:
+        st.markdown('<div class="reit-sidebar-brand">', unsafe_allow_html=True)
+        st.image(str(LOGO_PATH), use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 @st.cache_data(show_spinner=False)
@@ -1051,6 +1067,7 @@ def render_rates_page() -> None:
     )
 
 
+render_sidebar_brand()
 navigation = st.navigation(
     [
         st.Page(render_ranking_page, title="Ranking"),
