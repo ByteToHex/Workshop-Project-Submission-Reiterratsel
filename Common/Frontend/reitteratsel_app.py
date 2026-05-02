@@ -139,6 +139,38 @@ st.markdown(
         justify-content: center;
         min-height: 118px;
     }
+    .reit-section-banner {
+        border-radius: 14px;
+        padding: 0.85rem 1rem;
+        margin: 1.1rem 0 0.8rem 0;
+        border: 1px solid #3b3232;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+    }
+    .reit-section-banner h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+    .reit-section-banner p {
+        margin: 0.35rem 0 0 0;
+        color: #d5ccc6;
+        font-size: 0.92rem;
+    }
+    .reit-section-change {
+        background: linear-gradient(135deg, rgba(9, 182, 255, 0.18), rgba(18, 26, 36, 0.92));
+        border-color: #167aa8;
+    }
+    .reit-section-change h3 {
+        color: #69d2ff;
+    }
+    .reit-section-level {
+        background: linear-gradient(135deg, rgba(244, 137, 61, 0.18), rgba(37, 24, 18, 0.92));
+        border-color: #a85b23;
+    }
+    .reit-section-level h3 {
+        color: #ffb274;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -708,6 +740,15 @@ def render_reit_page() -> None:
 def render_rates_page() -> None:
     render_macro_header()
     st.markdown("**SORA macro walk-forward**")
+    st.markdown(
+        """
+        <div class="reit-section-banner reit-section-change">
+            <h3>Change Forecasts</h3>
+            <p>Direct 10-day change predictions compared against actual 10-day changes.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     hover_change_oos = alt.selection_point(
         fields=["date"],
@@ -815,6 +856,15 @@ def render_rates_page() -> None:
     st.altair_chart(change_full_plot.properties(height=260), use_container_width=True)
 
     horizon = DEFAULT_HORIZON_DAYS
+    st.markdown(
+        """
+        <div class="reit-section-banner reit-section-level">
+            <h3>Level Forecasts</h3>
+            <p>10-day-ahead level forecasts shifted onto their target date and compared against realized future levels.</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
     hover_level_oos = alt.selection_point(
         fields=["target_date"],
         nearest=True,
