@@ -129,6 +129,48 @@ Critical override:
 - Important note from project context:
   `null_count` is currently expected to be derived at query / build time rather than stored as its own fake metric row.
 
+### 6a) Original annual raw parquet schema for per-ticker shards
+
+- Scope:
+  this section describes the original TradingView-style raw annual data stored in the per-ticker parquet shards under `Common\Micro\IO\out\_annual_warehouse\parquet`.
+  Exclude downstream derived shards such as `metrics.parquet`, `fuzzycache.parquet`, and `distresslabels.parquet`.
+
+- Human-readable original schema reference:
+  `Common\Micro\SCHEMA_DIFFERENCES\Tradingview_Schema_Annual_FromSS.txt`
+
+- Generated structured schema references for script use:
+  `Common\Micro\SCHEMA_DIFFERENCES\AnnualSchema_Structured.json`
+  `Common\Micro\SCHEMA_DIFFERENCES\AnnualSchema_Structured_Indented.json`
+
+- Raw TradingView export tables represented in those per-ticker shards:
+
+```sql
+CREATE TABLE schema_rows (
+    row_id      INTEGER PRIMARY KEY,
+    section     VARCHAR,
+    label       VARCHAR,
+    depth       INTEGER,
+    parent_id   INTEGER REFERENCES schema_rows(row_id),
+    group_output_label VARCHAR
+);
+
+CREATE TABLE financials (
+    ticker   VARCHAR,
+    period   VARCHAR,
+    currency VARCHAR,
+    row_id   INTEGER REFERENCES schema_rows(row_id),
+    value    VARCHAR
+);
+```
+
+- Practical meaning:
+  `schema_rows` defines the annual TradingView row tree and grouping labels.
+  `financials` stores ticker-period raw values keyed by `row_id`.
+
+- Important distinction:
+  treat this as the source schema for the original annual per-ticker raw data only.
+  Do not confuse it with the downstream computed warehouse outputs in DuckDB or with derived parquet shards such as `metrics.parquet`, `fuzzycache.parquet`, and `distresslabels.parquet`.
+
 ### 7) Builder and upstream data scripts
 
 - Metric builder:
