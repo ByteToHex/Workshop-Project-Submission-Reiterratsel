@@ -589,6 +589,7 @@ def render_ranking_page() -> None:
         <div class="reit-card">
         <div class="reit-kicker">REITs Ranking</div>
         <div class="reit-muted">Runtime ranking combines filing-date Mamdani with the macro snapshot resolved on or before the selected simulation date.</div>
+        <div class="reit-muted" style="font-size: 0.85rem;"><em>REFI RISK</em> is shown here because it acts as the SORA sensitivity bridge in <em>final_distress</em>: REITs with higher refinancing risk are more affected by the macro layer.</div>
         </div>
         """,
         unsafe_allow_html=True,
