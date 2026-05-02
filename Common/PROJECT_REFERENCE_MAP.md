@@ -280,7 +280,7 @@ CREATE TABLE financials (
   compares `distress_baseline`, `distress_score_mamdani`, `distress_score_refi`, and `final_distress`
 
 - Current evaluation outputs:
-  each execution writes to a fresh numbered folder under `Common\Eval\run_n`
+  each execution writes to a fresh numbered folder under `Common\Eval\IO\run_n`
   containing:
   `reitteratsel_eval_detail.csv`
   `reitteratsel_eval_summary.csv`
@@ -288,6 +288,9 @@ CREATE TABLE financials (
   `reitteratsel_eval_confusion_matrices.csv`
   `reitteratsel_eval_per_class_metrics.csv`
   `reitteratsel_eval_ranking_metrics.csv`
+
+- Evaluation runtime note:
+  the evaluation script emits heartbeat progress logs during long runs and schedules per-date work asynchronously for more responsive monitoring
 
 ### 12) Docker runtime assets
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import math
 import sys
 from pathlib import Path
@@ -25,7 +26,7 @@ from reitteratsel_core import (  # noqa: E402
 from reitteratsel_view_logic import build_ranking_view  # noqa: E402
 
 
-OUTPUT_DIR = ROOT_DIR / "Common" / "Eval"
+OUTPUT_DIR = ROOT_DIR / "Common" / "Eval" / "IO"
 
 CLASS_ORDER = ["DISTRESSED", "WATCH", "HEALTHY"]
 MODEL_SCORE_COLS = {
@@ -41,6 +42,8 @@ MODEL_LEVEL_COLS = {
     "final_distress": "level",
 }
 TOP_K_VALUES = [1, 3, 5]
+HEARTBEAT_SECONDS = 15.0
+MAX_CONCURRENT_DATES = 8
 
 
 def allocate_run_dir(output_root: Path = OUTPUT_DIR) -> Path:
@@ -59,6 +62,105 @@ def allocate_run_dir(output_root: Path = OUTPUT_DIR) -> Path:
     run_dir = output_root / f"run_{next_number}"
     run_dir.mkdir(parents=True, exist_ok=False)
     return run_dir
+
+
+class EvalProgress:
+    def __init__(self, total_dates: int) -> None:
+        self.total_dates = total_dates
+        self.completed_dates = 0
+
+
+def build_eval_frame_for_date(
+    selected_date: object,
+    fuzzy_df: pd.DataFrame,
+    metric_df: pd.DataFrame,
+    macro_df: pd.DataFrame,
+    car_path_df: pd.DataFrame,
+    icr_rows: pd.DataFrame,
+) -> pd.DataFrame:
+    ranking_view, macro_row, distress_sora = build_ranking_view(
+        fuzzy_df,
+        metric_df,
+        macro_df,
+        car_path_df,
+        selected_date,
+    )
+    frame = ranking_view.merge(icr_rows, on=["ticker", "period_id"], how="left", validate="one_to_one")
+    frame["selected_date"] = pd.Timestamp(selected_date)
+    frame["macro_snapshot_ts"] = pd.Timestamp(macro_row["snapshot_ts"])
+    frame["distress_sora"] = float(distress_sora)
+    frame["distress_baseline"] = frame["icr_value"].map(compute_baseline_level)
+    frame["distress_score_baseline"] = frame["distress_baseline"].map(label_to_score)
+    frame["distress_mamdani_level"] = frame["distress_score_mamdani"].map(score_to_level)
+    frame["distress_score_refi"] = frame["refi_risk"].map(compute_refi_distress_score)
+    frame["distress_refi_level"] = frame["distress_score_refi"].map(
+        lambda value: score_to_level(value) if value is not None and not pd.isna(value) else None
+    )
+    frame["car_target_normalized"] = frame["car_126wd"].map(car_to_distress_score)
+    frame["is_distressed_truth"] = frame["label_126wd"] == "DISTRESSED"
+    for model_name, level_col in MODEL_LEVEL_COLS.items():
+        frame[f"{model_name}_correct"] = frame[level_col] == frame["label_126wd"]
+    for model_name, score_col in MODEL_SCORE_COLS.items():
+        frame[f"{model_name}_gap_abs"] = (frame[score_col] - frame["car_target_normalized"]).abs()
+    return frame
+
+
+async def heartbeat(progress: EvalProgress) -> None:
+    while progress.completed_dates < progress.total_dates:
+        print(
+            f"[heartbeat] completed {progress.completed_dates}/{progress.total_dates} "
+            f"simulation dates"
+        )
+        await asyncio.sleep(HEARTBEAT_SECONDS)
+
+
+async def build_eval_detail_async(
+    *,
+    fuzzy_df: pd.DataFrame,
+    metric_df: pd.DataFrame,
+    macro_df: pd.DataFrame,
+    car_path_df: pd.DataFrame,
+) -> pd.DataFrame:
+    selected_dates = macro_df["snapshot_ts"].dt.normalize().drop_duplicates().tolist()
+    if not selected_dates:
+        raise ValueError("No simulation dates were found in the macro frame.")
+    progress = EvalProgress(total_dates=len(selected_dates))
+    heartbeat_task = asyncio.create_task(heartbeat(progress))
+    icr_rows = metric_df.loc[metric_df["metric_code"] == "ICR", ["ticker", "period_id", "metric_value"]].rename(
+        columns={"metric_value": "icr_value"}
+    )
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_DATES)
+
+    async def worker(selected_date: object) -> pd.DataFrame:
+        async with semaphore:
+            frame = await asyncio.to_thread(
+                build_eval_frame_for_date,
+                selected_date,
+                fuzzy_df,
+                metric_df,
+                macro_df,
+                car_path_df,
+                icr_rows,
+            )
+            progress.completed_dates += 1
+            if progress.completed_dates % 25 == 0 or progress.completed_dates == progress.total_dates:
+                print(
+                    f"[progress] finished {progress.completed_dates}/{progress.total_dates} "
+                    f"dates; latest={pd.Timestamp(selected_date).date()}"
+                )
+            return frame
+
+    try:
+        tasks = [asyncio.create_task(worker(selected_date)) for selected_date in selected_dates]
+        frames = await asyncio.gather(*tasks)
+    finally:
+        heartbeat_task.cancel()
+        try:
+            await heartbeat_task
+        except asyncio.CancelledError:
+            pass
+
+    return pd.concat(frames, ignore_index=True)
 
 
 def compute_baseline_level(icr_value: float | None) -> str:
@@ -143,40 +245,14 @@ def build_eval_detail() -> pd.DataFrame:
         con.close()
 
     macro_df = load_macro_prediction_frame()
-    rows: list[pd.DataFrame] = []
-    for selected_date in macro_df["snapshot_ts"].dt.normalize().drop_duplicates().tolist():
-        ranking_view, macro_row, distress_sora = build_ranking_view(
-            fuzzy_df,
-            metric_df,
-            macro_df,
-            car_path_df,
-            selected_date,
+    return asyncio.run(
+        build_eval_detail_async(
+            fuzzy_df=fuzzy_df,
+            metric_df=metric_df,
+            macro_df=macro_df,
+            car_path_df=car_path_df,
         )
-        icr_rows = metric_df.loc[metric_df["metric_code"] == "ICR", ["ticker", "period_id", "metric_value"]].rename(
-            columns={"metric_value": "icr_value"}
-        )
-        frame = ranking_view.merge(icr_rows, on=["ticker", "period_id"], how="left", validate="one_to_one")
-        frame["selected_date"] = pd.Timestamp(selected_date)
-        frame["macro_snapshot_ts"] = pd.Timestamp(macro_row["snapshot_ts"])
-        frame["distress_sora"] = float(distress_sora)
-        frame["distress_baseline"] = frame["icr_value"].map(compute_baseline_level)
-        frame["distress_score_baseline"] = frame["distress_baseline"].map(label_to_score)
-        frame["distress_mamdani_level"] = frame["distress_score_mamdani"].map(score_to_level)
-        frame["distress_score_refi"] = frame["refi_risk"].map(compute_refi_distress_score)
-        frame["distress_refi_level"] = frame["distress_score_refi"].map(
-            lambda value: score_to_level(value) if value is not None and not pd.isna(value) else None
-        )
-        frame["car_target_normalized"] = frame["car_126wd"].map(car_to_distress_score)
-        frame["is_distressed_truth"] = frame["label_126wd"] == "DISTRESSED"
-        for model_name, level_col in MODEL_LEVEL_COLS.items():
-            frame[f"{model_name}_correct"] = frame[level_col] == frame["label_126wd"]
-        for model_name, score_col in MODEL_SCORE_COLS.items():
-            frame[f"{model_name}_gap_abs"] = (frame[score_col] - frame["car_target_normalized"]).abs()
-        rows.append(frame)
-
-    if not rows:
-        raise ValueError("No evaluation rows were generated from macro snapshots.")
-    return pd.concat(rows, ignore_index=True)
+    )
 
 
 def build_confusion_frame(detail_df: pd.DataFrame) -> pd.DataFrame:
