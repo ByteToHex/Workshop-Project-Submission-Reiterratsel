@@ -623,7 +623,6 @@ def render_ranking_page() -> None:
 def render_reit_page() -> None:
     selected_date = get_selected_simulation_date()
     ranking_view, macro_row, distress_sora = build_ranking_view(fuzzy_df, metric_df, macro_df, selected_date)
-    render_macro_header(macro_row=macro_row, distress_sora=distress_sora)
     ticker_options = ranking_view["ticker"].tolist()
     default_ticker = st.session_state.get("selected_ticker", ticker_options[0])
     if default_ticker not in ticker_options:
