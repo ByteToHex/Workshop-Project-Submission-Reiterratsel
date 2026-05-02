@@ -866,12 +866,12 @@ def render_ranking_page() -> None:
             "Interest Coverage Ratio (ICR)": st.column_config.NumberColumn(
                 "Interest Coverage Ratio (ICR)",
                 help=ICR_HELP,
-                format="%.2f",
+                format="%.3f",
             ),
             "Gearing Ratio": st.column_config.NumberColumn(
                 "Gearing Ratio",
                 help=GEARING_HELP,
-                format="%.1f%%",
+                format="%.3f%%",
             ),
             "Refinancing Risk Ratio": st.column_config.NumberColumn(
                 "Refinancing Risk Ratio",
