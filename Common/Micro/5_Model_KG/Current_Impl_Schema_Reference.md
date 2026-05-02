@@ -170,6 +170,11 @@ Current behavior:
 - Mamdani scores are loaded from `reit_fuzzy.fact_fuzzy_cache`
 - macro predictions are loaded from `run_21` artifacts in Python, not from DuckDB
 - the Streamlit app uses the latest available macro snapshot at runtime
+- dashboard display labels in `reitteratsel_app.py` now intentionally spell out the source role of:
+  - annual Mamdani base score from `reit_fuzzy.fact_fuzzy_cache`
+  - macro rate overlay from the `run_21` XGBoost artifacts
+  - abnormal-return-path overlay from `reit_labels.fact_car_path_daily`
+  - annual accounting metrics from `reit_metrics.fact_metric_value`
 
 Important implication:
 

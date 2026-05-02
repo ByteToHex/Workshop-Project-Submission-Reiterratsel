@@ -38,6 +38,93 @@ from reitteratsel_view_logic import (  # noqa: E402
 st.set_page_config(page_title="REITterratsel", layout="wide")
 st.logo(str(LOGO_WORDMARK_PATH), icon_image=str(LOGO_ICON_PATH), size="large")
 
+SIMULATION_DATE_HELP = (
+    "Resolve each view using the latest eligible annual filing row, macro snapshot, and daily CAR-path row "
+    "on or before this date."
+)
+MACRO_HEADER_KICKER = "XGBoost SORA forecast from overnight bank-rate inputs"
+MACRO_CHANGE_HELP = (
+    "Predicted 10-trading-day change in SORA. Computed from the run_21 macro model artifacts and converted "
+    "to a 0-1 stress score by reitteratsel_core.compute_sora_distress_score()."
+)
+MACRO_LEVEL_HELP = (
+    "Predicted SORA level 10 trading days ahead from the same macro model run."
+)
+MACRO_DISTRESS_HELP = (
+    "0-1 macro rate-stress score derived from the predicted 10-day SORA change. This is the macro overlay "
+    "used at runtime, not an annual accounting metric."
+)
+MACRO_SNAPSHOT_HELP = (
+    "Macro model snapshot date selected on or before the chosen simulation date."
+)
+FINAL_SCORE_HELP = (
+    "Final 0-1 runtime distress score shown in the app. It starts from the annual Mamdani base score in "
+    "reit_fuzzy.fact_fuzzy_cache, then adds a macro rate overlay and a REIT-specific abnormal-return-path overlay "
+    "via reitteratsel_core.compute_final_distress_score()."
+)
+ANNUAL_MAMDANI_HELP = (
+    "Annual base distress score from the Mamdani fuzzy rule engine, persisted in reit_fuzzy.fact_fuzzy_cache. "
+    "Built from annual fundamentals in reit_metrics.fact_metric_value through build_fuzzy_input_frame(), "
+    "evaluate_fuzzy_row(), and build_fuzzy_cache_frame()."
+)
+ICR_HELP = (
+    "Interest Coverage Ratio. Built from annual EBITDA divided by absolute bank interest expense "
+    "per Data_Dict_Reit_Metrics.md and stored in reit_metrics.fact_metric_value."
+)
+GEARING_HELP = (
+    "Gearing Ratio. Annual total debt divided by total assets, with a warehouse fallback to the existing "
+    "debt-to-assets ratio when required."
+)
+DSCR_HELP = (
+    "Debt Service Coverage Ratio. Annual FFO divided by cash interest paid plus short-term debt."
+)
+REFI_HELP = (
+    "Refinancing Risk Ratio. Annual short-term debt divided by total debt. At runtime this scales how strongly "
+    "the macro rate-shock overlay affects the final distress score."
+)
+PAYOUT_HELP = (
+    "Payout Ratio. Annual cash dividends paid divided by FFO. If FFO is non-positive, the raw number is still "
+    "stored but should be read as a distress-style signal."
+)
+NULL_COUNT_HELP = (
+    "Count of annual input metrics for this ticker-period whose calculation status was MISSING_INPUT when the "
+    "fuzzy input row was built."
+)
+RULE_TRACE_HELP = (
+    "Top Mamdani rules that fired for the selected annual filing row, taken from reit_fuzzy.fact_fuzzy_cache.rule_trace_text."
+)
+CAR_PANEL_HELP = (
+    "These fields come from reit_labels.fact_distress_label and reit_labels.fact_car_path_daily, which are built "
+    "from REIT daily returns minus the SGX iEdge REIT index daily return."
+)
+ACCUM_CAR_HELP = (
+    "Accumulated cumulative abnormal return from the annual filing anchor trade date up to the selected simulation date."
+)
+CAR_PATH_DISTRESS_HELP = (
+    "0-1 score translated from the accumulated abnormal-return path. This is the REIT-specific market overlay used "
+    "inside the final runtime distress score."
+)
+CAR_63_HELP = (
+    "Forward 63-trading-day cumulative abnormal return after the annual filing anchor date."
+)
+CAR_126_HELP = (
+    "Forward 126-trading-day cumulative abnormal return after the annual filing anchor date. This is the basis for "
+    "the persisted distress label."
+)
+CAR_LABEL_HELP = (
+    "Label derived from the 126-trading-day cumulative abnormal return in reit_labels.fact_distress_label."
+)
+MACRO_PANEL_HELP = (
+    "These fields come from the run_21 XGBoost macro artifacts loaded at runtime rather than from DuckDB."
+)
+FOMC_HELP = (
+    "FOMC decision date associated with the selected macro model snapshot."
+)
+RANKING_TABLE_HELP = (
+    "Ranking table combines the persisted annual Mamdani base score, the runtime macro overlay, and the runtime "
+    "daily abnormal-return-path overlay for the selected simulation date."
+)
+
 st.markdown(
     """
     <style>
@@ -349,19 +436,19 @@ def get_selected_simulation_date() -> object:
         min_value=MIN_MACRO_DATE,
         max_value=MAX_MACRO_DATE,
         key="selected_simulation_date_widget",
-        help="Resolve annual filing rows and macro snapshots on or before this date.",
+        help=SIMULATION_DATE_HELP,
     )
     st.session_state["simulation_date_value"] = selected_date
     return selected_date
 
 
 def render_macro_header(*, macro_row: pd.Series, distress_sora: float) -> None:
-    st.markdown('<div class="reit-kicker">Prediction from overnight bank rates</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="reit-kicker">{MACRO_HEADER_KICKER}</div>', unsafe_allow_html=True)
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("10D Predicted SORA Change", f"{macro_row['y_pred']:+.3f}")
-    m2.metric("Predicted SORA Level", f"{macro_row['predicted_level']:.3f}")
-    m3.metric("Macro Distress", f"{distress_sora:.2f}")
-    m4.metric("Snapshot Date", macro_row["snapshot_ts"].strftime("%Y-%m-%d"))
+    m1.metric("Predicted 10-Trading-Day SORA Change", f"{macro_row['y_pred']:+.3f}", help=MACRO_CHANGE_HELP)
+    m2.metric("Predicted SORA Level In 10 Trading Days", f"{macro_row['predicted_level']:.3f}", help=MACRO_LEVEL_HELP)
+    m3.metric("Macro Rate-Stress Overlay Score", f"{distress_sora:.2f}", help=MACRO_DISTRESS_HELP)
+    m4.metric("Macro Model Snapshot Date", macro_row["snapshot_ts"].strftime("%Y-%m-%d"), help=MACRO_SNAPSHOT_HELP)
 
 
 def resolve_simulation_context() -> tuple[object, pd.DataFrame, pd.Series, float]:
@@ -501,37 +588,37 @@ def render_expanded_reit_header(
     <div class="reit-card">
       <div class="reit-header-grid">
         <div class="reit-header-score">
-          <div class="reit-label">Distress Score</div>
+          <div class="reit-label">Final Runtime Distress Score</div>
           <div class="reit-value reit-value-score">{final_distress:.2f}</div>
-          <div class="reit-subvalue">Final level: {final_level}</div>
+          <div class="reit-subvalue">Runtime level after annual, macro, and CAR-path overlays: {final_level}</div>
         </div>
         <div class="reit-thresholds">
           {build_threshold_pills(final_level)}
         </div>
         <div class="reit-metric-box">
-          <div class="reit-label">ICR</div>
+          <div class="reit-label">Interest Coverage Ratio (ICR)</div>
           <div class="reit-value">{latest_metrics.get('ICR', float('nan')):.2f}</div>
         </div>
         <div class="reit-metric-box">
-          <div class="reit-label">Gearing</div>
+          <div class="reit-label">Gearing Ratio</div>
           <div class="reit-value">{latest_metrics.get('GEARING', float('nan')):.1%}</div>
         </div>
         <div class="reit-metric-box">
-          <div class="reit-label">ICR Trend</div>
+          <div class="reit-label">Interest Coverage Trend</div>
           <div class="reit-value" style="font-size: 1.7rem;">{icr_trend}</div>
         </div>
         <div class="reit-metric-box">
-          <div class="reit-label">TOPGEO</div>
+          <div class="reit-label">Top Revenue Geography</div>
           <div class="reit-value" style="font-size: 1.7rem;">{top_geo_display}</div>
           <div class="reit-subvalue">{top_geo_subvalue}</div>
         </div>
         <div class="reit-metric-box">
-          <div class="reit-label">Refi Cliff</div>
+          <div class="reit-label">Short-Term Debt Due ("Refi Cliff")</div>
           <div class="reit-value" style="font-size: 1.8rem;">{format_currency_compact(refi_cliff_value)}</div>
-          <div class="reit-subvalue">Short-term debt</div>
+          <div class="reit-subvalue">Annual short-term debt component used inside REFI_RISK</div>
         </div>
         <div class="reit-metric-box">
-          <div class="reit-label">DPU Trend</div>
+          <div class="reit-label">Dividend Per Unit Trend</div>
           <div class="reit-value" style="font-size: 1.7rem;">{dpu_trend}</div>
         </div>
       </div>
@@ -645,12 +732,13 @@ def render_ranking_intro_card() -> None:
         """
         <div class="reit-card">
         <div class="reit-kicker">REITs Ranking</div>
-        <div class="reit-muted">Runtime ranking combines filing-date Mamdani with the macro snapshot resolved on or before the selected simulation date.</div>
-        <div class="reit-muted" style="font-size: 0.85rem;"><em>REFI RISK</em> scales the macro-rate shock, while the daily accumulated abnormal-return path adds the REIT-specific market signal between annual filings.</div>
+        <div class="reit-muted">The ranking starts with each REIT's annual Mamdani fuzzy-rule score, then applies a macro rate-stress overlay and a REIT-specific abnormal-return-path overlay as of the selected simulation date.</div>
+        <div class="reit-muted" style="font-size: 0.85rem;"><em>Refinancing Risk Ratio</em> (short-term debt divided by total debt) scales the macro overlay, while the abnormal-return path is built from REIT daily returns minus the SGX iEdge REIT index daily return.</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
+    st.caption(RANKING_TABLE_HELP)
 
 
 def render_ranking_page() -> None:
@@ -664,17 +752,51 @@ def render_ranking_page() -> None:
         ].rename(
             columns={
                 "ticker": "Ticker",
-                "reit_name": "Name",
+                "reit_name": "REIT Name",
                 "sector": "Sector",
-                "fiscal_year_end_date": "Annual Anchor",
-                "distress_score_mamdani": "Mamdani",
-                "refi_risk": "REFI RISK",
-                "accum_car_to_date": "Accum CAR",
-                "final_distress": "Final Score",
-                "level": "Level",
-                "label_126wd": "CAR Label",
+                "fiscal_year_end_date": "Annual Filing Anchor",
+                "distress_score_mamdani": "Annual Mamdani Base Score",
+                "refi_risk": "Refinancing Risk Ratio",
+                "accum_car_to_date": "Accumulated Abnormal Return To Date",
+                "final_distress": "Final Runtime Distress Score",
+                "level": "Runtime Distress Level",
+                "label_126wd": "126-Day CAR Label",
             }
         ),
+        column_config={
+            "Annual Filing Anchor": st.column_config.DateColumn(
+                "Annual Filing Anchor",
+                help="Fiscal-year-end anchor date from reit_metrics.dim_period used to select the annual filing row."
+            ),
+            "Annual Mamdani Base Score": st.column_config.NumberColumn(
+                "Annual Mamdani Base Score",
+                help=ANNUAL_MAMDANI_HELP,
+                format="%.2f",
+            ),
+            "Refinancing Risk Ratio": st.column_config.NumberColumn(
+                "Refinancing Risk Ratio",
+                help=REFI_HELP,
+                format="%.2f",
+            ),
+            "Accumulated Abnormal Return To Date": st.column_config.NumberColumn(
+                "Accumulated Abnormal Return To Date",
+                help=ACCUM_CAR_HELP,
+                format="%.2f%%",
+            ),
+            "Final Runtime Distress Score": st.column_config.NumberColumn(
+                "Final Runtime Distress Score",
+                help=FINAL_SCORE_HELP,
+                format="%.2f",
+            ),
+            "Runtime Distress Level": st.column_config.TextColumn(
+                "Runtime Distress Level",
+                help="Bucket derived from the final runtime distress score: Stable, Watch, High, or Critical."
+            ),
+            "126-Day CAR Label": st.column_config.TextColumn(
+                "126-Day CAR Label",
+                help=CAR_LABEL_HELP,
+            ),
+        },
         width="stretch",
     )
 
@@ -745,26 +867,28 @@ def render_reit_page() -> None:
             st.markdown(
                 f"""
                 <div class="reit-card">
-                <div class="reit-kicker">Distress Score</div>
+                <div class="reit-kicker">How The Final Runtime Distress Score Is Built</div>
                 <div class="reit-score">{final_distress:.2f}</div>
-                <div class="reit-muted">Level: {final_level}</div>
-                <div class="reit-muted">Frozen Mamdani: {header_ctx['distress_score_mamdani']:.2f}</div>
-                <div class="reit-muted">Macro layer: {distress_sora:.2f}</div>
-                <div class="reit-muted">CAR path distress: {selected_row['car_path_distress']:.2f}</div>
-                <div class="reit-muted">Annual anchor: {pd.Timestamp(selected_row['fiscal_year_end_date']).strftime("%Y-%m-%d")}</div>
+                <div class="reit-muted">Runtime distress level: {final_level}</div>
+                <div class="reit-muted">Annual Mamdani base score from annual fundamentals: {header_ctx['distress_score_mamdani']:.2f}</div>
+                <div class="reit-muted">Macro rate-stress overlay score from the XGBoost SORA forecast: {distress_sora:.2f}</div>
+                <div class="reit-muted">REIT-specific abnormal-return-path overlay score: {selected_row['car_path_distress']:.2f}</div>
+                <div class="reit-muted">Annual filing anchor date used for this row: {pd.Timestamp(selected_row['fiscal_year_end_date']).strftime("%Y-%m-%d")}</div>
                 </div>
                 """,
                 unsafe_allow_html=True,
             )
+            st.caption(FINAL_SCORE_HELP)
         with c2:
             stats = st.columns(6)
-            stats[0].metric("ICR", f"{header_ctx['latest_metrics'].get('ICR', float('nan')):.2f}")
-            stats[1].metric("GEARING", f"{header_ctx['latest_metrics'].get('GEARING', float('nan')):.2f}")
-            stats[2].metric("DSCR", f"{header_ctx['latest_metrics'].get('DSCR', float('nan')):.2f}")
-            stats[3].metric("REFI RISK", f"{header_ctx['latest_metrics'].get('REFI_RISK', float('nan')):.2f}")
-            stats[4].metric("PAYOUT", f"{header_ctx['latest_metrics'].get('PAYOUT_RATIO', float('nan')):.2f}")
-            stats[5].metric("NULL COUNT", f"{int(selected_row['null_count'])}")
-            with st.expander("Why was this flagged?", expanded=True):
+            stats[0].metric("Interest Coverage Ratio (ICR)", f"{header_ctx['latest_metrics'].get('ICR', float('nan')):.2f}", help=ICR_HELP)
+            stats[1].metric("Gearing Ratio", f"{header_ctx['latest_metrics'].get('GEARING', float('nan')):.2f}", help=GEARING_HELP)
+            stats[2].metric("Debt Service Coverage Ratio (DSCR)", f"{header_ctx['latest_metrics'].get('DSCR', float('nan')):.2f}", help=DSCR_HELP)
+            stats[3].metric("Refinancing Risk Ratio", f"{header_ctx['latest_metrics'].get('REFI_RISK', float('nan')):.2f}", help=REFI_HELP)
+            stats[4].metric("Payout Ratio", f"{header_ctx['latest_metrics'].get('PAYOUT_RATIO', float('nan')):.2f}", help=PAYOUT_HELP)
+            stats[5].metric("Missing Annual Metric Count", f"{int(selected_row['null_count'])}", help=NULL_COUNT_HELP)
+            with st.expander("Why did the fuzzy rule engine flag this REIT?", expanded=True):
+                st.caption(RULE_TRACE_HELP)
                 st.text(selected_row["rule_trace_text"] or "No rule trace available.")
         c3, c4 = st.columns(2)
         with c3:
@@ -773,24 +897,28 @@ def render_reit_page() -> None:
                 ticker=selected_ticker,
                 period_id=selected_period_id,
             )
-            st.markdown("**CAR Panels**")
+            st.markdown("**REIT Market Path Since The Annual Filing Anchor**")
+            st.caption(CAR_PANEL_HELP)
             st.metric(
-                "Accum CAR To Date",
+                "Accumulated Abnormal Return To Date",
                 "N/A" if pd.isna(selected_row["accum_car_to_date"]) else f"{selected_row['accum_car_to_date']:.2%}",
+                help=ACCUM_CAR_HELP,
             )
             st.metric(
-                "CAR Path Distress",
+                "Abnormal-Return-Path Overlay Score",
                 "N/A" if pd.isna(selected_row["car_path_distress"]) else f"{selected_row['car_path_distress']:.2f}",
+                help=CAR_PATH_DISTRESS_HELP,
             )
-            st.metric("CAR 63wd", "N/A" if pd.isna(selected_label["car_63wd"]) else f"{selected_label['car_63wd']:.2%}")
-            st.metric("CAR 126wd", "N/A" if pd.isna(selected_label["car_126wd"]) else f"{selected_label['car_126wd']:.2%}")
-            st.metric("CAR Label", selected_label["label_126wd"] or "PENDING")
+            st.metric("Forward 63-Trading-Day Abnormal Return", "N/A" if pd.isna(selected_label["car_63wd"]) else f"{selected_label['car_63wd']:.2%}", help=CAR_63_HELP)
+            st.metric("Forward 126-Trading-Day Abnormal Return", "N/A" if pd.isna(selected_label["car_126wd"]) else f"{selected_label['car_126wd']:.2%}", help=CAR_126_HELP)
+            st.metric("126-Day Distress Label", selected_label["label_126wd"] or "PENDING", help=CAR_LABEL_HELP)
         with c4:
             macro_panel = build_macro_panel_context(macro_row, distress_sora)
-            st.markdown("**Macro Layer**")
-            st.metric("Predicted 10D Change", f"{macro_panel['predicted_change']:+.3f}")
-            st.metric("Predicted 10D Level", f"{macro_panel['predicted_level']:.3f}")
-            st.metric("FOMC Decision", macro_panel["fomc_decision_date"].strftime("%Y-%m-%d"))
+            st.markdown("**Macro Rate Overlay Used At Runtime**")
+            st.caption(MACRO_PANEL_HELP)
+            st.metric("Predicted 10-Trading-Day SORA Change", f"{macro_panel['predicted_change']:+.3f}", help=MACRO_CHANGE_HELP)
+            st.metric("Predicted SORA Level In 10 Trading Days", f"{macro_panel['predicted_level']:.3f}", help=MACRO_LEVEL_HELP)
+            st.metric("FOMC Decision Date", macro_panel["fomc_decision_date"].strftime("%Y-%m-%d"), help=FOMC_HELP)
 
     with tab_financials:
         st.markdown("**Annual metric history**")
