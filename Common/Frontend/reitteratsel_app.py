@@ -1012,7 +1012,12 @@ def render_reit_page() -> None:
         with c1:
             with st.container(border=True):
                 st.markdown("**Final Runtime Distress Score**", help=FINAL_SCORE_BUILD_HELP)
-                st.metric("", f"{final_distress:.2f}", help=FINAL_SCORE_HELP, label_visibility="collapsed")
+                st.metric(
+                    "Final Runtime Distress Score Value",
+                    f"{final_distress:.2f}",
+                    help=FINAL_SCORE_HELP,
+                    label_visibility="collapsed",
+                )
                 score_cols = st.columns([1.25, 1, 1, 1])
                 score_cols[0].metric("Runtime Level", final_level, help="Bucket derived from the final runtime distress score.")
                 score_cols[1].metric("Annual Mamdani Base", f"{header_ctx['distress_score_mamdani']:.2f}", help=ANNUAL_MAMDANI_HELP)
