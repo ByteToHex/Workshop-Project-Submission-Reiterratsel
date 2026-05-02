@@ -635,6 +635,13 @@ def render_reit_page() -> None:
     selected_component_df = component_df.loc[component_df["ticker"] == selected_ticker].copy()
     selected_dividend_df = dividend_df.loc[dividend_df["ticker"] == selected_ticker].copy()
     selected_period_id = int(selected_row["period_id"])
+    selected_period_end = pd.Timestamp(selected_row["fiscal_year_end_date"])
+    metric_history_df = selected_metric_df.loc[
+        selected_metric_df["fiscal_year_end_date"] <= selected_period_end
+    ].copy()
+    label_history_df = selected_label_df.loc[
+        pd.to_datetime(selected_label_df["anchor_date"]) <= selected_period_end
+    ].copy()
 
     final_distress = float(selected_row["final_distress"])
     final_level = str(selected_row["level"])
@@ -717,7 +724,7 @@ def render_reit_page() -> None:
 
     with tab_financials:
         st.markdown("**Annual metric history**")
-        financial_pivot = selected_metric_df.pivot_table(
+        financial_pivot = metric_history_df.pivot_table(
             index=["fiscal_year", "fiscal_year_end_date"],
             columns="metric_code",
             values="metric_value",
@@ -725,7 +732,7 @@ def render_reit_page() -> None:
         ).reset_index()
         st.dataframe(financial_pivot, width="stretch")
         with st.expander("Label history"):
-            st.dataframe(selected_label_df, width="stretch")
+            st.dataframe(label_history_df, width="stretch")
 
 
 def render_rates_page() -> None:
