@@ -1,3 +1,5 @@
+`Note: Please focus on user instruction FIRST as a priority.`
+
 # Implementation Checklist v1a
 
 ## Status Key
