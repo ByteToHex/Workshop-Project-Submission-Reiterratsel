@@ -91,11 +91,15 @@ def build_eval_frame_for_date(
     frame["distress_sora"] = float(distress_sora)
     frame["distress_baseline"] = frame["icr_value"].map(compute_baseline_level)
     frame["distress_score_baseline"] = frame["distress_baseline"].map(label_to_score)
-    frame["distress_mamdani_level"] = frame["distress_score_mamdani"].map(score_to_level)
+    frame["distress_mamdani_level_raw"] = frame["distress_score_mamdani"].map(score_to_level)
+    frame["distress_mamdani_level"] = frame["distress_mamdani_level_raw"].map(map_score_level_to_label_class)
     frame["distress_score_refi"] = frame["refi_risk"].map(compute_refi_distress_score)
-    frame["distress_refi_level"] = frame["distress_score_refi"].map(
+    frame["distress_refi_level_raw"] = frame["distress_score_refi"].map(
         lambda value: score_to_level(value) if value is not None and not pd.isna(value) else None
     )
+    frame["distress_refi_level"] = frame["distress_refi_level_raw"].map(map_score_level_to_label_class)
+    frame["final_distress_level_raw"] = frame["level"]
+    frame["level"] = frame["final_distress_level_raw"].map(map_score_level_to_label_class)
     frame["car_target_normalized"] = frame["car_126wd"].map(car_to_distress_score)
     frame["is_distressed_truth"] = frame["label_126wd"] == "DISTRESSED"
     for model_name, level_col in MODEL_LEVEL_COLS.items():
@@ -181,6 +185,20 @@ def label_to_score(level: str | None) -> float | None:
     }
     if level is None or pd.isna(level):
         return None
+    return mapping.get(str(level).upper())
+
+
+def map_score_level_to_label_class(level: str | None) -> str | None:
+    if level is None or pd.isna(level):
+        return None
+    mapping = {
+        "CRITICAL": "DISTRESSED",
+        "HIGH": "DISTRESSED",
+        "WATCH": "WATCH",
+        "STABLE": "HEALTHY",
+        "HEALTHY": "HEALTHY",
+        "DISTRESSED": "DISTRESSED",
+    }
     return mapping.get(str(level).upper())
 
 
