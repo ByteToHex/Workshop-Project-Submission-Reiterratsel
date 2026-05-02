@@ -81,7 +81,11 @@ Critical override:
 
 - Docker compose runtime override for container-to-container Neo4j hostname:
   `Common\docker-compose.env`
-  Note: this is mounted as the runtime `.env` inside the app container because `127.0.0.1` from the host `.env` is not valid from inside Docker.
+  Note: keep this local and uncommitted.
+
+- Docker compose env template:
+  `Common\docker-compose.env.example`
+  Note: use this as the committed template for the container runtime `.env` because `127.0.0.1` from the host `.env` is not valid from inside Docker.
 
 ### 5) Authoritative DuckDB warehouse
 
@@ -182,7 +186,10 @@ Critical override:
   `Common\Frontend\requirements.reitteratsel.txt`
 
 - Container runtime env override:
-  `Common\docker-compose.env`
+  `Common\docker-compose.env` local secret file
+
+- Container runtime env template:
+  `Common\docker-compose.env.example`
 
 - Usage note:
   this compose setup starts Neo4j plus the Streamlit app container, runs the KG build first, then launches the app.
