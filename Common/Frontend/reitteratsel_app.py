@@ -238,6 +238,10 @@ st.markdown(
         color: #bfb7b2;
         font-size: 0.92rem;
     }
+    .reit-subvalue-highlight {
+        color: #f6d365;
+        font-weight: 800;
+    }
     .reit-thresholds {
         display: flex;
         flex-direction: column;
@@ -637,7 +641,7 @@ def render_expanded_reit_header(
 ) -> None:
     top_geo_display = top_geo_label or "N/A"
     if top_geo_share is not None and not pd.isna(top_geo_share):
-        top_geo_subvalue = f"{top_geo_share:.0%} of revenue"
+        top_geo_subvalue = f'<span class="reit-subvalue-highlight">{top_geo_share:.0%}</span> of revenue'
     else:
         top_geo_subvalue = "Share unavailable"
     header_html = f"""
