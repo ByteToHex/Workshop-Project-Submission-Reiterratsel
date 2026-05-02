@@ -16,6 +16,8 @@
 - Also scan the map for other relevant sections the user may not have explicitly named, such as data, schema, implementation, environment, model, and runtime references, before concluding what is relevant.
 - Do not claim that a file, component, dataset, schema, artifact, or reference does not exist until you have checked `Common\PROJECT_REFERENCE_MAP.md` and followed the relevant paths from it.
 - If the map and local files disagree, surface the mismatch clearly and continue using the repo's stated source-of-truth order plus direct user instruction.
+- Whenever making code updates, also make the accompanying updates to `Common\PROJECT_REFERENCE_MAP.md` in the same task when paths, components, runtime behavior, source-of-truth notes, or other implementation references have changed or were found to be incomplete.
+- Do not treat project-map maintenance as optional follow-up when implementation changes affect repository orientation or documented component relationships.
 
 ## Python Environment
 
