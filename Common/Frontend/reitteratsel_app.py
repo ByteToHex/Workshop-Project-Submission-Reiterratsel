@@ -751,17 +751,17 @@ def render_rates_page() -> None:
         + alt.Chart(train_rule_df)
         .mark_text(color="#ff4a4a", align="left", dx=6, dy=-120)
         .encode(x="date:T", text="label:N")
-        + change_hover_base.mark_point(opacity=0).add_params(hover_change)
-        + change_base.mark_circle(size=60).transform_filter(hover_change)
-        + change_hover_base.mark_rule(color="#8b949e")
-        .transform_filter(hover_change)
-        .encode(
+        + change_hover_base.mark_point(opacity=0, size=120).add_params(hover_change).encode(
+            y=alt.value(0),
             tooltip=[
                 alt.Tooltip("date:T", title="Date"),
                 alt.Tooltip("predicted_change_10d:Q", title="Predicted 10D Change", format=".3f"),
                 alt.Tooltip("actual_sora_fwd_10d_change:Q", title="Actual 10D Change", format=".3f"),
-            ]
+            ],
         )
+        + change_base.mark_circle(size=60).transform_filter(hover_change)
+        + change_hover_base.mark_rule(color="#8b949e")
+        .transform_filter(hover_change)
     )
     st.altair_chart(change_plot.properties(height=260), use_container_width=True)
 
@@ -822,17 +822,17 @@ def render_rates_page() -> None:
         + alt.Chart(future_train_rule_df)
         .mark_text(color="#ff4a4a", align="left", dx=6, dy=-120)
         .encode(x="target_date:T", text="label:N")
-        + level_hover_base.mark_point(opacity=0).add_params(hover_level)
-        + level_base.mark_circle(size=60).transform_filter(hover_level)
-        + level_hover_base.mark_rule(color="#8b949e")
-        .transform_filter(hover_level)
-        .encode(
+        + level_hover_base.mark_point(opacity=0, size=120).add_params(hover_level).encode(
+            y=alt.value(0),
             tooltip=[
                 alt.Tooltip("target_date:T", title="Forecast target date"),
                 alt.Tooltip("predicted_level_10d:Q", title="Predicted 10D Level", format=".3f"),
                 alt.Tooltip("actual_future_level_10d:Q", title="Actual Future Level", format=".3f"),
-            ]
+            ],
         )
+        + level_base.mark_circle(size=60).transform_filter(hover_level)
+        + level_hover_base.mark_rule(color="#8b949e")
+        .transform_filter(hover_level)
     )
     st.altair_chart(level_plot.properties(height=260), use_container_width=True)
     st.caption(
