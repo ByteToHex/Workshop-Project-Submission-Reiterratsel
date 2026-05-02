@@ -4,6 +4,10 @@ This file is the unified location map for this repository's REIT distress / Mamd
 
 Use this first when orienting to the project so the same paths and precedence rules do not need to be retyped in future prompts.
 
+## Current Design
+
+For project submission ONLY, current design assumes that the app is rebuilt (meaning the runner will rebuild the cache in reitteratsel_core.py) every time it is launched.
+
 ## Source-of-Truth Order
 
 When references conflict, use this order:
