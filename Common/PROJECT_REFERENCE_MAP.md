@@ -18,6 +18,12 @@ When references conflict, use this order:
 
 Critical override:
 
+- Always defer to user instruction. Flag out significant differences (if any) between user instruction and DuckDB warehouse contents, if any.
+- After implementation, always update these items (where applicable):
+  - Draft design flow (Design_v1a.txt) -> Align it with the current design
+  - Progress checklist (Implementation_Checklist_v1a.md) -> Implementation progress/targets
+  - This file (PROJECT_REFERENCE_MAP.md) -> Paths that were added or changed
+  // Please take care pay attention that they do not bloat; keep points succinct
 - Always override the draft design doc with the actual DuckDB state.
 - Treat the warehouse as authoritative for what already exists.
 - Do not assume a design-doc step is still pending just because it appears in the draft flow.
