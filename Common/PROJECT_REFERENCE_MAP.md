@@ -246,8 +246,21 @@ CREATE TABLE financials (
 - Streamlit app entrypoint:
   `Common\Frontend\reitteratsel_app.py`
 
+- App view-logic module:
+  `Common\Frontend\reitteratsel_view_logic.py`
+
+- View-logic responsibility:
+  resolves the selected simulation date to:
+  - the latest eligible macro snapshot on or before that date
+  - the latest eligible annual ticker-period row on or before that date
+  - the runtime `final_distress` score by combining frozen Mamdani output with the macro layer using `REFI_RISK` as the sensitivity bridge
+
 - Usage note:
-  these files and split pipeline methods are the fastest path for checking what the live app reads, and how `fact_distress_label`, `fact_fuzzy_cache`, and `rule_trace_text` are derived and persisted.
+  these files and split pipeline methods are the fastest path for checking:
+  - what the live app reads
+  - how `fact_distress_label`, `fact_fuzzy_cache`, and `rule_trace_text` are derived and persisted
+  - how the selected simulation date resolves annual-anchor rows versus macro rows at runtime
+  - how frozen Mamdani outputs are combined with the macro layer in the app
 
 ### 12) Docker runtime assets
 
