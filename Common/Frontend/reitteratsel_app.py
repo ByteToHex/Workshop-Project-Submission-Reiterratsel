@@ -336,6 +336,17 @@ def render_macro_header(*, macro_row: pd.Series, distress_sora: float) -> None:
     m4.metric("Snapshot Date", macro_row["snapshot_ts"].strftime("%Y-%m-%d"))
 
 
+def resolve_simulation_context() -> tuple[object, pd.DataFrame, pd.Series, float]:
+    selected_date = get_selected_simulation_date()
+    ranking_view, macro_row, distress_sora = build_ranking_view(
+        fuzzy_df,
+        metric_df,
+        macro_df,
+        selected_date,
+    )
+    return selected_date, ranking_view, macro_row, distress_sora
+
+
 def format_currency_compact(value: float | None) -> str:
     if value is None or pd.isna(value):
         return "N/A"
@@ -424,6 +435,21 @@ def build_threshold_pills(final_level: str) -> str:
         active_class = " reit-pill-active" if css_key == level_key else ""
         pills.append(f'<div class="reit-pill reit-pill-{css_key}{active_class}">{label}</div>')
     return "".join(pills)
+
+
+def build_reit_history_frames(
+    *,
+    selected_metric_df: pd.DataFrame,
+    selected_label_df: pd.DataFrame,
+    selected_period_end: pd.Timestamp,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    metric_history_df = selected_metric_df.loc[
+        selected_metric_df["fiscal_year_end_date"] <= selected_period_end
+    ].copy()
+    label_history_df = selected_label_df.loc[
+        pd.to_datetime(selected_label_df["anchor_date"]) <= selected_period_end
+    ].copy()
+    return metric_history_df, label_history_df
 
 
 def render_expanded_reit_header(
@@ -585,10 +611,7 @@ def build_reit_header_context(
     }
 
 
-def render_ranking_page() -> None:
-    selected_date = get_selected_simulation_date()
-    ranking_view, macro_row, distress_sora = build_ranking_view(fuzzy_df, metric_df, macro_df, selected_date)
-    render_macro_header(macro_row=macro_row, distress_sora=distress_sora)
+def render_ranking_intro_card() -> None:
     st.markdown(
         """
         <div class="reit-card">
@@ -599,6 +622,12 @@ def render_ranking_page() -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_ranking_page() -> None:
+    _, ranking_view, macro_row, distress_sora = resolve_simulation_context()
+    render_macro_header(macro_row=macro_row, distress_sora=distress_sora)
+    render_ranking_intro_card()
     ranking_view.index = ranking_view.index + 1
     st.dataframe(
         ranking_view[
@@ -621,8 +650,7 @@ def render_ranking_page() -> None:
 
 
 def render_reit_page() -> None:
-    selected_date = get_selected_simulation_date()
-    ranking_view, macro_row, distress_sora = build_ranking_view(fuzzy_df, metric_df, macro_df, selected_date)
+    _, ranking_view, macro_row, distress_sora = resolve_simulation_context()
     ticker_options = ranking_view["ticker"].tolist()
     default_ticker = st.session_state.get("selected_ticker", ticker_options[0])
     if default_ticker not in ticker_options:
@@ -640,12 +668,11 @@ def render_reit_page() -> None:
     selected_dividend_df = dividend_df.loc[dividend_df["ticker"] == selected_ticker].copy()
     selected_period_id = int(selected_row["period_id"])
     selected_period_end = pd.Timestamp(selected_row["fiscal_year_end_date"])
-    metric_history_df = selected_metric_df.loc[
-        selected_metric_df["fiscal_year_end_date"] <= selected_period_end
-    ].copy()
-    label_history_df = selected_label_df.loc[
-        pd.to_datetime(selected_label_df["anchor_date"]) <= selected_period_end
-    ].copy()
+    metric_history_df, label_history_df = build_reit_history_frames(
+        selected_metric_df=selected_metric_df,
+        selected_label_df=selected_label_df,
+        selected_period_end=selected_period_end,
+    )
 
     final_distress = float(selected_row["final_distress"])
     final_level = str(selected_row["level"])
