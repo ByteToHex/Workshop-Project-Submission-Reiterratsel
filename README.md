@@ -30,7 +30,7 @@ For project submission, the design intentionally ships the committed DuckDB ware
 
 | Official Full Name | Student ID (MTech Applicable) | Work Items (Who Did What) | Email (Optional) |
 | :------------ |:---------------:| :-----| :-----|
-| Jason Tay | A0265092A | End-to-end solo delivery of the REIT distress project, including data pipeline design (for both micro and micro/company-layer), data sourcing, data engineering, DuckDB warehouse build, REIT metric derivation, Mamdani rule modelling, Neo4j rule-graph integration, macro XGBoost integration, Streamlit application development, Docker packaging, evaluation workflow, project documentation, and submission packaging. | tnw.jason@gmail.com |
+| Jason Tay | A0265092A | End-to-end solo delivery of the REIT distress project, including data pipeline design (for both micro and micro/company-layer), data sourcing, data engineering, DuckDB warehouse build, REIT metric derivation, Mamdani rule modelling, Neo4j rule-graph integration, macro XGBoost integration, Streamlit application development, Docker packaging, evaluation workflow, project documentation, and submission packaging. | jason.tay.nw@u.nus.edu |
 
 ---
 
