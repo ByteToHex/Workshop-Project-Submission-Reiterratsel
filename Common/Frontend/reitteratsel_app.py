@@ -703,17 +703,36 @@ def render_reit_page() -> None:
 def render_rates_page() -> None:
     render_macro_header()
     st.markdown("**SORA macro walk-forward**")
-    macro_chart = macro_df[["snapshot_ts", "y_pred", "predicted_level", "sora_level_realized"]].copy()
-    macro_chart = macro_chart.rename(
+    change_chart = macro_df[["snapshot_ts", "y_pred", "y_true"]].copy()
+    change_chart = change_chart.rename(
         columns={
             "snapshot_ts": "date",
             "y_pred": "predicted_change_10d",
-            "predicted_level": "predicted_level_10d",
-            "sora_level_realized": "realized_level",
+            "y_true": "actual_sora_fwd_10d_change",
         }
     ).set_index("date")
-    st.line_chart(macro_chart, height=360)
-    st.caption("Current implementation uses direct 10D XGBoost inference from the local run_21 model artifacts.")
+    st.markdown("**Predicted 10D change vs actual 10D change**")
+    st.line_chart(change_chart, height=260)
+
+    horizon = DEFAULT_HORIZON_DAYS
+    future_level_chart = macro_df[
+        ["snapshot_ts", "predicted_level", f"sora_fwd_{horizon}d_level"]
+    ].copy()
+    future_level_chart["target_date"] = future_level_chart["snapshot_ts"].shift(-horizon)
+    future_level_chart = future_level_chart.dropna(subset=["target_date"])
+    future_level_chart = future_level_chart.rename(
+        columns={
+            "predicted_level": "predicted_level_10d",
+            f"sora_fwd_{horizon}d_level": "actual_future_level_10d",
+        }
+    ).set_index("target_date")[["predicted_level_10d", "actual_future_level_10d"]]
+    st.markdown("**Horizon-shifted predicted 10D level vs actual future level**")
+    st.line_chart(future_level_chart, height=260)
+    st.caption(
+        "The first chart compares the direct XGBoost output against its true change target. "
+        "The second chart shifts the derived level forecast forward by 10 trading rows so it is "
+        "compared on the date it is forecasting."
+    )
 
 
 navigation = st.navigation(
