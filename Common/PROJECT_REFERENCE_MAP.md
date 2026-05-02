@@ -91,6 +91,9 @@ Critical override:
 - Metric dictionary / computation quirks:
   `Common\Micro\4_Compute_Metrics\Data_Dict_Reit_Metrics.md`
 
+- Current live implementation schema reference:
+  `Common\Micro\5_Model_KG\Current_Impl_Schema_Reference.md`
+
 - Important note from project context:
   `null_count` is currently expected to be derived at query / build time rather than stored as its own fake metric row.
 
