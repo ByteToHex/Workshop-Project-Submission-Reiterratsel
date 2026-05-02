@@ -39,7 +39,7 @@ st.set_page_config(page_title="REITterratsel", layout="wide")
 st.logo(str(LOGO_WORDMARK_PATH), icon_image=str(LOGO_ICON_PATH), size="large")
 
 SIMULATION_DATE_HELP = (
-    "Resolve each view using the latest eligible annual filing row, macro snapshot, and daily CAR-path row "
+    "Resolve each view using the latest eligible annual filing row, macro snapshot, and daily cumulative abnormal return (CAR) path row "
     "on or before this date."
 )
 MACRO_HEADER_KICKER = "XGBoost SORA forecast from overnight bank-rate inputs"
@@ -873,8 +873,8 @@ def render_reit_page() -> None:
         with c1:
             with st.container(border=True):
                 st.markdown("**Final Runtime Distress Score**", help=FINAL_SCORE_BUILD_HELP)
-                st.metric("Final Runtime Distress Score", f"{final_distress:.2f}", help=FINAL_SCORE_HELP)
-                score_cols = st.columns(4)
+                st.metric("", f"{final_distress:.2f}", help=FINAL_SCORE_HELP, label_visibility="collapsed")
+                score_cols = st.columns([1.25, 1, 1, 1])
                 score_cols[0].metric("Runtime Level", final_level, help="Bucket derived from the final runtime distress score.")
                 score_cols[1].metric("Annual Mamdani Base", f"{header_ctx['distress_score_mamdani']:.2f}", help=ANNUAL_MAMDANI_HELP)
                 score_cols[2].metric("Macro Overlay", f"{distress_sora:.2f}", help=MACRO_DISTRESS_HELP)
