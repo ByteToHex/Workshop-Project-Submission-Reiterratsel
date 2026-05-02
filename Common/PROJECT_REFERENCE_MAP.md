@@ -150,6 +150,9 @@ Critical override:
 - Pipeline build entrypoint:
   `Common\Micro\5_Model_KG\build_reitteratsel_pipeline.py`
 
+- Build + app orchestrator:
+  `Common\Micro\5_Model_KG\run_reitteratsel.py`
+
 - Core implementation module:
   `Common\Micro\5_Model_KG\reitteratsel_core.py`
 
