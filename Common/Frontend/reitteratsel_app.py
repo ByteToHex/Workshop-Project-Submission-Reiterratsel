@@ -428,6 +428,82 @@ def render_expanded_reit_header(
     st.markdown(header_html, unsafe_allow_html=True)
 
 
+def build_reit_header_context(
+    *,
+    selected_ticker: str,
+    selected_period_id: int,
+    selected_row: pd.Series,
+    selected_metric_df: pd.DataFrame,
+    selected_component_df: pd.DataFrame,
+    selected_dividend_df: pd.DataFrame,
+    final_distress: float,
+    final_level: str,
+) -> dict[str, Any]:
+    metric_pivot = (
+        selected_metric_df.sort_values(["fiscal_year_end_date", "metric_code"])
+        .pivot_table(
+            index=["period_id", "fiscal_year", "fiscal_year_end_date"],
+            columns="metric_code",
+            values="metric_value",
+            aggfunc="first",
+        )
+        .reset_index()
+    )
+    latest_metrics = metric_pivot.loc[metric_pivot["period_id"] == selected_period_id].iloc[0]
+    icr_trend = derive_absolute_trend(
+        metric_pivot["ICR"],
+        threshold=0.15,
+        up_label="Improving",
+        down_label="Deteriorating",
+    )
+    dpu_trend = derive_relative_trend(
+        selected_dividend_df.sort_values("fiscal_year_end_date")["dps_fy"],
+        threshold_ratio=0.05,
+        up_label="Rising",
+        down_label="Falling",
+    )
+    top_geo_share = latest_metrics.get("REV_CONC_TOPGEO", float("nan"))
+    top_geo_component = selected_component_df.loc[
+        (selected_component_df["period_id"] == selected_period_id)
+        & (selected_component_df["metric_code"] == "REV_CONC_TOPGEO")
+        & (selected_component_df["component_name"] == "top_geography_value")
+    ]
+    top_geo_label = (
+        str(top_geo_component.iloc[0]["component_text"])
+        if not top_geo_component.empty and pd.notna(top_geo_component.iloc[0]["component_text"])
+        else "N/A"
+    )
+    refi_cliff_component = selected_component_df.loc[
+        (selected_component_df["period_id"] == selected_period_id)
+        & (selected_component_df["metric_code"] == "REFI_RISK")
+        & (selected_component_df["component_name"] == "Short Term Debt")
+    ]
+    refi_cliff_value = (
+        float(refi_cliff_component.iloc[0]["component_value"])
+        if not refi_cliff_component.empty and pd.notna(refi_cliff_component.iloc[0]["component_value"])
+        else None
+    )
+    return {
+        "ticker": selected_ticker,
+        "period_id": selected_period_id,
+        "fiscal_year": int(selected_row["fiscal_year"]),
+        "reit_name": str(selected_row["reit_name"]),
+        "sector": str(selected_row["sector"]),
+        "distress_score_mamdani": float(selected_row["distress_score_mamdani"]),
+        "final_distress": float(final_distress),
+        "final_level": str(final_level),
+        "latest_metrics": latest_metrics,
+        "icr": latest_metrics.get("ICR", float("nan")),
+        "gearing": latest_metrics.get("GEARING", float("nan")),
+        "icr_trend": icr_trend,
+        "topgeo_label": top_geo_label,
+        "topgeo_share": None if pd.isna(top_geo_share) else float(top_geo_share),
+        "dpu_trend": dpu_trend,
+        "refi_cliff_value": refi_cliff_value,
+        "metric_pivot": metric_pivot,
+    }
+
+
 def render_ranking_page() -> None:
     render_macro_header()
     st.markdown(
@@ -488,70 +564,35 @@ def render_reit_page() -> None:
         selected_refi,
     )
     final_level = score_to_level(final_distress)
-
-    metric_pivot = (
-        selected_metric_df.sort_values(["fiscal_year_end_date", "metric_code"])
-        .pivot_table(
-            index=["period_id", "fiscal_year", "fiscal_year_end_date"],
-            columns="metric_code",
-            values="metric_value",
-            aggfunc="first",
-        )
-        .reset_index()
-    )
-    latest_metrics = metric_pivot.loc[metric_pivot["period_id"] == selected_period_id].iloc[0]
-    icr_trend = derive_absolute_trend(
-        metric_pivot["ICR"],
-        threshold=0.15,
-        up_label="Improving",
-        down_label="Deteriorating",
-    )
-    dpu_trend = derive_relative_trend(
-        selected_dividend_df.sort_values("fiscal_year_end_date")["dps_fy"],
-        threshold_ratio=0.05,
-        up_label="Rising",
-        down_label="Falling",
-    )
-    top_geo_share = latest_metrics.get("REV_CONC_TOPGEO", float("nan"))
-    top_geo_component = selected_component_df.loc[
-        (selected_component_df["period_id"] == selected_period_id)
-        & (selected_component_df["metric_code"] == "REV_CONC_TOPGEO")
-        & (selected_component_df["component_name"] == "top_geography_value")
-    ]
-    top_geo_label = (
-        str(top_geo_component.iloc[0]["component_text"])
-        if not top_geo_component.empty and pd.notna(top_geo_component.iloc[0]["component_text"])
-        else "N/A"
-    )
-    refi_cliff_component = selected_component_df.loc[
-        (selected_component_df["period_id"] == selected_period_id)
-        & (selected_component_df["metric_code"] == "REFI_RISK")
-        & (selected_component_df["component_name"] == "Short Term Debt")
-    ]
-    refi_cliff_value = (
-        float(refi_cliff_component.iloc[0]["component_value"])
-        if not refi_cliff_component.empty and pd.notna(refi_cliff_component.iloc[0]["component_value"])
-        else None
+    header_ctx = build_reit_header_context(
+        selected_ticker=selected_ticker,
+        selected_period_id=selected_period_id,
+        selected_row=selected_row,
+        selected_metric_df=selected_metric_df,
+        selected_component_df=selected_component_df,
+        selected_dividend_df=selected_dividend_df,
+        final_distress=final_distress,
+        final_level=final_level,
     )
     st.markdown(
         f"""
         <div class="reit-card">
-        <div class="reit-kicker">{selected_ticker}</div>
-        <div style="font-size: 3rem; font-weight: 800;">{selected_row['reit_name']}</div>
-        <div class="reit-muted">{selected_row['sector']} | Fiscal year {int(selected_row['fiscal_year'])}</div>
+        <div class="reit-kicker">{header_ctx['ticker']}</div>
+        <div style="font-size: 3rem; font-weight: 800;">{header_ctx['reit_name']}</div>
+        <div class="reit-muted">{header_ctx['sector']} | Fiscal year {header_ctx['fiscal_year']}</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
     render_expanded_reit_header(
-        final_distress=final_distress,
-        final_level=final_level,
-        latest_metrics=latest_metrics,
-        icr_trend=icr_trend,
-        top_geo_label=top_geo_label,
-        top_geo_share=(None if pd.isna(top_geo_share) else float(top_geo_share)),
-        refi_cliff_value=refi_cliff_value,
-        dpu_trend=dpu_trend,
+        final_distress=header_ctx["final_distress"],
+        final_level=header_ctx["final_level"],
+        latest_metrics=header_ctx["latest_metrics"],
+        icr_trend=header_ctx["icr_trend"],
+        top_geo_label=header_ctx["topgeo_label"],
+        top_geo_share=header_ctx["topgeo_share"],
+        refi_cliff_value=header_ctx["refi_cliff_value"],
+        dpu_trend=header_ctx["dpu_trend"],
     )
 
     tab_score, tab_financials = st.tabs(["Score", "Financial Statements"])
@@ -565,7 +606,7 @@ def render_reit_page() -> None:
                 <div class="reit-kicker">Distress Score</div>
                 <div class="reit-score">{final_distress:.2f}</div>
                 <div class="reit-muted">Level: {final_level}</div>
-                <div class="reit-muted">Frozen Mamdani: {selected_row['distress_score_mamdani']:.2f}</div>
+                <div class="reit-muted">Frozen Mamdani: {header_ctx['distress_score_mamdani']:.2f}</div>
                 <div class="reit-muted">Macro layer: {distress_sora:.2f}</div>
                 </div>
                 """,
@@ -573,11 +614,11 @@ def render_reit_page() -> None:
             )
         with c2:
             stats = st.columns(6)
-            stats[0].metric("ICR", f"{latest_metrics.get('ICR', float('nan')):.2f}")
-            stats[1].metric("GEARING", f"{latest_metrics.get('GEARING', float('nan')):.2f}")
-            stats[2].metric("DSCR", f"{latest_metrics.get('DSCR', float('nan')):.2f}")
-            stats[3].metric("REFI RISK", f"{latest_metrics.get('REFI_RISK', float('nan')):.2f}")
-            stats[4].metric("PAYOUT", f"{latest_metrics.get('PAYOUT_RATIO', float('nan')):.2f}")
+            stats[0].metric("ICR", f"{header_ctx['latest_metrics'].get('ICR', float('nan')):.2f}")
+            stats[1].metric("GEARING", f"{header_ctx['latest_metrics'].get('GEARING', float('nan')):.2f}")
+            stats[2].metric("DSCR", f"{header_ctx['latest_metrics'].get('DSCR', float('nan')):.2f}")
+            stats[3].metric("REFI RISK", f"{header_ctx['latest_metrics'].get('REFI_RISK', float('nan')):.2f}")
+            stats[4].metric("PAYOUT", f"{header_ctx['latest_metrics'].get('PAYOUT_RATIO', float('nan')):.2f}")
             stats[5].metric("NULL COUNT", f"{int(selected_row['null_count'])}")
             with st.expander("Why was this flagged?", expanded=True):
                 st.text(selected_row["rule_trace_text"] or "No rule trace available.")
