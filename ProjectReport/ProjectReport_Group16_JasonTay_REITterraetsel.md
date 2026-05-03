@@ -468,8 +468,6 @@ Second, the project already has a smoothing mechanism, and it comes from the mov
 - `Miscellaneous\full_pipeline_eval\run_3`
 - `Miscellaneous\script_refs\train_p_1fold_pipeline.py`
 - `Miscellaneous\script_refs\train_a_multifold_pipeline.py`
-- `SAMPLES\Mine\MAS_Rule_Change_Risk_Implications.txt`
-- `SAMPLES\Mine\Proposal_Temp_04.md`
 
 ### External literature
 
