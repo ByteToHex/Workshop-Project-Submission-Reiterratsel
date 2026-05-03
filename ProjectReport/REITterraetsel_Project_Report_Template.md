@@ -37,7 +37,7 @@ Singapore REITs (S-REITs) are income-oriented instruments that are highly expose
 
 Recent sector stress is especially relevant because S-REIT balance sheets are sensitive to higher debt costs and refinancing walls. There are known recurrent risks such as debt-cost sensitivity, refinancing risk, and valuation compression. 
 
-For example, geopolitical stress events such as rate regime changes and black swan events (COVID-19, the 2026) can propagate into downstream distress for S-REITs, as was demonstrated with notable S-REIT distresses such as Lippo Malls Indonesia Retail Trust (D5IU) and Prime US REIT (OXMU).
+For example, geopolitical stress events such as rate regime changes and black swan events (COVID-19, Operation Epic Fury 2026) can propagate into downstream distress for S-REITs, as was demonstrated with notable S-REIT distresses such as Lippo Malls Indonesia Retail Trust (D5IU) and Prime US REIT (OXMU).
 
 Under the revised MAS framework, a REIT with `ICR < 1.5x` can be blocked from taking on additional debt even if its aggregate leverage is still low. In practical terms, a REIT may appear lightly geared on paper yet still face funding stress if weaker earnings push interest coverage below the regulatory threshold.
 
@@ -57,8 +57,13 @@ This project addresses that gap by building intelligent reasoning systems that c
 
 
 ## 2.3. Literature Review
+The existing literature provided several design lessons that were directly useful. Shumway (2001) and Campbell, Hilscher, and Szilagyi (2006) showed the value of strictly time-ordered prediction, leakage control, market-informed variables, and lagged path features instead of relying only on static accounting snapshots. Those ideas map well to this project's chronological split, explicit gap rows, realized-volatility inputs, and engineered SORA path features. Martyushev et al. (2025) reinforced the same point from a more modern machine-learning perspective: boosted models become more useful when temporal structure is encoded explicitly and holdout evaluation is treated as a first-class requirement (Shumway, 2001; Campbell et al., 2006; Martyushev et al., 2025).
 
+The literature also supported keeping the final output interpretable rather than purely predictive. Cheng, Su, and Li (2006) used fuzzy modelling to treat distress as a graded state rather than a hard binary boundary, while Campbell et al. (2006) showed that higher-frequency market signals can update risk views between slower accounting releases. Those two ideas are reflected in this project's architecture: an annual Mamdani reasoning layer provides the stable accounting anchor, while the macro and CAR-path overlays allow the score to move when conditions change before the next annual filing (Campbell et al., 2006; Cheng et al., 2006).
 
+At the same time, the existing literature left several gaps that this project chose to address. Shumway (2001), Campbell et al. (2006), and Cheng et al. (2006) were built around general corporate distress settings rather than the specific constraints of S-REITs, where leverage rules, refinancing pressure, mandatory distributions, and MAS coverage thresholds can materially affect risk even before formal insolvency. Martyushev et al. (2025) is useful for the XGBoost component, but it does not include a rule-based reasoning layer or a REIT-specific regulatory lens. This project therefore adds explicit domain structure through REIT-specific financial ratios, MAS-linked reasoning, and a distress interpretation layer designed for S-REIT decision support rather than generic firm-failure prediction (Shumway, 2001; Campbell et al., 2006; Cheng et al., 2006; Martyushev et al., 2025).
+
+Another gap was architectural. The prior papers generally used single-model prediction pipelines, whereas this project separates the problem into three linked parts: an annual accounting-based fuzzy anchor, a macro rate-stress overlay, and a market-reaction overlay from cumulative abnormal returns. This was a deliberate choice because S-REIT distress is not only a balance-sheet problem. It is also shaped by refinancing conditions and how the market responds after new information arrives. In that sense, the project is less a direct replication of any one paper than a domain-specific synthesis of explainable distress reasoning, market-timed updating, and hybrid modelling for the S-REIT setting (Campbell et al., 2006; Cheng et al., 2006; Martyushev et al., 2025).
 
 ## 3. System Design / Model
 
