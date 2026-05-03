@@ -52,6 +52,7 @@ Prepared by:
 - [Appendix B.4. Cognitive Techniques / Tools](#appendix-b4-cognitive-techniques--tools)
 - [Appendix C. Installation and User Guide](#appendix-c-installation-and-user-guide)
 - [Appendix C.1. Docker submission / demo mode](#c1-docker-submission--demo-mode)
+- [Appendix D. Data Sources](#appendix-d-data-sources)
 
 ## 1. Executive Summary
 
@@ -258,6 +259,8 @@ This step is also where the earlier weak-labelling and Snorkel implementation wa
 The project did not build only one XGBoost pipeline. It explored three model families, each with a different prediction target and different intended role in the overall system.
 
 `P` stands for `Parquet-direct`. This family uses forward-looking macro and rate features taken directly from the large 40GB parquet-based source dump, including FOMC-linked features such as `expected_bps`, to predict rates such as EFFR or SORA. The main scripts for this family are `train_p_1fold_pipeline.py` and `train_p_1fold.py`. This was the most successful family. Even though its data limitations required a conservative 1-fold time-ordered design, its holdout metrics generalized well enough for production use, especially in `run_21` for the `fwd_10_days` and `fwd_15_days` setups.
+
+One implementation clarification is important. Although EFFR was considered during a few earlier design stages, the implemented project standardizes on SORA and does not use EFFR in the final deployed pipeline. The active macro targets, the runtime macro overlay, and the evaluation discussed later in Sections `5.1` and `5.5` all use SORA time series and forward SORA change rather than U.S. policy-rate targets.
 
 `A` stands for `Abnormal Returns`. This family attempts to predict a REIT's abnormal performance relative to macroeconomic conditions. Its relevant training script is `train_a_multifold_pipeline.py`. Unlike `P`, this family had enough pooled rows to support broader panel-style modelling, but it did not generalize well in practice. The main failure mode was ticker memorization: the model repeatedly learned identity shortcuts instead of a stable cross-sectional signal. The resulting evidence was therefore inconclusive rather than production-ready.
 
@@ -516,3 +519,12 @@ To stop it:
 
 ```powershell
 docker compose -f Common/docker-compose.yml down
+```
+
+## Appendix D. Data Sources
+
+The implemented system relies on the following main external data sources.
+
+- SORA time series (Monetary Authority of Singapore): `https://eservices.mas.gov.sg/statistics/dir/DomesticInterestRates.aspx`
+- Time-series market data and financial-statement data (TradingView): `https://www.tradingview.com/`
+- Bulk 40GB data dump (including FOMC sentiment dump) from Jonathan Becker (`Jon-Becker` on GitHub): `https://s3.jbecker.dev/data.tar.zst`
