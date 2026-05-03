@@ -161,11 +161,11 @@ In plain language, the label says that `DISTRESSED` means the REIT performed cle
 
 ## 3.3. XGBoost / Macro Data Design
 
-The macro model used in the final app belongs to what the project informally calls the `P` family, meaning `Parquet-direct`. In this family, features are built directly from the large parquet-based macro dump, especially forward-looking rate-expectation fields such as `expected_bps`, and the model is trained to predict rates such as EFFR or SORA. The macro model is not meant to predict REIT distress directly. Its job is narrower: estimate short-horizon movement in SORA so the app can translate rate stress into a refinancing-risk overlay for each REIT. In the deployed setup, the active target is `option2_change`, which predicts the future change in SORA over the next 10 SGX trading days rather than the absolute rate level.
+The macro model used in the final app belongs to what the project informally calls the `P` family, meaning `Parquet-direct`. In this family, features are built directly from the large parquet-based macro dump, especially forward-looking rate-expectation fields such as `expected_bps`, and the model is trained to predict short-horizon SORA movement. The macro model is not meant to predict REIT distress directly. Its job is narrower: estimate short-horizon movement in SORA so the app can translate rate stress into a refinancing-risk overlay for each REIT. In the deployed setup, the active target is `option2_change`, which predicts the future change in SORA over the next 10 SGX trading days rather than the absolute rate level.
 
 This design choice matters because the project is trying to detect changes in the rate environment, and not simply restate the current regime. That is why the model gives weight to market-expectation variables such as `expected_bps`, `p_no_change`, `margin_over_second`, and `days_to_next_fomc`, while also using local term-structure signals such as `sora_term_spread_t2`, `expected_bps_minus_sora_90d`, and `sora_curve_steepness`. In plain terms, the model asks both what the market expects the Fed and rate path to do next, and what the recent local SORA curve is already implying.
 
-The feature design also shows that the model is intentionally path-aware rather than snapshot-only. It uses lag differences, realized volatility, drawdown from recent peak, distance from moving average, and short-horizon acceleration to describe how SORA has been moving recently. This is consistent with the narrower lesson highlighted in Martyushev et al.: temporal path and trend information can be more predictive than a single point-in-time reading. The caveat is that the Martyushev paper expresses that idea through STL-derived trend components [4, Figs. 2-3, Sec. 3.4] while Reiterratsel uses manual lag and momentum features instead.
+The feature design also shows that the model is intentionally path-aware rather than snapshot-only. It uses lag differences, realized volatility, drawdown from recent peak, distance from moving average, and short-horizon acceleration to describe how SORA has been moving recently. This is consistent with the narrower lesson highlighted in Martyushev et al.: temporal path and trend information can be more predictive than a single point-in-time reading. The caveat is that the Martyushev paper expresses that idea through STL-derived trend components [4, Figs. 2-3, Sec. 3.4] while `REITterratsel` uses manual lag and momentum features instead.
 
 The script also makes a deliberate effort to avoid leakage and overfitting. For the active change target, it excludes `sora_level_t2` and `sora_3m_t2` because those level variables carry heavy regime information that can distort a change forecast. This is also consistent with the feature-exclusion discipline highlighted in Martyushev et al., where train-test separation and protection against near-circular inputs are treated as part of credible model design rather than as optional cleanup [4, Sec. 3.3]. The train-test split is strictly time ordered, with 70% for training, 20% for testing, and a 63-row gap in between. That gap is important because it reduces overlap ("bleeding") between feature history and forward target windows, making the holdout evaluation more credible for a time-series setting.
 
@@ -224,7 +224,7 @@ Orange and decision-tree extraction did not resolve that problem. Both methods s
 
 There was also an interpretability issue. The final system needed to justify clearly why a REIT should be treated as stable, watch, high risk, or critical. The weak-labelling and rule-extraction route added extra transformation steps, more tuning decisions, and more opportunities for unstable or awkward rule outputs, without giving a corresponding improvement in explanatory value.
 
-The project therefore moved to a more direct design. Annual labels are now engineered directly from forward CAR relative to the S-REIT benchmark. The reasoning layer is implemented as a seeded Mamdani fuzzy system with explicit inputs, thresholds, and rule logic, as mentioned previously. The remaining part of the original design is that resulting annual labels and fuzzy outputs still persist to Neo4J as well as a DuckDB cacheing layer for runtime reuse.
+The project therefore moved to a more direct design. Annual labels are now engineered directly from forward CAR relative to the S-REIT benchmark. The reasoning layer is implemented as a seeded Mamdani fuzzy system with explicit inputs, thresholds, and rule logic, as mentioned previously. The remaining part of the original design is that resulting annual labels and fuzzy outputs still persist to Neo4j as well as a DuckDB caching layer for runtime reuse.
 
 This change simplified the logic of the system considerably. Instead of depending on proxy labels, extracted rules, and post-hoc interpretation, the final implementation uses a direct label definition and an explicit auditable rule base. That final design is much better aligned with the project's core goal of producing an explainable REIT distress-monitoring system.
 
@@ -238,7 +238,7 @@ The next step is metric engineering. `build_reit_metrics.py` reads the consolida
 
 The annual outputs are then persisted in `fundamentals.duckdb`, which becomes the main warehouse used by the downstream reasoning pipeline and the app. Instead of recalculating annual accounting structure from scratch during every run, the system works from a stable warehouse snapshot that already contains standardized statement data and derived metric tables.
 
-The macro side is more exploratory because its source data is less naturally clean. Before the model dataset is built, a full 40GB parquet dump is downloaded from a source repository containing Federal Open Market Committee sentiment data. Then, the scripts explicitly probe market and trade schemas, check timestamp availability, inspect coverage, and export filtered event data. Essentially, the macro pipeline does not assume that the source tables are already analysis-ready. I wrote multiple scripts to first check whether the underlying market records, trade records, and event fields are reliable enough to support later modelling.
+The macro side is more exploratory because its source data is less naturally clean. Before the model dataset is built, a full 40GB parquet dump is downloaded from a source repository containing Federal Open Market Committee sentiment data. Then, the scripts explicitly probe market and trade schemas, check timestamp availability, inspect coverage, and export filtered event data. Essentially, the macro pipeline does not assume that the source tables are already analysis-ready. Multiple scripts are used first to check whether the underlying market records, trade records, and event fields are reliable enough to support later modelling.
 
 After that probing stage, the macro extraction pipeline builds the time-series dataset used by the XGBoost model. The training script then joins together cleaned SORA daily data, SORA 3M data, SGX REIT index information, and FOMC-related expectation features. It aligns them on a time-safe calendar, shifts rate inputs to point-in-time-safe values, forward-fills where appropriate for calendar consistency, and constructs future SORA targets from the realized path. The resulting dataset therefore becomes a time-aligned forecasting table designed specifically for short-horizon SORA prediction.
 
@@ -272,7 +272,7 @@ The final production choice was based on iterative experiments on these few diff
 
 The macro experiment was designed as a controlled comparison of different ways to define the prediction task, rather than as a one-shot attempt to fit a single model.
 
-The script varies two main things: the forward horizon (in practice, I tested 1d, 3d, 5d, 7d, 10d, 14d, 21d, 63d timeframes) and the target formulation. Specifically, the pipeline supports three prediction targets: `option1_level`, which predicts the future SORA level; `option2_change`, which predicts the signed future change in SORA; and `option3_abs_change`, which predicts the absolute size of the future move regardless of direction. These targets are then compared across different short-horizon windows.
+The script varies two main things: the forward horizon and the target formulation. In practice, the tested horizons include `1d`, `3d`, `5d`, `7d`, `10d`, `14d`, `21d`, and `63d`. The pipeline also supports three prediction targets: `option1_level`, which predicts the future SORA level; `option2_change`, which predicts the signed future change in SORA; and `option3_abs_change`, which predicts the absolute size of the future move regardless of direction. These targets are then compared across different short-horizon windows.
 
 Within the successful `P` family, the project is trying to identify which specific macro target is most reliably forecasted, while still remaining useful for the hybrid REIT-distress system. That is why the comparison is framed around practical usefulness as a runtime overlay. 
 
@@ -339,7 +339,7 @@ Three recurring lessons came out of those historical runs. First, winner selecti
 
 ## 5.3. Evaluation for Mamdani Layer and Full Pipeline
 
-The current final evaluation in the repository is `Common\Eval\IO\run_3`, which compares the simple baseline, the annual Mamdani layer, the refinancing-only layer, and the full hybrid score on the same evaluation slice. A copy of the relevant outputs is archived in `Miscellaneous\full_pipeline_eval\run_3`.
+The current final evaluation output is `Common\Eval\IO\run_3`, which compares the simple baseline, the annual Mamdani layer, the refinancing-only layer, and the full hybrid score on the same evaluation slice. A copy of the relevant outputs is archived in `Miscellaneous\full_pipeline_eval\run_3`.
 
 The summary metrics show:
 
@@ -358,7 +358,7 @@ The ranking metrics support the same interpretation. `Final_distress` has the be
 
 ## 5.4. Representation Tables and Graphs
 
-The repo already contains several directly usable report artifacts (especially in the Miscellaneous folder and the IO folders in Common/) to support the evaluation sections above. For XGBoost, the most useful artifacts are the `run_21` holdout summaries and the historical SHAP visuals now archived under `Miscellaneous\Run_Artifacts_XGBoost\run_21`, `run_22`, `run_27`, and `run_28`. For the full pipeline, the most useful artifacts are the summary, per-class, ranking, and confusion-matrix CSVs archived under `Miscellaneous\full_pipeline_eval\run_3`.
+The report already contains several directly usable supporting artifacts. For XGBoost, the most useful artifacts are the `run_21` holdout summaries and the historical SHAP visuals now archived under `Miscellaneous\Run_Artifacts_XGBoost\run_21`, `run_22`, `run_27`, and `run_28`. For the full pipeline, the most useful artifacts are the summary, per-class, ranking, and confusion-matrix CSVs archived under `Miscellaneous\full_pipeline_eval\run_3`.
 
 The confusion-matrix outputs already show the core behavioral difference between Mamdani and the full hybrid score. Mamdani correctly identifies `1,594` distressed rows and `4,811` watch rows. The final hybrid score identifies more distressed rows correctly at `1,991`, but it does so by reclassifying more `WATCH` rows upward into `DISTRESSED` (`2,264` such cases, versus `1,698` for Mamdani). This is why the hybrid model looks more aggressive in practice. It improves distressed-case capture, but it also increases pressure on borderline names.
 
@@ -456,7 +456,7 @@ External literature:
 
 ## Appendix A. Project Proposal
 
-The local copy of the previous proposal can be found in this folder (ProjectReport\PROPOSAL_Group16_JasonTay_REITerratsel.pdf).
+The previous proposal is attached in this folder as `ProjectReport\PROPOSAL_Group16_JasonTay_REITerratsel.pdf`.
 
 - Project title:
   `REITterratsel - Equity Risk Solver for S-REITs`
@@ -469,7 +469,7 @@ The local copy of the previous proposal can be found in this folder (ProjectRepo
 
 ## Appendix B. Mapped System Functionalities against MR, RS, CGS Modules
 
-The project clearly satisfies the requirement to integrate at least three IRS-related technique groups. More importantly, these are not abstract labels added after the fact. Each module mapping corresponds directly to parts of the implemented system already discussed in Sections `3`, `4`, and `5`.
+The project satisfies the requirement to integrate at least three IRS-related technique groups. More importantly, these are not abstract labels added after the fact. Each module mapping corresponds directly to parts of the implemented system already discussed in Sections `3`, `4`, and `5`.
 
 ## Appendix B.1. Decision Automation
 
@@ -489,9 +489,9 @@ The cognitive-techniques component is most visible in the project's use of expli
 
 ## Appendix C. Installation and User Guide
 
-Please refer to the README.md SECTION 5 : USER GUIDE on how to run this project.
+For full run instructions, please refer to `README.md`, Section `5: User Guide`.
 
-Nevertheless, an abridged version is attached to this report (demo mode ONLY).
+An abridged version for submission and demonstration use is included below.
 
 ### C.1. Docker submission / demo mode
 
