@@ -171,31 +171,15 @@ The final design in `Design_v1a.txt` is therefore not three unrelated components
 
 ## 3.6. UI Prototype
 
-The repo contains both concept and implementation artifacts for the front end:
+The UI was designed to make the hybrid model readable to a non-technical user. In practical terms, the interface is not just there to display a final distress score. Its job is to show how that score was formed, what annual anchor it came from, and how the macro and market-path overlays changed it at runtime.
 
-- `Common\Frontend\DesignDoc\Reitteratsel.pdf`
-- `Common\Frontend\DesignDoc\figma.png`
-- `Common\Frontend\DesignDoc\Reiterratsel_Wordmark.svg`
-- `Common\Frontend\reitteratsel_app.py`
+The repository contains both design assets and a working implementation. The design references are stored in `Common\Frontend\DesignDoc\Reitteratsel.pdf`, `Common\Frontend\DesignDoc\figma.png`, and the branding files such as `Reiterratsel_Wordmark.svg`, while the implemented app is served from `Common\Frontend\reitteratsel_app.py`.
 
-The implemented Streamlit app currently exposes three pages:
+The current Streamlit interface exposes three pages: `Ranking`, `Individual REIT Navigator`, and `Time Series (Rates)`. These pages reflect the same three-part logic used in the system design. The Ranking page gives a sector-wide view of current runtime distress scores, the Individual REIT Navigator breaks down one selected REIT in more detail, and the Rates page shows the macro side of the system through predicted versus actual rate behaviour.
 
-- `Ranking`
-- `Individual REIT Navigator`
-- `Time Series (Rates)`
+The app resolves a user-selected simulation date, preserves REIT selection across page navigation, and attaches explanatory help text to many model-derived fields so the user can trace where each displayed value comes from. It also exposes the annual Mamdani base, the macro overlay, and the CAR-path contribution separately, which makes the final score easier to interpret and challenge.
 
-The code shows that the UI is not a bare prototype. It includes:
-
-- simulation-date resolution
-- persistent REIT selection across navigation
-- annual, macro, and CAR-path provenance tooltips
-- ranking-table views
-- detailed single-REIT score decomposition
-- time-series charts for predicted versus actual macro behavior
-
-The visual direction is a dark dashboard with strong information hierarchy, custom branding assets, and explicit explanatory help text around most model-derived fields. This is aligned with the project's interpretability goal: the interface is meant to explain why the score moved, not only display the score.
-
-<!--FILL The skeleton asks to include prototype screenshots and likely compare against the Figma design. The local repo contains the PDF and image assets, but I did not render or extract screenshots from those binary design files during this pass. Add screenshots in a later pass if needed.-->
+Visually, the interface follows a dashboard-style layout with custom branding and a clear information hierarchy. That visual choice is consistent with the broader aim of the project: the UI should help the user understand why a REIT is being flagged, rather than simply presenting a score with no reasoning attached.
 
 ## 4. System Development & Implementation
 
