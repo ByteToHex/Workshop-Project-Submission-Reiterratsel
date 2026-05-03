@@ -199,53 +199,19 @@ This change simplified the logic of the system considerably. Instead of dependin
 
 ## 4.2. Data Scraping and Data Engineering
 
-The implemented data-engineering path exists in both the folder structure and the active build scripts. On the micro / firm side, the repository contains a staged pipeline:
+The data-engineering pipeline is easier to understand if it is separated into two parts: the annual REIT fundamentals pipeline and the macro time-series pipeline. The two pipelines are built differently because they solve different data problems.
 
-- `Common\Micro\1_TradingView_Exploration`
-- `Common\Micro\2_HTML_Dumping`
-- `Common\Micro\3_Serialize_Dump_To_CSV_Parquet`
-- `Common\Micro\4_Compute_Metrics`
-- `Common\Micro\5_Model_KG`
+On the REIT side, the project starts from TradingView HTML annual financial statements. Those statements are first captured as raw source material, then converted into a structured row-based format. The serializer script does not simply dump text into a flat file; it maps statement labels into a reusable schema, assigns row identifiers, and writes the result into both DuckDB and per-ticker parquet files. This stage turns messy statement exports into a queryable warehouse with consistent row structure across REITs and years.
 
-This staged structure implies a practical progression:
+The next step is metric engineering. `build_reit_metrics.py` reads the consolidated annual warehouse and derives the project's usable REIT indicators from it. This is where ratios such as leverage, debt-service coverage, payout strain, and refinancing-related measures are computed from the raw annual statements. The metric layer also joins in external series where needed, such as SORA 3M on or before the fiscal year end. This allows the final project to reason on a cleaned annual metric layer that has already standardized the accounting inputs, as opposed to reasoning directly on raw statement rows.
 
-- inspect upstream TradingView-style data
-- dump or capture raw source content
-- serialize into CSV / parquet form
-- compute derived REIT metrics
-- build reasoning and downstream application layers
+The annual outputs are then persisted in `fundamentals.duckdb`, which becomes the main warehouse used by the downstream reasoning pipeline and the app. Instead of recalculating annual accounting structure from scratch during every run, the system works from a stable warehouse snapshot that already contains standardized statement data and derived metric tables.
 
-On the macro side, `Common\Macro\Pipeline_DATA` is also staged and strongly supports the user's skeleton notes about probing and sanity checking. The local scripts show separate phases for:
+The macro side is more exploratory because its source data is less naturally clean. Before the model dataset is built, a full 40GB parquet dump is downloaded from a source repository containing Federal Open Market Committee sentiment data. Then, the scripts explicitly probe market and trade schemas, check timestamp availability, inspect coverage, and export filtered event data. Essentially, the macro pipeline does not assume that the source tables are already analysis-ready. I wrote multiple scripts to first check whether the underlying market records, trade records, and event fields are reliable enough to support later modelling.
 
-- market probing
-- legacy probing
-- preprocessing
-- extraction
+After that probing stage, the macro extraction pipeline builds the time-series dataset used by the XGBoost model. The training script then joins together cleaned SORA daily data, SORA 3M data, SGX REIT index information, and FOMC-related expectation features. It aligns them on a time-safe calendar, shifts rate inputs to point-in-time-safe values, forward-fills where appropriate for calendar consistency, and constructs future SORA targets from the realized path. The resulting dataset is therefore not just a download of macro variables. It is a time-aligned forecasting table designed specifically for short-horizon SORA prediction.
 
-Examples include:
-
-- `probe_trades_schema_by_market.py`
-- `check_trade_timestamp_availability.py`
-- `assemble_ref_overlap_parent_columns.py`
-- `parquet_fed_events_export.py`
-- `build_timeseries.py`
-
-This is good reporting evidence because it shows the macro dataset was not treated as a ready-made clean table. The pipeline explicitly includes schema probing, overlap assembly, and extraction steps before the training data reaches the model layer.
-
-The proposal and implementation docs also show that the project uses multiple source families:
-
-- TradingView-style S-REIT financial statements
-- S-REIT and index price-series CSVs
-- SORA daily and SORA 3M series
-- FOMC-related forward-signal features summarized in the run artifacts as `expected_bps`, `p_no_change`, `margin_over_second`, and `days_to_next_fomc`
-
-The annual warehouse is persisted in DuckDB at:
-
-`Common\Micro\IO\out\_annual_warehouse\fundamentals.duckdb`
-
-This warehouse is a major implementation choice. It allows the application to use stable, queryable annual snapshots instead of re-deriving everything live during every app interaction.
-
-<!--FILL The skeleton claims a custom plugin was built for scraping firm-level financial data. I did not find a clearly identifiable local plugin artifact or plugin source folder inside this repository that proves that statement in detail. The staged micro pipeline supports custom scraping work in general, but the plugin-specific claim needs a local source or a separate external reference.-->
+Taken together, the data-engineering design is more deliberate than a simple scraping exercise. On the micro side, the task is to convert annual financial statements into a stable warehouse and a derived metric layer. On the macro side, the task is to validate irregular source tables and turn them into a forecasting-ready time series. The final system depends on both: the REIT warehouse provides the annual structural view, while the macro pipeline provides the faster-moving rate-stress view that is later used as a runtime overlay.
 
 ## 4.2.1. Threshold-Based Annual Label Engineering
 
