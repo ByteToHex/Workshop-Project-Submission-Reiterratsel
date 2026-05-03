@@ -1,10 +1,7 @@
 ## Project Report
 
 ## REITterratsel: Equity Risk Solver for S-REITs
-
-Intelligent Reasoning Systems
-
-Prepared by:
+**Intelligent Reasoning Systems**
 
 | Student Name | Student ID |
 |---|---|
@@ -419,7 +416,7 @@ On the macro-model side specifically, future work should revisit the current con
 
 Two design questions remain especially worth reflecting on after the final evaluation. First, sectoral differences should not be assumed to improve this project at the current universe size. The historical XGBoost work already showed that once ticker identity was included, the model started memorizing tickers rather than learning a transferable signal. With a small `N` universe, a sector feature could create a similar shortcut problem if a few distressed names dominate the label pattern inside one sector. In this project, names such as `D5IU` and `OXMU` can easily distort that balance. For that reason, sector is more likely to become useful only when the REIT universe is materially larger. At the current scale, adding sector directly could improve in-sample separation while actually worsening generalization.
 
-Second, the project already has a smoothing mechanism, and it comes from the move away from the original Snorkel design toward Mamdani fuzzy rule induction. The annual Mamdani score is already the main smoothing layer because it turns noisy raw ratios into a graded annual anchor instead of a brittle point prediction. On top of that, the code already damps weak-evidence cases back toward neutral, and the CAR-path overlay already has a dead zone so very small market moves do not immediately change the runtime score. This can be demonstrated by manually changing the code in `Common\Micro\5_Model_KG\reitteratsel_core.py`. Specifically, code section with modifiers for the macro_shock and car_path_shock in `compute_final_distress_score` means short-horizon fluctuations can adjust the risk reading, but they are still damped by the stronger annual rule-based anchor. Hence, Mamdani is already doing the main smoothing, and the hybrid overlay design already includes extra damping against overreaction.
+Second, the project already has a smoothing mechanism, and it comes from the move away from the original Snorkel design toward Mamdani fuzzy rule induction. The annual Mamdani score is already the main smoothing layer because it turns noisy raw ratios into a graded annual anchor instead of a brittle point prediction. On top of that, the code already damps weak-evidence cases back toward neutral, and the CAR-path overlay already has a dead zone so very small market moves do not immediately change the runtime score. This can be demonstrated by observing the code and its effects in `Common\Micro\5_Model_KG\reitteratsel_core.py`. Specifically, the code section with modifiers for the macro_shock and car_path_shock in `compute_final_distress_score()` means short-horizon fluctuations can adjust the risk reading, but they are still damped by the stronger annual rule-based anchor. Hence, Mamdani is already doing the main smoothing, and the hybrid overlay design already includes extra damping against overreaction.
 
 ## 7. References
 
