@@ -227,53 +227,21 @@ This step is also where the earlier weak-labelling and Snorkel implementation wa
 
 ## 4.3.1. Multi-Configuration Controlled Experiment Design
 
-The macro model was trained over multiple iterations (at least 23). The training script was designed to compare different forecasting setups and then keep only the one that was most usable for the final app.
+The macro experiment was designed as a controlled comparison of different ways to define the prediction task, rather than as a one-shot attempt to fit a single model.
 
-Two choices were varied. The first was forecast horizon. The script supports multiple forward windows, and the project evidence shows that horizons such as 10 and 15 trading days were tested, with earlier experiments also considering shorter and longer windows. The second was target definition. The script supports three versions of the prediction task: future SORA level, future SORA change, and absolute future SORA change.
+The script varies two main things: the forward horizon and the target definition. In practice, that means the pipeline tests whether it is more useful to predict future SORA level, future SORA change, or the absolute magnitude of future change, and to do so over different short-horizon windows.
 
-This matters because the project was not simply asking, "Can XGBoost predict something?" It was asking a narrower design question: which macro target is most useful as a rate-stress overlay for the hybrid REIT system?
+Essentially, the project is trying to identify which specific macro target is most reliably forcasted, while still remaining useful for the hybrid REIT-distress system. That is why the comparison is framed around practical usefulness as a runtime overlay. 
 
-The final deployed choice is the signed change target over a 10-trading-day horizon. In runtime terms, the app uses `sora_fwd_10d_change`, not a long-range macro forecast and not a prediction of the absolute SORA level. This is a sensible choice because the project needs a short-horizon signal of rate movement, rather than a slower descriptive estimate of the current rate regime.
-
-The resulting design is operationally simple. The macro layer predicts the near-term change in SORA, then converts that prediction into a rate-stress score that can be used as an overlay on top of the annual Mamdani distress base.
+The final deployed choice is the signed 10-trading-day SORA change target. This was more stable and less predisposed to noise. Furthermore, it fits the later hybrid design better than predicting the absolute level of SORA, because the app mainly needs a short-horizon signal of whether refinancing conditions are becoming more or less stressful.
 
 ## 4.3.2. Hyperparameter Search Strategy
 
-The project uses two optimizer families in the training pipeline:
+The project runs two different search strategies, Optuna and DEAP, against the same time-ordered holdout setup and then lets held-out performance decide the winner. This adversarial design allows the system (and the user) to compare and highlight issues that arise during model training.
 
-- Optuna with `OPTUNA_N_TRIALS = 80`
-- DEAP with a conservative evolutionary search
+The choice between the two optimizers is also aligned to the target. For the signed change target, the script does not look only at regression error. It also checks directional quality through metrics such as accuracy, F1, and AUC, because getting the direction of the rate move right matters for the later distress overlay even when the exact magnitude is imperfect. The script also penalises degenerate solutions such as near-constant predictions or badly imbalanced sign predictions, which shows that the search process was designed around practical forecasting behaviour rather than headline fit alone.
 
-The DEAP settings are explicitly visible in `train_p_1fold_pipeline.py`:
-
-- `DEAP_GENERATIONS = 8`
-- `DEAP_POPULATION_SIZE = 20`
-- `DEAP_MUTATION_PROB = 1.0 / 9.0`
-- `DEAP_CROSSOVER_PROB = 0.6`
-- `DEAP_TOURNAMENT_SIZE = 3`
-
-The script comments are useful for report interpretation because they explicitly describe the DEAP search space as conservative for the "current small-row regime." That supports the skeleton's narrative that more aggressive evolutionary settings had to be reined in to improve generalization.
-
-The saved `run_21` comparison confirms that Optuna narrowly beat DEAP for the deployed `fwd_10_days` change target:
-
-- Optuna:
-  `R2 = 0.1927`, `RMSE = 0.2528`, `Accuracy = 0.6795`, `Recall = 0.7385`, `F1 = 0.6575`, `AUC = 0.7341`
-- DEAP:
-  `R2 = 0.1919`, `RMSE = 0.2529`, `Accuracy = 0.6538`, `Recall = 0.7231`, `F1 = 0.6351`, `AUC = 0.7219`
-
-The winning parameter set stored in `all_targets_selected_params.json` is:
-
-- `gamma = 0.3615`
-- `n_estimators = 350`
-- `max_depth = 2`
-- `learning_rate = 0.0674`
-- `min_child_weight = 4.0044`
-- `subsample = 0.9193`
-- `colsample_bytree = 0.9546`
-- `reg_alpha = 0.0068`
-- `reg_lambda = 2.3435`
-
-This is a relatively conservative, shallow tree configuration, which is consistent with the project's small-sample design constraints.
+DEAP is configured conservatively, which makes sense in this setting. The script explicitly treats the current training regime as small enough that an overly aggressive evolutionary search could simply overfit noise. Optuna and DEAP therefore play different roles: one provides a more directed Bayesian-style search, while the other stress-tests the parameter space through a restrained evolutionary search. The final model is then chosen only after both have been evaluated on the same held-out period.
 
 ## 4.4. Pipeline and Application Delivery
 
