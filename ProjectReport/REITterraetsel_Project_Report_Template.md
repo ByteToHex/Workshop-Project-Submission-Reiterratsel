@@ -227,7 +227,15 @@ This step is also where the earlier weak-labelling and Snorkel implementation wa
 
 ## 4.3. XGBoost Development
 
-The project did not build only one XGBoost pipeline. It explored three model families. `P` stands for `Parquet-direct`, where forward-looking rate features from the parquet macro dump are used to predict rates such as EFFR or SORA. `A` stands for `Abnormal Returns`, where the goal was to predict REIT abnormal performance relative to macro conditions. `R` or `R*` stands for `Regime`, where the goal was to model macro effects against the SGX iEdge S-REIT index itself. The final production choice was `P`, because it was the only family that showed a sufficiently usable and repeatable signal for the later hybrid system.
+The project did not build only one XGBoost pipeline. It explored three model families, each with a different prediction target and different intended role in the overall system.
+
+`P` stands for `Parquet-direct`. This family uses forward-looking macro and rate features taken directly from the large 40GB parquet-based source dump, including FOMC-linked features such as `expected_bps`, to predict rates such as EFFR or SORA. The main scripts for this family are `train_p_1fold_pipeline.py` and `train_p_1fold.py`. This was the most successful family. Even though its data limitations required a conservative 1-fold time-ordered design, its holdout metrics generalized well enough for production use, especially in `run_21` for the `fwd_10_days` and `fwd_15_days` setups.
+
+`A` stands for `Abnormal Returns`. This family attempts to predict a REIT's abnormal performance relative to macroeconomic conditions. Its relevant training script is `train_a_multifold_pipeline.py`. Unlike `P`, this family had enough pooled rows to support broader panel-style modelling, but it did not generalize well in practice. The main failure mode was ticker memorization: the model repeatedly learned identity shortcuts instead of a stable cross-sectional signal. The resulting evidence was therefore inconclusive rather than production-ready.
+
+`R` or `R*` stands for `Regime`. This family attempts to model macro effects against the SGX iEdge S-REIT index itself, rather than directly forecasting SORA or directly forecasting individual REIT abnormal returns. The relevant scripts are `train_rstar_directional_1fold.py`, `train_rstar_xgboost_walkforward_optuna_deap.py`, and `train_rstar_xgboost_walkforward_optuna_deap_1fold.py`. This family was not used in the final app because its signal remained inconclusive, likely due to a combination of limited data and insufficiently rich features for a robust standalone regime model.
+
+The final production choice was based on iterative experiments on these few different "families" of XGBoost models and data modeling before arriving on a stable result: to "use the `P` family and reject `A` and `R/R*` for runtime use." Hence why the app's macro layer is built around rate prediction rather than around abnormal-return prediction or a separate regime classifier.
 
 ## 4.3.1. Multi-Configuration Controlled Experiment Design
 
