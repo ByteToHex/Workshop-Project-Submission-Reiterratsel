@@ -1,6 +1,6 @@
 ## Project Report
 
-## REITterraetsel - Equity Risk Solver for S-REITs
+## REITterratsel: Equity Risk Solver for S-REITs
 
 Intelligent Reasoning Systems
 
@@ -8,10 +8,7 @@ Prepared by:
 
 | Student Name | Student ID |
 |---|---|
-| [Name] | [ID] |
-| [Name] | [ID] |
-| [Name] | [ID] |
-| [Name] | [ID] |
+| Jason Tay Neng Wei | A0265092A |
 
 ## Table of Contents
 
@@ -30,356 +27,774 @@ Prepared by:
 
 ## 1. Executive Summary
 
-*[Complete this last after all other sections are filled.]*
+REITterratsel is an explainable distress-ranking system for Singapore-listed REITs. The implemented system combines annual firm-level financial metrics, a Mamdani fuzzy reasoning layer, a macroeconomic XGBoost overlay centered on SORA movement, and a daily abnormal-return path overlay into a single dashboard-oriented decision workflow.
 
-[Write a concise abstract / executive summary here.]
+At the company layer, the repository builds a DuckDB warehouse from TradingView-style statement data, derives a 20-metric annual feature set, and uses those annual metrics to construct distress labels, Mamdani inputs, and a cached fuzzy-output table. At the macro layer, the system loads the saved `run_21` XGBoost artifacts from `Common\Macro\IO\Model_Train\Use\run_21` and performs runtime SORA-related inference. At the application layer, Streamlit presents three views: `Ranking`, `Individual REIT Navigator`, and `Time Series (Rates)`.
+
+The current implementation is intentionally not a pure black-box predictor. Instead, it preserves an annual "anchor" score from the Mamdani layer and then adjusts it at runtime with a macro shock term and a REIT-specific cumulative abnormal return path term. This design keeps the base reasoning interpretable while still allowing shorter-horizon macro and market movements to influence the final distress score.
+
+Compared with the original proposal, the implemented system changed materially in one key area. The proposal originally emphasized Snorkel weak supervision and decision-tree rule extraction. The final local implementation instead uses threshold-based annual label engineering from forward cumulative abnormal returns, Python-based Mamdani inference seeded from a Neo4j rule graph, and a persisted DuckDB cache for runtime use. This shift reflects the small-sample realities of S-REIT annual data and the project's need for a stable, auditable submission build.
 
 ## 2. Business Case / Market Research
 
 ## 2.1. Business Case
 
-- Recent sector stress events like rate hike cycles.
-  Include discussion of Covid, the US-Iran war, and the Hormuz Closure 2026 as relevant macro stress contexts.
-- MAS rule change for gearing restrictions.
-  Refer to `SAMPLES\Mine\MAS_Rule_Change_Risk_Implications.txt`.
+Singapore REITs are income-oriented instruments that are highly exposed to financing costs, refinancing structure, and operating resilience. The project proposal frames the central business problem clearly: retail investors can already view many raw S-REIT metrics, but they still lack a systematic way to turn those values into transparent distress judgments. In practice, a user can see gearing, payout, or price-to-book values, yet still not know whether the combination implies a stable name, a watchlist candidate, or a genuinely distressed counter.
 
-[Explain why S-REIT distress monitoring matters, why the timing is commercially relevant, and why an early-warning style system is useful.]
+The implemented system is designed around this gap. It does not aim to predict raw price levels. Instead, it prioritizes distress interpretation under changing rate conditions. That focus is consistent with the project's local design documents, which repeatedly emphasize refinancing pressure, coverage stress, and cumulative abnormal market reaction as the key signals to interpret.
+
+Recent sector stress is especially relevant because S-REIT balance sheets are sensitive to higher debt costs and refinancing walls. The proposal identifies recurrent risks such as debt-cost sensitivity, refinancing risk, and valuation compression. The repo also contains a dedicated MAS rule-change note arguing that the revised framework effectively introduces a hard borrowing floor when `ICR < 1.5x`, even if aggregate leverage is still low. In plain English, a REIT can appear lightly levered yet still become operationally constrained if earnings weaken enough to drag coverage below the regulatory floor.
+
+This matters because the distress problem is not only "high gearing is bad." The repo's MAS note explicitly argues that tenant weakness, falling earnings, and shrinking interest coverage can be just as dangerous as headline leverage, because they can force equity dilution or limit access to new debt even before the balance sheet reaches the formal maximum leverage cap.
+
+The implemented metric and rule design follows that logic. The Mamdani layer gives special importance to `ICR`, `DSCR`, `GEARING`, and `REFI_RISK`, while the runtime layer uses `REFI_RISK` again as the sensitivity bridge between macro rate stress and the final distress score. This is a strong sign that the business case was not only rhetorical but translated into the actual scoring architecture.
+
+<!--FILL The skeleton specifically asks for treatment of the "US-Iran war and Hormuz Closure 2026" as a recent sector stress event, but no supporting source for that event exists inside this repository, and I did not browse external news sources for temporal verification. Fill this only after adding a local source or after a separate sourced web pass.-->
 
 ## 2.2. Scoping and Competitive Positioning
 
-- Refer to proposal:
-  `SAMPLES\Mine\Proposal_Temp_04.md`
-- Compare against at least three competitors.
-- Preserve the core conclusion from the proposal:
-  existing tools often display metrics without reasoning, while this project encodes machine-validated logic and exposes distress rankings programmatically.
+The proposal sets the product scope as a curated S-REIT distress-evaluation system rather than a universal equity screener. It explicitly focuses on combining company financials with macroeconomic indicators, operationalizing hard risk flags as rule-based systems, and exposing distress rankings in a practical retail-investor context.
 
-[Summarize inclusions, exclusions, target users, and competitive differentiation.]
+The proposal also defines several out-of-scope items that remain important for the report:
+
+- The project is not primarily a raw price-prediction system.
+- Pure time-series or LSTM forecasting was not the intended core.
+- The domain is intentionally constrained by the limited history and small annual sample size of S-REIT data.
+
+The competitive positioning in the proposal is already usable in near-final form. Three locally documented comparators are:
+
+- `REITsavvy Screener`, which exposes filters and raw metrics but leaves reasoning to the user.
+- `Fifth Person`, which presents live S-REIT data for general reference but does not encode rule-based distress scoring.
+- `DBS Research InsightsDirect`, which contains analyst reasoning but is episodic, institutional, and not transparently rerunnable by a retail user.
+
+The proposal's core conclusion remains consistent with the implemented system: existing tools either show metrics without machine-readable reasoning or hide reasoning behind non-programmatic analyst workflows, while this project encodes rule logic and exposes a programmatic distress-ranking pipeline.
 
 ## 2.3. Literature Review
 
-- Refer to:
-  `D:\WS\-GH-A-Ref\REF-Study\GC_ASMT\Project\REF_SELF\IRS\Working\AcademicStudy\Combining\260503_1240_prompt_citations_response.txt`
-- Compare against the four research papers and their methods.
-- Position this section as detailed market / industry / academic research, with a short note on how it differs from a more product-oriented competitor analysis.
+The local proposal already contains one academically grounded anchor: Ratner et al. (2017) on Snorkel. In the proposal, Snorkel was attractive because the project lacked a large hand-labelled distress dataset and needed a way to combine heuristic labels under uncertainty. That framing remains useful in the report because it explains the original methodological direction even though the final implementation pivoted away from Snorkel as the main production labelling path.
 
-[Summarize the academic baseline, major methods compared, and where this project is similar or different.]
+The proposal's literature framing also remains relevant for explaining the research intent of the project:
+
+- Distress labels in S-REIT space are not directly available as neat supervised targets.
+- Weak supervision was originally considered as a way to generate structured labels from domain heuristics.
+- Explainability remained a first-class requirement, which is why transparent rule systems and graph-backed reasoning stayed central even after the labelling approach changed.
+
+<!--FILL The skeleton asks for a detailed four-paper comparison using `D:\WS\-GH-A-Ref\REF-Study\GC_ASMT\Project\REF_SELF\IRS\Working\AcademicStudy\Combining\260503_1240_prompt_citations_response.txt`, but that source is outside this repository. I cannot responsibly summarize the four-paper comparison from local evidence alone.-->
 
 ## 3. System Design / Model
 
 ## 3.1. Original Design
 
-- Refer to proposal:
-  `SAMPLES\Mine\Proposal_Temp_04.md`
-- Include the original MermaidJS system diagram.
-- Include a short write-up explaining the original intended architecture.
+The original proposal described a hybrid reasoning architecture that combined manually encoded rules, weak supervision, rule extraction, Neo4j storage, and a Streamlit front end. The design emphasized explainability first, with the macro model acting as an additional overlay rather than replacing the reasoning layer.
 
-[Insert the original architecture narrative here.]
+The original Mermaid architecture from the proposal is reproduced below because it is still useful for showing the intended starting point:
+
+```mermaid
+flowchart TD
+    subgraph INHERENT[Inherent Risks Model]
+        direction TB
+        A[Manually Encoded Rule KB] -->|Labelling Functions| B[Snorkel<br/>Probabilistic Labels]
+        B -->|REIT-Year Labels| C[Decision Tree<br/>Rule Extraction]
+        C -->|Final Rule Set + Ordering| D[Neo4j<br/>Knowledge Graph]
+        P[Macro Data<br/>Forward or Lagging] --> E
+        G[REIT Financial Data<br/>Appendix B] --> E
+        E[Derived Metrics<br/>Appendix A] --> B
+        E --> D
+    end
+    D -->|Cypher Queries| F[Streamlit UI<br/>Distress Rankings]
+
+    subgraph HYBRID[Macro Risks Model]
+        direction TB
+        HM[Macro Data<br/>Forward-Facing] --> MPM[ML Prediction Model]
+    end
+    MPM -->|Predictions| F
+```
+
+That original design is important because the final implementation only partially matches it. Neo4j still exists, but it is no longer queried live by the app for rule reasoning. Snorkel and decision-tree induction were proposed, but the local implementation now relies on threshold-derived labels and a seeded Mamdani rule system evaluated in Python. The final architecture is therefore best described as a design evolution rather than a straight proposal-to-code translation.
 
 ## 3.2. Data Definitions
 
 ## 3.2.1. Labels / Ground Truth
 
-- For the Mamdani fuzzy model, the labels are cumulative abnormal returns:
-  `CAR_63d`, `CAR_126d`.
+The current local implementation defines annual distress labels from forward cumulative abnormal returns rather than from hand-labelled expert classes. Specifically, the label table `reit_labels.fact_distress_label` stores:
+
+- `car_63wd`
+- `car_126wd`
+- `label_126wd`
+- annual anchor and window-end dates
+- `null_count`
+- `non_ok_count`
+
+The source logic in `reitteratsel_core.py` compounds abnormal returns from the first trading day on or after each annual fiscal-year-end anchor. The abnormal return itself is defined as:
+
+`REIT daily return - SGX iEdge REIT index daily return`
+
+This design intentionally measures how the market responded to each REIT relative to the sector benchmark rather than asking the model to predict raw price paths.
 
 ## 3.2.2. Theoretical Benchmark
 
-- The baseline evaluations used in XGBoost `run_21`.
-- The baseline used for Mamdani fuzzy comparison.
+Two benchmark ideas appear in the implemented system:
+
+- For the annual rule layer, the relevant benchmark is the ground-truth label `label_126wd`, which is derived from `car_126wd`.
+- For the macro layer, the relevant benchmark is the saved holdout evaluation in `Common\Macro\IO\Model_Train\Use\run_21`, where Optuna and DEAP are compared on the same target and holdout split.
+
+The formal evaluation script under `Common\Eval\build_reitteratsel_eval.py` compares four model views:
+
+- `distress_baseline`
+- `distress_score_mamdani`
+- `distress_score_refi`
+- `final_distress`
+
+This is a useful report design because it shows not only whether the full hybrid score works, but also whether the Mamdani layer alone already improves over a simpler baseline.
 
 ## 3.2.3. Threshold-Based Label Engineering Rationale
 
-- Why the labels were binarized at the selected threshold.
-- Why `CAR_63d` and `CAR_126d` were chosen instead of other horizons.
-- Why higher-timeframe windows were preferred due to lower volatility and better signal stability.
+The implemented label thresholds are explicit in `reitteratsel_core.py` and `Design_v1a.txt`:
 
-[Define what is being predicted, what "distress" means in this project, and why this label design was chosen.]
+- `car_126wd < -15%` -> `DISTRESSED`
+- `car_126wd > +5%` -> `HEALTHY`
+- otherwise -> `WATCH`
+
+This means the annual label is deliberately asymmetric. The distressed class requires a materially negative cumulative abnormal return over 126 trading days, while the healthy class requires clearly positive outperformance. The middle band is treated as ambiguous and therefore mapped to `WATCH`.
+
+This is sensible for a proof-of-concept because the system is trying to identify meaningful market deterioration rather than minor price noise. The design documents also indicate that higher-timeframe windows were preferred because they are less noisy than very short windows and better aligned with annual filing anchors.
+
+In plain language, the label says:
+
+- `DISTRESSED` means the REIT underperformed the sector benchmark badly over roughly half a trading year after the filing anchor.
+- `HEALTHY` means it outperformed clearly over the same horizon.
+- `WATCH` means the market reaction was not decisive enough to classify as either extreme.
 
 ## 3.3. XGBoost / Macro Data Design
 
-- Use the model terminology from the skeleton:
-  `M` = Mamdani Fuzzy Pipeline
-  `P` = Parquet-direct macro model
-  `A` = Abnormal Returns model
-  `R` = Regime model
-- Refer to:
-  `Common\Macro\Pipeline_MODEL\5_XGBoost\main_scripts.txt`
-- Document:
-  what macro features are used as inputs,
-  what the prediction target is,
-  why this feature set was chosen,
-  and why the 1-fold constraint was acceptable given the data.
-- Do not reproduce code in this section.
-- Reserve script-by-script implementation detail for Section 4.
+The local run artifacts show that the active macro model is not a general price forecaster. It is a SORA-oriented change model. In `run_21`, the selected runtime target is `option2_change`, described as:
 
-[Explain the macro model design in plain language.]
+`Future SORA change over 10 SGX trading rows`
+
+For the deployed runtime, `DEFAULT_HORIZON_DAYS = 10`, and the app explicitly loads direct XGBoost inference from `run_21`.
+
+The `fwd_10_days\feature_manifest.json` and `run_contents_summary.txt` make the feature design fairly clear. The model uses three broad feature groups:
+
+- Base macro features:
+  `sora_level_t2`, `sora_3m_t2`, `sora_term_spread_t2`, `expected_bps`, `p_no_change`, `margin_over_second`, `days_to_next_fomc`, and missingness indicators.
+- Spread features:
+  `expected_bps_minus_sora_90d`, `sora_curve_steepness`.
+- Engineered SORA path features:
+  lag differences, realized volatility, drawdown from recent peak, distance from moving average, and acceleration.
+
+The run summary also records that for `option2_change`, the model intentionally excludes `sora_level_t2` and `sora_3m_t2` from the active feature set because those level features are too regime-heavy relative to a change target. That is a meaningful design choice, because it shows the pipeline was trying to predict direction and movement rather than accidentally hard-coding level information that could distort the target.
+
+The 1-fold design is also directly evidenced by the local run metadata:
+
+- `split_mode = custom_1fold`
+- `train_frac = 0.7`
+- `test_frac = 0.2`
+- `gap_rows = 63`
+- `rows_base = 869`
+
+Based on those local settings, the 1-fold constraint appears to have been accepted because the dataset is time ordered, the sample size is not huge, and leakage prevention mattered more than producing many reshuffled validation folds. The 63-row gap is especially important because it suggests the pipeline deliberately inserted a temporal separation between training and downstream evaluation windows.
 
 ## 3.4. Mamdani Fuzzy Rules / Micro Data Design
 
-- Refer to annual metrics dictionary:
-  `Common\Micro\4_Compute_Metrics\Data_Dict_Reit_Metrics.md`
-- Refer to implementation and rule seed:
-  `Common\Micro\5_Model_KG\mamdani_rule_seed.json`
-  `Common\Micro\5_Model_KG\reitteratsel_core.py`
-- Refer to ratio-selection justification:
-  `D:\WS\-GH-A-Ref\REF-Study\GC_ASMT\Project\REF_SELF\IRS\Working\Models\KG_Rules\DesignFeature\METRICS_FOR_MAMDANI_RULES.txt`
-- Document:
-  what financial ratios are encoded as fuzzy inputs,
-  what the output membership functions represent,
-  and why these ratios were selected over alternatives.
-- Keep this section conceptual.
-- Reserve script-by-script implementation detail for Section 4.
+The current Mamdani system is seeded from `Common\Micro\5_Model_KG\mamdani_rule_seed.json` and evaluated in Python through `reitteratsel_core.py`. The implemented fuzzy inputs are:
 
-[Explain the micro / financial design and why these ratios were chosen.]
+- `ICR`
+- `GEARING`
+- `DSCR`
+- `REFI_RISK`
+- `PAYOUT_RATIO`
+- `FFO_COVERAGE`
+- `NET_DEBT_EBITDA`
+- `NULL_COUNT`
+
+This choice is consistent with the local metric dictionary. These variables collectively cover:
+
+- debt-servicing capacity (`ICR`, `DSCR`)
+- leverage and refinancing structure (`GEARING`, `REFI_RISK`, `NET_DEBT_EBITDA`)
+- payout sustainability (`PAYOUT_RATIO`, `FFO_COVERAGE`)
+- data-quality or missingness risk (`NULL_COUNT`)
+
+The output membership functions are not generic labels like "good" and "bad." They are:
+
+- `stable`
+- `watch`
+- `high`
+- `critical`
+
+This is useful for reporting because it matches the practical use case better than a binary classifier. A retail-investor-facing distress dashboard needs intermediate warning states, not just yes-or-no outcomes.
+
+The rule seed shows several high-signal examples:
+
+- `R1`: `ICR = distress` -> `critical`
+- `R2`: `DSCR = distress` -> `critical`
+- `R4`: `REFI_RISK = critical` -> `critical`
+- `R6`: `ICR = watch` and `GEARING = distress` -> `critical`
+- `R12`: healthy `ICR`, `GEARING`, `DSCR`, and `REFI_RISK` together -> `stable`
+
+This reveals the intended reasoning style. The system is not treating every metric as independent. It encodes both direct single-metric alarms and corroborating multi-metric combinations.
+
+The code also includes status-aware preprocessing. Certain metrics are not interpreted only by raw value:
+
+- `NEGATIVE_BASE` forces distress-style interpretation for `ICR`, `DSCR`, and `NET_DEBT_EBITDA`
+- `DISTRESS_BASE` forces payout-strain interpretation for `PAYOUT_RATIO` and `FFO_COVERAGE`
+- `PARTIAL`, `CLIPPED_SOURCE_SHARE`, and `LOW_DENOMINATOR` reduce confidence rather than silently pretending the values are fully normal
+
+That design is important because financial ratios can be numerically valid yet semantically misleading when the denominator or profit base is broken. The local implementation therefore treats metric status as part of the rule input design rather than as a mere metadata field.
+
+<!--FILL The skeleton points to an external ratio-selection justification file at `D:\WS\-GH-A-Ref\...METRICS_FOR_MAMDANI_RULES.txt`. That file is outside this repository, so I cannot fully quote the original external justification for why these exact ratios were chosen over all alternatives. The local repo does support a practical rationale through `Data_Dict_Reit_Metrics.md` and the seeded rule set.-->
 
 ## 3.5. Full Pipeline / Hybrid Model
 
-- Frame the system as:
-  Annual Anchor + Daily Watchdog
-- Annual Anchor:
-  frozen annual report data and ratio-derived Mamdani rule application.
-- Daily Watchdog:
-  XGBoost Model `P` (`fwd_10d`) bridged into distress scoring.
-- Refer to:
-  `Common\Micro\5_Model_KG\DesignDocs\Design_v1a.txt`
-  `Common\Micro\5_Model_KG\reitteratsel_core.py`
-- Document how the Mamdani layer and macro model output are bridged into one distress score.
-- Note any gap between intended design and implemented state.
-- Do not reproduce code.
+The best way to describe the implemented system is:
 
-[Describe the hybrid architecture and how the two layers interact.]
+`Annual Anchor + Daily Watchdog`
+
+The annual anchor is the persisted Mamdani score in `reit_fuzzy.fact_fuzzy_cache`. It is built from annual fundamentals and remains frozen until the next annual checkpoint.
+
+The daily watchdog adds two faster-moving layers:
+
+- a macro rate-stress overlay derived from the XGBoost-predicted 10-day SORA change
+- a REIT-specific abnormal-return-path overlay derived from cumulative abnormal returns since the filing anchor
+
+The final score is assembled in `compute_final_distress_score()`:
+
+- start from `distress_score_mamdani`
+- derive a macro shock from `distress_sora - 0.5`
+- scale that macro shock by `REFI_RISK`
+- derive a `car_path_shock` from `car_path_distress - 0.5`
+- ignore small CAR-path shocks inside a neutral dead zone
+- combine the pieces into a bounded final score
+
+In the current code, the exact formula is:
+
+- `macro contribution = 0.15 * sensitivity * macro_shock`
+- `car contribution = 0.20 * car_path_shock`
+- `sensitivity = max(0.25, min(1.0, REFI_RISK * 2.5))`
+
+This produces a hybrid score that still preserves the annual reasoning base while allowing more recent macro and market developments to move the final ranking.
+
+The main design gap between proposal and implementation is therefore clear:
+
+- The proposal centered Snorkel, decision-tree rule extraction, and Neo4j-backed live reasoning.
+- The implementation centers threshold-derived labels, Python Mamdani inference, persisted DuckDB caches, and runtime composition.
+
+Neo4j still matters, but mainly as the rebuild-time rule seed store rather than the runtime decision engine used by the app.
 
 ## 3.6. UI Prototype
 
-- Figma design:
-  `https://www.figma.com/design/XBzg1EQej9Ghf0xkUFVO6p/Reitteratsel?node-id=259-570&t=7kTDq3ZrHpGxBcM9-0`
-- Local design references:
-  `Common\Frontend\DesignDoc`
-- Prefer the PDF artifacts for screenshots or diagrams.
+The repo contains both concept and implementation artifacts for the front end:
 
-[Summarize the user interface concept, main pages, and design intent.]
+- `Common\Frontend\DesignDoc\Reitteratsel.pdf`
+- `Common\Frontend\DesignDoc\figma.png`
+- `Common\Frontend\DesignDoc\Reiterratsel_Wordmark.svg`
+- `Common\Frontend\reitteratsel_app.py`
+
+The implemented Streamlit app currently exposes three pages:
+
+- `Ranking`
+- `Individual REIT Navigator`
+- `Time Series (Rates)`
+
+The code shows that the UI is not a bare prototype. It includes:
+
+- simulation-date resolution
+- persistent REIT selection across navigation
+- annual, macro, and CAR-path provenance tooltips
+- ranking-table views
+- detailed single-REIT score decomposition
+- time-series charts for predicted versus actual macro behavior
+
+The visual direction is a dark dashboard with strong information hierarchy, custom branding assets, and explicit explanatory help text around most model-derived fields. This is aligned with the project's interpretability goal: the interface is meant to explain why the score moved, not only display the score.
+
+<!--FILL The skeleton asks to include prototype screenshots and likely compare against the Figma design. The local repo contains the PDF and image assets, but I did not render or extract screenshots from those binary design files during this pass. Add screenshots in a later pass if needed.-->
 
 ## 4. System Development & Implementation
 
-*[Use layman language. Describe the pipeline from data mining to engineering to visualization. For implementation gaps, follow `Design_v1a.txt` and the implementation progress references.]* 
-
 ## 4.1. Early Development / Dead Forks
 
-## 4.1.1. Snorkel / Decision Tree / Orange
+The proposal shows that the project originally intended to use Snorkel weak supervision and decision-tree rule extraction. That direction was methodologically attractive because the annual S-REIT dataset is small and does not come with an obvious labelled distress target. However, the final local implementation did not keep Snorkel in the production path.
 
-- Refer to:
-  `D:\WS_NUS\REF_DATA\Test_Sample\_Models_Test\Snorkel`
-  `IVT_Dividends\approach\DataSelect\Rules\PredictWithLib\Orange\Orange_Inaccurate.txt`
-- Mention that these were part of the proposal direction but were not used in the final system.
-- State that the small sample size prevented a useful conclusion.
-- State that manual rule definition, evaluation against performance, and iterative adjustment became more realistic under the small-N constraint.
+The current design documents and code show a different final outcome:
 
-**Required statement:** As a result, Snorkel labelling was abandoned and threshold-based labelling was adopted instead. See Section 4.2.
+- annual labels are engineered directly from forward cumulative abnormal returns
+- Mamdani rules are manually seeded and evaluated in Python
+- DuckDB stores the resulting annual labels and fuzzy outputs for runtime reuse
+
+This is not a minor implementation detail. It means the project moved away from an "induce labels from weak supervision" workflow toward a more explicit threshold-based labelling strategy that could be audited end to end.
+
+As a result, Snorkel labelling was abandoned and threshold-based labelling was adopted instead. See Section 4.2.1.
+
+<!--FILL The skeleton asks for specific discussion of Snorkel, Decision Tree, and Orange experiments using folders under `D:\WS_NUS\REF_DATA\...` and `IVT_Dividends\...`. Those artifacts are outside this repository, so I cannot verify the detailed experimental outcome or quote the exact Orange findings from local evidence.-->
 
 ## 4.2. Data Scraping and Data Engineering
 
-- Time series such as MAS and tickers were exported directly via TradingView subscription.
-- Self-built firm financial-statement and macro datasets were also created.
-- Firm-level financial data came from the `Common\Micro\...` steps 1 to 3 pipeline.
-- Macro data parquets came from `Common\Macro\Pipeline_DATA`.
-- Note the custom plugin built for scraping firm-level financial data.
-- Note the extensive probing, sanity checks, schema confirmation, and final extraction down to 1,227 rows before compression to trading days, with approximately 897 `expected_bps` values.
+The implemented data-engineering path exists in both the folder structure and the active build scripts. On the micro / firm side, the repository contains a staged pipeline:
 
-[Describe how raw data was sourced, validated, and standardized.]
+- `Common\Micro\1_TradingView_Exploration`
+- `Common\Micro\2_HTML_Dumping`
+- `Common\Micro\3_Serialize_Dump_To_CSV_Parquet`
+- `Common\Micro\4_Compute_Metrics`
+- `Common\Micro\5_Model_KG`
+
+This staged structure implies a practical progression:
+
+- inspect upstream TradingView-style data
+- dump or capture raw source content
+- serialize into CSV / parquet form
+- compute derived REIT metrics
+- build reasoning and downstream application layers
+
+On the macro side, `Common\Macro\Pipeline_DATA` is also staged and strongly supports the user's skeleton notes about probing and sanity checking. The local scripts show separate phases for:
+
+- market probing
+- legacy probing
+- preprocessing
+- extraction
+
+Examples include:
+
+- `probe_trades_schema_by_market.py`
+- `check_trade_timestamp_availability.py`
+- `assemble_ref_overlap_parent_columns.py`
+- `parquet_fed_events_export.py`
+- `build_timeseries.py`
+
+This is good reporting evidence because it shows the macro dataset was not treated as a ready-made clean table. The pipeline explicitly includes schema probing, overlap assembly, and extraction steps before the training data reaches the model layer.
+
+The proposal and implementation docs also show that the project uses multiple source families:
+
+- TradingView-style S-REIT financial statements
+- S-REIT and index price-series CSVs
+- SORA daily and SORA 3M series
+- FOMC-related forward-signal features summarized in the run artifacts as `expected_bps`, `p_no_change`, `margin_over_second`, and `days_to_next_fomc`
+
+The annual warehouse is persisted in DuckDB at:
+
+`Common\Micro\IO\out\_annual_warehouse\fundamentals.duckdb`
+
+This warehouse is a major implementation choice. It allows the application to use stable, queryable annual snapshots instead of re-deriving everything live during every app interaction.
+
+<!--FILL The skeleton claims a custom plugin was built for scraping firm-level financial data. I did not find a clearly identifiable local plugin artifact or plugin source folder inside this repository that proves that statement in detail. The staged micro pipeline supports custom scraping work in general, but the plugin-specific claim needs a local source or a separate external reference.-->
 
 ## 4.2.1. Threshold-Based Annual Label Engineering
 
-- Explain the conversion of time-series behavior into annual labels.
-- Translate the threshold into plain English, for example:
-  the market fell more than X% over Y days.
-- Confirm that this is where Snorkel was replaced in practice.
+This is one of the clearest fully implemented parts of the project. The code path in `reitteratsel_core.py` does the following:
 
-[Explain the fallback from weak labelling to explicit threshold-based labels.]
+- derives annual filing anchors from `reit_metrics.dim_period.fiscal_year_end_date`
+- rolls the anchor to the first available trading day on or after that date
+- compounds forward abnormal returns for 63 and 126 trading days
+- stores the results in `reit_labels.fact_distress_label`
+- maps `car_126wd` to `label_126wd`
+
+The threshold logic is explicit:
+
+- if `car_126wd < -15%`, the label is `DISTRESSED`
+- if `car_126wd > +5%`, the label is `HEALTHY`
+- otherwise the label is `WATCH`
+
+In plain English, this means:
+
+- the market judged the REIT badly if it underperformed the REIT index by more than 15% over the next 126 trading days
+- the market judged it positively if it outperformed by more than 5%
+- anything in between is treated as a middle-risk watch state
+
+This section is also where the earlier weak-labelling idea was functionally replaced. Instead of relying on a generative label model, the project engineered a consistent downstream target from actual post-filing market behavior.
 
 ## 4.3. XGBoost Development
 
 ## 4.3.1. Multi-Configuration Controlled Experiment Design
 
-- Implemented early in `train_p_1fold_pipeline.py` and precursor versions.
-- Added configurable labels.
-  Example directions include SORA magnitude, direction, and related variants.
-- Added configurable forward horizons.
-- Different timelines tested:
-  3, 5, 7, 10, 15, 21.
-- Final emphasis settled around 10 to 15 trading days because the horizon was not too noisy yet still carried signal.
+The local training code and run artifacts show a structured experimental approach rather than a single one-off model fit.
 
-[Explain the experiment structure and why multiple configurations were necessary.]
+The script configuration records:
+
+- default forward horizons `(10, 15)`
+- alternative historical notes for `(3, 7, 10, 15)` and `(1, 5, 10, 21)`
+- three target types listed in the manifests:
+  `option1_level`, `option2_change`, `option3_abs_change`
+- active run target in `run_21`:
+  `option2_change`
+
+This matches the skeleton's description of a controlled experiment across multiple labels and horizons. The final deployed direction is not "predict anything possible." It is the one that survived comparative selection and became stable enough for runtime wiring.
+
+The active runtime choice is:
+
+- forward horizon: `10` trading days
+- target: `sora_fwd_10d_change`
+- winner: `optuna`
+
+That makes the runtime model operationally simple: the macro layer predicts a short-horizon change in SORA and converts that into a 0-1 stress overlay.
 
 ## 4.3.2. Hyperparameter Search Strategy
 
-- Use of Optuna for Bayesian optimization.
-- Use of DEAP for evolutionary search.
-- Cross-reference findings in Section 5 for why these mattered beyond raw score improvements.
+The project uses two optimizer families in the training pipeline:
 
-[Explain how automated search was used to improve the model.]
+- Optuna with `OPTUNA_N_TRIALS = 80`
+- DEAP with a conservative evolutionary search
+
+The DEAP settings are explicitly visible in `train_p_1fold_pipeline.py`:
+
+- `DEAP_GENERATIONS = 8`
+- `DEAP_POPULATION_SIZE = 20`
+- `DEAP_MUTATION_PROB = 1.0 / 9.0`
+- `DEAP_CROSSOVER_PROB = 0.6`
+- `DEAP_TOURNAMENT_SIZE = 3`
+
+The script comments are useful for report interpretation because they explicitly describe the DEAP search space as conservative for the "current small-row regime." That supports the skeleton's narrative that more aggressive evolutionary settings had to be reined in to improve generalization.
+
+The saved `run_21` comparison confirms that Optuna narrowly beat DEAP for the deployed `fwd_10_days` change target:
+
+- Optuna:
+  `R2 = 0.1927`, `RMSE = 0.2528`, `Accuracy = 0.6795`, `Recall = 0.7385`, `F1 = 0.6575`, `AUC = 0.7341`
+- DEAP:
+  `R2 = 0.1919`, `RMSE = 0.2529`, `Accuracy = 0.6538`, `Recall = 0.7231`, `F1 = 0.6351`, `AUC = 0.7219`
+
+The winning parameter set stored in `all_targets_selected_params.json` is:
+
+- `gamma = 0.3615`
+- `n_estimators = 350`
+- `max_depth = 2`
+- `learning_rate = 0.0674`
+- `min_child_weight = 4.0044`
+- `subsample = 0.9193`
+- `colsample_bytree = 0.9546`
+- `reg_alpha = 0.0068`
+- `reg_lambda = 2.3435`
+
+This is a relatively conservative, shallow tree configuration, which is consistent with the project's small-sample design constraints.
 
 ## 4.4. Pipeline and Application Delivery
 
-- Describe the end-to-end movement from data mining to engineered features, trained model artifacts, cached fuzzy outputs, and final dashboard presentation.
-- Visually feature the main scripts used across the pipeline with short layman write-ups.
+The end-to-end local implementation can be summarized in a sequence of concrete components:
 
-[Summarize the operational pipeline here.]
+- upstream micro data preparation under `Common\Micro\1_*` to `4_*`
+- annual metric derivation by `Common\Micro\4_Compute_Metrics\build_reit_metrics.py`
+- hybrid pipeline build by `Common\Micro\5_Model_KG\build_reitteratsel_pipeline.py`
+- core logic in `Common\Micro\5_Model_KG\reitteratsel_core.py`
+- local development orchestration in `Common\Micro\5_Model_KG\run_reitteratsel.py`
+- frontend entrypoint in `Common\Frontend\reitteratsel_app.py`
+- formal evaluation in `Common\Eval\build_reitteratsel_eval.py`
+
+The application itself is intentionally built on persisted outputs rather than on raw live recomputation at page-load time. At runtime, the app reads:
+
+- annual metric tables
+- annual label tables
+- annual Mamdani cache tables
+- daily CAR-path tables
+- direct macro prediction outputs from the saved XGBoost artifacts
+
+This is a strong practical implementation choice for a submission repository because it improves reproducibility and reduces operational dependence on live graph rebuilds.
 
 ## 5. Findings and Discussion
 
 ## 5.1. Evaluation for XGBoost Best Version
 
-- Main evaluation folder:
-  `Common\Macro\IO\Model_Train\Use\run_21`
-- Discuss why this is the best version.
-- Reference the actual evaluation metrics stored there.
+The best locally evidenced macro model is the `run_21` `fwd_10_days` `option2_change` model, where Optuna is the recorded winner over DEAP. It predicts the 10-trading-day forward SORA change and is the exact family wired into the runtime app.
 
-[Summarize best-version performance, strengths, and caveats.]
+Its holdout summary is:
+
+- `R2 = 0.1927`
+- `RMSE = 0.2528`
+- `MAE = 0.2086`
+- `Accuracy = 0.6795`
+- `Precision = 0.5926`
+- `Recall = 0.7385`
+- `F1 = 0.6575`
+- `AUC = 0.7341`
+
+These are not "perfect prediction" numbers, but they are enough to justify using the macro model as an overlay rather than as the sole decision engine. That is also exactly how the system uses it. The XGBoost layer does not replace the annual reasoning layer. It nudges the final distress score in response to short-horizon rate stress.
 
 ## 5.2. Evaluation for XGBoost Historical Versions
 
-- Historical comparison folder:
-  `Common\Macro\IO\Model_Train\Working`
-- Only pull from:
-  `shap_summary_bar.png`
-  `shap_summary_beeswarm.png`
-  statistics JSON files
-- Do not pull `final_model_xgb.json`.
+The historical working directory exists and contains many earlier runs:
 
-[Compare the final model against earlier runs and note what improved.]
+- `Common\Macro\IO\Model_Train\Working\run_0` through `run_28`
+
+The folder also contains the safe artifacts named in the skeleton, including `shap_summary_bar.png` and `shap_summary_beeswarm.png` in multiple historical runs.
+
+However, I did not build a reliable cross-run historical comparison table from the `Working` folder during this pass because the skeleton explicitly constrained what should be read there, and the needed comparative narrative was not already consolidated in a local summary document inside this repository.
+
+<!--FILL A proper historical-version subsection should be completed from `Common\Macro\IO\Model_Train\Working` by reviewing the allowed SHAP images and statistics JSON files across the relevant run range. I did not find a ready-made local summary that states which exact historical runs correspond to each issue mentioned in the skeleton.-->
 
 ## 5.3. Evaluation for Mamdani Layer and Full Pipeline
 
-- Evaluation script:
-  `Common\Eval\build_reitteratsel_eval.py`
-- Evaluation outputs:
-  `Common\Eval\IO\run_n`
-- Reference the most recent / canonical evaluation run.
-- Mention which metrics are present:
-  F1, recall, confusion matrices, per-class metrics, ranking metrics, and related summaries.
+The latest local evaluation output folder is:
 
-[Summarize full-pipeline performance and what it means.]
+`Common\Eval\IO\run_3`
+
+This appears to be the current canonical final evaluation in the repository because the `IO` folder contains `run_1`, `run_2`, and `run_3`, and `run_3` is the highest-numbered run present.
+
+The local evaluation exports include:
+
+- `reitteratsel_eval_summary.csv`
+- `reitteratsel_eval_per_class_metrics.csv`
+- `reitteratsel_eval_confusion_matrices.csv`
+- `reitteratsel_eval_ranking_metrics.csv`
+- `reitteratsel_eval_disagreements.csv`
+- `reitteratsel_eval_detail.csv`
+
+The summary metrics show:
+
+| Model | Label Accuracy | Macro F1 | MCC | Continuous MAE | Continuous RMSE |
+|---|---:|---:|---:|---:|---:|
+| `distress_baseline` | 0.3572 | 0.3553 | 0.0538 | 0.3534 | 0.4747 |
+| `distress_score_mamdani` | 0.5563 | 0.5294 | 0.2969 | 0.3100 | 0.3635 |
+| `distress_score_refi` | 0.2816 | 0.2817 | 0.2261 | 0.3638 | 0.5175 |
+| `final_distress` | 0.5214 | 0.5188 | 0.2919 | 0.2724 | 0.3295 |
+
+The results are interesting because they show a trade-off:
+
+- The Mamdani annual layer has the best label accuracy.
+- The final hybrid score has slightly lower label accuracy than Mamdani alone.
+- The final hybrid score has the best continuous-error metrics.
+
+That is consistent with the architecture. The hybrid score is not only trying to reproduce the annual class label. It is also trying to behave more smoothly as a continuous runtime risk score after adding macro and CAR-path information.
 
 ## 5.4. Representation Tables and Graphs
 
-- Include tables or figures based on:
-  `Common\Macro\IO\Model_Train\Use\run_21`
-  `Common\Eval\IO\run_n`
-- Candidate visuals:
-  F1 comparisons,
-  recall comparisons,
-  confusion matrices,
-  model comparison tables.
-- Future enhancement note:
-  more realistic plots such as residuals and more specific confusion-matrix views can be added later.
+The repo already contains several directly usable report artifacts:
 
-[Insert charts, tables, and figure captions here.]
+- XGBoost holdout summaries in `run_21`
+- SHAP visual assets in `run_21`
+- confusion matrices and per-class metrics in `Common\Eval\IO\run_3`
+
+The full-pipeline confusion matrices already reveal meaningful behavior. For example:
+
+- `distress_score_mamdani` correctly predicts `1,594` distressed rows and `4,811` watch rows.
+- `final_distress` correctly predicts `1,991` distressed rows, but does so more aggressively by also pulling more watch rows into the distressed bucket.
+
+This supports the skeleton's intuition that the hybrid model is more aggressive. It improves distressed-case capture, but it also increases over-flagging pressure on borderline names.
+
+<!--FILL The skeleton mentions adding more realistic graphs such as residual plots or more specific confusion-matrix views. Those visuals are not yet generated as dedicated report-ready images in the local repo, even though the raw CSV outputs needed for plotting are present.-->
 
 ## 5.5. Optuna and DEAP as an Adversarial Error-Surfacing System
 
-- Discuss how the optimization process surfaced design flaws instead of only improving scores.
-- Points to cover:
-  selection criteria had previously chosen a worse model,
-  `n_optuna` trials were too low at 40 and later increased to 80,
-  DEAP parameters were too aggressive and harmed generalization,
-  mutation-rate settings caused severe instability before being corrected.
+One useful way to describe the macro training pipeline is that the optimizer contest was not only a tuning step. It also acted as an error-surfacing mechanism. The local code and saved run artifacts support several points from the skeleton:
 
-[Explain how the search process exposed weaknesses in the modeling pipeline.]
+- the model-selection logic became important enough to formalize in `choose_winner(...)`
+- Optuna trial count was explicitly set to `80`
+- DEAP search settings were deliberately constrained for the small-row regime
+- mutation and crossover are no longer naively extreme in the saved script
+
+The final script suggests that the project converged toward a more disciplined search regime:
+
+- small population
+- small number of generations
+- shallow trees
+- moderate mutation probability
+- moderate crossover probability
+
+This matters because aggressive evolutionary search can easily optimize noise in small temporal datasets. The local comments and parameter caps imply that the final configuration was chosen to reduce that risk.
+
+<!--FILL The skeleton asks for a documented narrative tying specific issues to runs 9-21 and to external notes under `..\REF_SELF\IRS\Working\Data\ForBoth\Consolidate_Processing.txt`. Those substantiating logs are outside this repository, so I cannot map each optimizer issue to its original discovery evidence from local sources alone.-->
 
 ## 5.6. Developed Models and Final Interpretation
 
-- Hybrid model:
-  predicts roughly 70 to 80 percent of distressed cases, but is aggressive.
-- Note the precision concern:
-  around 44 percent precision among cases called distressed.
-- Model `P`:
-  has foundational signal and further potential.
+The repo supports four conceptually distinct views of distress:
 
-[Provide the final interpretation of what worked, what did not, and what remains risky.]
+- `distress_baseline`
+- `distress_score_mamdani`
+- `distress_score_refi`
+- `final_distress`
+
+The annual Mamdani layer is the strongest single discrete classifier in the local evaluation. It improves substantially over the baseline and over the simple REFI-only proxy.
+
+The final hybrid score appears to be more operationally aggressive. From the per-class metrics:
+
+- `final_distress` distressed recall is `0.8545`
+- `final_distress` distressed precision is `0.4413`
+- `distress_score_mamdani` distressed recall is `0.6841`
+- `distress_score_mamdani` distressed precision is `0.4510`
+
+This means the hybrid score catches more distressed cases, but it also accepts more false alarms. That is almost exactly the trade-off implied in the skeleton note that the hybrid model may catch around 70 to 80 percent of distressed cases while remaining aggressive.
+
+The practical interpretation is:
+
+- Mamdani is the more stable annual reasoning core.
+- The final hybrid score is the more sensitive live-monitoring view.
+- Model `P` has enough signal to justify inclusion as a macro overlay, but not enough evidence to replace the reasoning system entirely.
 
 ## 6. Future Work
 
-- Refer back to:
-  `SAMPLES\Mine\Proposal_Temp_04.md`
-- Copy forward proposal items that still apply, including the MLAI pipeline if still relevant.
-- Add:
-  this proof-of-concept repository works off frozen data with explicit date cutoffs and is intentionally designed that way,
-  a real-time system would require major changes for automated scraping / API ingestion,
-  and an automated DuckDB refresh mechanism is still needed.
+The proposal and implementation checklist together suggest a coherent future-work agenda.
 
-[Describe realistic next steps for both research and productionization.]
+First, the current repository is intentionally built on frozen and simulation-resolved data rather than on a live production feed. That is a good choice for reproducibility, but it also means the system is still a proof of concept. A production version would need:
+
+- reliable live ingestion for both firm-level and macro data
+- scheduled warehouse refresh
+- automated cache rebuild orchestration
+- stronger monitoring around failed upstream refreshes
+
+Second, the current label scheme and final hybrid weights are explicitly not final. The local checklist still marks several items as unfinished:
+
+- threshold tuning beyond the current `-15% / +5%` scheme
+- deeper Mamdani calibration
+- possible inclusion of `non_ok_count` in the scoring logic
+- macro and CAR-path weighting refinement
+
+Third, the app itself is functional but still has room for a more mature front end:
+
+- browser-level QA
+- richer rule-firing visualization
+- closer visual alignment with the design artifacts
+- better responsive handling
+
+Fourth, the proposal's broader ambitions remain valid:
+
+- expand coverage to more REITs or adjacent dividend vehicles
+- build a more formal MLOps pipeline
+- test additional macro experts or macro targets
+- extend the system into a more general explainable investment-risk framework
 
 ## 7. References
 
-[Insert references here.]
+Local repository references:
+
+- `Common\PROJECT_REFERENCE_MAP.md`
+- `SAMPLES\Mine\Proposal_Temp_04.md`
+- `SAMPLES\Mine\MAS_Rule_Change_Risk_Implications.txt`
+- `Common\Micro\5_Model_KG\DesignDocs\Design_v1a.txt`
+- `Common\Micro\5_Model_KG\DesignDocs\Implementation_Checklist_v1a.md`
+- `Common\Micro\5_Model_KG\mamdani_rule_seed.json`
+- `Common\Micro\5_Model_KG\reitteratsel_core.py`
+- `Common\Micro\4_Compute_Metrics\Data_Dict_Reit_Metrics.md`
+- `Common\Macro\Pipeline_MODEL\5_XGBoost\train_p_1fold_pipeline.py`
+- `Common\Macro\IO\Model_Train\Use\run_21\...`
+- `Common\Eval\IO\run_3\...`
+- `README.md`
+
+External references already named in the local proposal:
+
+- Ratner, A., Bach, S., Ehrenberg, H., Fries, J., Wu, S., and Re, C. (2017). *Snorkel: Rapid Training Data Creation with Weak Supervision*.
+- BDO Singapore (2025). *REIT Leverage and Disclosure*.
 
 ## Appendix A. Project Proposal
 
-- Decide whether to paste the proposal directly, summarize it, or include selected excerpts.
-- Keep the final presentation aligned with the cleaner examples from the sample reports.
+The local proposal can already be summarized into a concise appendix-ready form:
 
-[Insert proposal content or a formatted excerpt here.]
+- Project title:
+  `REITterratsel - Equity Risk Solver for S-REITs`
+- Core problem:
+  transform fragmented S-REIT financial and macro data into an interpretable distress-ranking workflow.
+- Original technique mix:
+  knowledge-based reasoning, weak supervision, rule extraction, Neo4j knowledge graph, and Streamlit interface.
+- Key change since proposal:
+  the final implementation replaced Snorkel-centric labelling with threshold-based label engineering from cumulative abnormal returns.
+
+If a full appendix copy is preferred, the raw proposal is already available at:
+
+`SAMPLES\Mine\Proposal_Temp_04.md`
 
 ## Appendix B. Mapped System Functionalities against MR, RS, CGS Modules
 
-The proposed project must develop, integrate, and demonstrate three or more aspects from the required technique groups.
+The project clearly satisfies the requirement to integrate at least three IRS-related technique groups.
 
 ## Appendix B.1. Decision Automation
 
-- Business rules / knowledge-based reasoning techniques.
-- Project mapping:
-  Mamdani fuzzy pipeline and its integration into the hybrid model.
-- Module links:
-  `D:\WS\-GH-A-Ref\REF-Study\GC_ASMT\Project\REF_SELF\IRS\Working\Models\KG_Rules\MamdaniFuzzy\260501_1625_mamdani_fuzzy.txt`
-- Suggested mapping:
-  MR Day 1 to 3 and RS Day 2, with strongest emphasis on MR Day 2.
+The Mamdani fuzzy layer is the clearest decision-automation component. It encodes domain logic into explicit rules and turns annual financial conditions into a structured distress score. The rule bundle includes direct solvency alarms, corroborating multi-metric alarms, and stability rules, which together form a machine-executable decision framework rather than a descriptive dashboard only.
 
-[Explain how the project satisfies this requirement.]
+## Appendix B.2. Business Resource Optimization / Evolutionary Computing
 
-## Appendix B.2. Business Resource Optimization
-
-- Informed search / evolutionary computing techniques.
-- Project mapping:
-  XGBoost evaluation and hyperparameter tuning using sklearn-DEAP and Optuna.
-- Module links:
-  [Add validated course-slide references here.]
-
-[Explain how optimization techniques were applied.]
+The XGBoost macro pipeline uses Optuna and DEAP for structured hyperparameter search. This is the strongest local evidence for the optimization-technique requirement. The search layer is not decorative; it materially affects which macro model configuration is promoted into the runtime overlay.
 
 ## Appendix B.3. Knowledge Discovery and Data Mining
 
-- Project mapping:
-  data scraping,
-  firm-level financial statements,
-  macro data parquets,
-  feature engineering,
-  feature selection,
-  XGBoost models.
-- Relevant paths:
-  `Common\Micro\...`
-  `Common\Macro\Pipeline_DATA`
-- Module links:
-  [Add validated references for XGBoost, SHAP, and related methods here.]
+The project contains substantial data-mining and engineering work across both the micro and macro sides:
 
-[Explain how the project satisfies the data-mining requirement.]
+- staged financial-statement extraction and serialization
+- annual metric derivation
+- market and macro schema probing
+- engineered macro feature creation
+- label derivation from abnormal-return behavior
+
+This is not merely static reporting. It is a pipeline that turns raw heterogeneous data into model-ready and rule-ready information.
 
 ## Appendix B.4. Cognitive Techniques / Tools
 
-- Project mapping:
-  Neo4j integration with the Mamdani pipeline for real-time inference in the intended design.
-- Deployment note:
-  for stable development and submission, the project currently uses frozen data plus a DuckDB-facing Mamdani cache layer.
-- Original design intent remained live Neo4j KG integration.
-- Module links:
-  `D:\WS\-GH-A-Ref\REF-Study\GC_ASMT\Project\REF_SELF\IRS\Working\Models\KG_Rules\DesignFeature\References.txt`
+The original architecture and the current rebuild path both involve Neo4j. In the implemented system, Neo4j is used to seed and persist the Mamdani rule graph, even though the runtime app now reads the persisted fuzzy outputs from DuckDB rather than querying Neo4j live on every page interaction. The graph layer therefore remains a real cognitive-systems component, even if it is no longer the direct runtime serving layer.
 
-[Explain how the project satisfies the cognitive-systems requirement.]
+<!--FILL The skeleton asks for explicit module-link evidence using external notes under `D:\WS\-GH-A-Ref\...`. Those module-link documents are outside this repository, so I can map the techniques conceptually but cannot verify the exact slide/day references from local sources alone.-->
 
 ## Appendix C. Installation and User Guide
 
-- Refer to:
-  `README.md`
-- Align this appendix to the dockerized submission-ready workflow.
-- Update only if paths or runtime instructions changed.
+The repository README is already strong enough to support a largely complete appendix.
 
-[Insert installation and user-guide material here.]
+### C.1. Docker submission / demo mode
+
+From the repository root:
+
+```powershell
+docker compose -f Common/docker-compose.yml up --build
+```
+
+Then open:
+
+```text
+http://localhost:8501
+```
+
+This serves the Streamlit app against the committed DuckDB snapshot and does not require Neo4j-backed rebuild logic for the normal demo path.
+
+### C.2. Docker rebuild mode
+
+If the cached DuckDB and parquet artifacts need to be regenerated, first create:
+
+```powershell
+Copy-Item Common\docker-compose.env.example Common\docker-compose.env
+```
+
+Then keep the Neo4j container settings aligned with the compose path, including:
+
+```env
+NEO4J_URI=neo4j://neo4j:7687
+NEO4J_DATABASE=neo4j
+NEO4J_USERNAME=neo4j
+NEO4J_PASSWORD=mamdaniXGBoost
+```
+
+Run the rebuild profile:
+
+```powershell
+docker compose -f Common/docker-compose.yml --profile rebuild up --build reitteratsel-rebuild
+```
+
+After that, start the app:
+
+```powershell
+docker compose -f Common/docker-compose.yml up --build
+```
+
+### C.3. Local development mode
+
+The project-standard Python runtime is:
+
+- `C:\ProgramData\anaconda3\envs\env\python.exe`
+- `C:\ProgramData\anaconda3\envs\env\Scripts\streamlit.exe`
+
+Typical local development entrypoint:
+
+```powershell
+C:\ProgramData\anaconda3\envs\env\python.exe Common\Micro\5_Model_KG\run_reitteratsel.py
+```
+
+Important local-development notes:
+
+- development mode assumes cache rebuild on launch
+- root `.env` must contain the required Neo4j settings
+- submission mode differs because it serves the committed DuckDB snapshot directly
+
+### C.4. Main user-facing pages
+
+The app exposes three primary pages:
+
+- `Ranking`
+- `Individual REIT Navigator`
+- `Time Series (Rates)`
+
+The user can:
+
+- choose a simulation date
+- inspect annual Mamdani scores
+- view macro overlay fields
+- view abnormal-return-path overlays
+- drill into annual metric history and label history for a selected REIT
