@@ -2,6 +2,8 @@
 
 Self-contained Docker runnable copy of the `REITterratsel` submission setup.
 
+Please ensure docker desktop is installed and running before attempting to launch.
+
 ## App-only mode
 
 ```powershell
