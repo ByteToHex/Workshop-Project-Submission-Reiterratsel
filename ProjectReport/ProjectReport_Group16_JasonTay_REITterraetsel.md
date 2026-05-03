@@ -98,7 +98,7 @@ Another gap was architectural. The prior papers mainly used single-model predict
 
 The original proposal described a hybrid reasoning architecture that combined induced rules from Snorkel weak supervision [5], Orange/Decision Tree rule extraction, Neo4j storage, and a Streamlit front end. The design emphasized explainability first, with the macro model acting as an additional overlay rather than replacing the reasoning layer.
 
-The original Mermaid architecture from the proposal is reproduced below because it is still useful for showing the intended starting point:
+The original design architecture from the proposal is reproduced below because it is still useful for showing the intended starting point:
 
 ```mermaid
 flowchart TD
@@ -276,15 +276,15 @@ This change simplified the logic of the system considerably. Instead of dependin
 
 ## 4.2. Data Scraping and Data Engineering
 
-The data-engineering pipeline is easier to understand if it is separated into two parts: the annual REIT fundamentals pipeline and the macro time-series pipeline. The two pipelines are built differently because they solve different data problems.
+The data-engineering pipeline is easier to understand if it is separated into two parts: the annual REIT fundamentals pipeline and the macro time-series pipeline. The two pipelines are built differently because they solve different data problems, and both sides include dedicated scraping or source-probing stages before downstream modelling begins.
 
-On the REIT side, the project starts from TradingView HTML annual financial statements. Those statements are first captured as raw source material, then converted into a structured row-based format. The serializer script does not simply dump text into a flat file; it maps statement labels into a reusable schema, assigns row identifiers, and writes the result into both DuckDB and per-ticker parquet files. This stage turns messy statement exports into a queryable warehouse with consistent row structure across REITs and years.
+On the REIT side, the project starts from TradingView HTML annual financial statements. The supporting scripts for this stage are spread across `Common\Micro\1_TradingView_Exploration`, `Common\Micro\2_HTML_Dumping`, and `Common\Micro\3_Serialize_Dump_To_CSV_Parquet`. In practical terms, the first folder contains exploratory helpers for navigating the TradingView financial tabs, the second contains the HTML dumping workflow itself, and the third converts the dumped HTML into structured warehouse outputs. Those statements are therefore first captured as raw source material, then converted into a structured row-based format. The serializer script does not simply dump text into a flat file; it maps statement labels into a reusable schema, assigns row identifiers, and writes the result into both DuckDB and per-ticker parquet files. This stage turns messy statement exports into a queryable warehouse with consistent row structure across REITs and years.
 
 The next step is metric engineering. `build_reit_metrics.py` reads the consolidated annual warehouse and derives the project's usable REIT indicators from it. This is where ratios such as leverage, debt-service coverage, payout strain, and refinancing-related measures are computed from the raw annual statements. The metric layer also joins in external series where needed, such as SORA 3M on or before the fiscal year end. This allows the final project to reason on a cleaned annual metric layer that has already standardized the accounting inputs, as opposed to reasoning directly on raw statement rows.
 
 The annual outputs are then persisted in `fundamentals.duckdb`, which becomes the main warehouse used by the downstream reasoning pipeline and the app. Instead of recalculating annual accounting structure from scratch during every run, the system works from a stable warehouse snapshot that already contains standardized statement data and derived metric tables.
 
-The macro side is more exploratory because its source data is less naturally clean. Before the model dataset is built, a full 40GB parquet dump is downloaded from a source repository containing Federal Open Market Committee sentiment data. Then, the scripts explicitly probe market and trade schemas, check timestamp availability, inspect coverage, and export filtered event data. Essentially, the macro pipeline does not assume that the source tables are already analysis-ready. Multiple scripts are used first to check whether the underlying market records, trade records, and event fields are reliable enough to support later modelling.
+The macro side is more exploratory because its source data is less naturally clean. This part of the pipeline is organized under `Common\Macro\Pipeline_DATA`, where the scripts probe the large parquet dump, inspect market and trade schemas, and export the smaller CSV-style values actually used downstream. Before the model dataset is built, a full 40GB parquet dump is downloaded from a source repository containing Federal Open Market Committee Meeting sentiment data. Then, the scripts explicitly probe market and trade schemas, check timestamp availability, inspect coverage, and export filtered event data. In practical terms, this stage reduces the raw source into a much smaller daily table, roughly on the order of about `1,200` rows, spanning all 7 days of the week where needed for macro continuity. Essentially, the macro pipeline does not assume that the source tables are already analysis-ready. Multiple scripts are used first to check whether the underlying market records, trade records, and event fields are reliable enough to support later modelling.
 
 After that probing stage, the macro extraction pipeline builds the time-series dataset used by the XGBoost model. The training script then joins together cleaned SORA daily data, SORA 3M data, SGX REIT index information, and FOMC-related expectation features. It aligns them on a time-safe calendar, shifts rate inputs to point-in-time-safe values, forward-fills where appropriate for calendar consistency, and constructs future SORA targets from the realized path. The resulting dataset therefore becomes a time-aligned forecasting table designed specifically for short-horizon SORA prediction.
 
@@ -375,7 +375,11 @@ Its holdout summary is:
 - `F1 = 0.6575`
 - `AUC = 0.7341`
 
-These are not "perfect prediction" numbers, but they are strong enough to justify using the macro model as a short-horizon overlay. The clearest evidence comes from the deployed `P`-family `run_21` results for `fwd_10_days` and `fwd_15_days`. In both cases, holdout `R2` stayed only around `0.19-0.20`, which means the model is not an especially precise point forecaster. However, the directional metrics were clearly better: `AUC` reached about `0.73-0.77`, accuracy about `0.68-0.72`, and `F1` about `0.64-0.69`. This is the practical reason the XGBoost layer is used the way it is. It is better at telling the system whether near-term rate stress is worsening or easing than at forecasting the exact future SORA level. The annual Mamdani layer therefore remains the structural core, while XGBoost nudges the final score when the short-horizon rate backdrop becomes more adverse or more supportive. The archived supporting files are kept in `Miscellaneous\Run_Artifacts_XGBoost\run_21\fwd_10_days` and `Miscellaneous\Run_Artifacts_XGBoost\run_21\fwd_15_days`.
+These are not "perfect prediction" numbers, but they are strong enough to justify using the macro model as a short-horizon overlay. The clearest evidence comes from the deployed `P`-family `run_21` results for `fwd_10_days` and `fwd_15_days`. In both cases, holdout `R2` stayed only around `0.19-0.20`, which means the model is not an especially precise point forecaster. However, the directional metrics were clearly better: `AUC` reached about `0.73-0.77`, accuracy about `0.68-0.72`, and `F1` about `0.64-0.69`. 
+
+Just as importantly, `run_21` also looked structurally healthier than weaker historical runs. The winning `fwd_10_days` setup kept `pred_positive_rate = 0.5192` with `pred_std = 0.1770`, while the `fwd_15_days` Optuna winner kept `pred_positive_rate = 0.4551` with `pred_std = 0.1039`. The model was neither predicting one direction almost all the time, nor was it collapsing toward near-constant outputs. This exhibits materially healthier than the degenerate prediction patterns seen in weaker historical runs. 
+
+Hence, the practical reason the XGBoost layer is used the way it is. It is better at telling the system whether near-term rate stress is worsening or easing than at forecasting the exact future SORA level. The annual Mamdani layer therefore remains the structural core, while XGBoost nudges the final score when the short-horizon rate backdrop becomes more adverse or more supportive. The archived supporting files are kept in `Miscellaneous\Run_Artifacts_XGBoost\run_21\fwd_10_days` and `Miscellaneous\Run_Artifacts_XGBoost\run_21\fwd_15_days`.
 
 ## 5.2. Evaluation for XGBoost Historical Versions
 
@@ -487,11 +491,17 @@ Second, the project already has a smoothing mechanism, and it comes from the mov
   `Common\PROJECT_REFERENCE_MAP.md`
   `Common\Micro\5_Model_KG\DesignDocs\Design_v1a.txt`
   `Common\Micro\5_Model_KG\DesignDocs\Implementation_Checklist_v1a.md`
+- Micro scraping / HTML export / serialization references:
+  `Common\Micro\1_TradingView_Exploration`
+  `Common\Micro\2_HTML_Dumping`
+  `Common\Micro\3_Serialize_Dump_To_CSV_Parquet`
 - Micro / warehouse / rule-engine references:
   `Common\Micro\4_Compute_Metrics\Data_Dict_Reit_Metrics.md`
   `Common\Micro\4_Compute_Metrics\Schemas.md`
   `Common\Micro\5_Model_KG\mamdani_rule_seed.json`
   `Common\Micro\5_Model_KG\reitteratsel_core.py`
+- Macro data-probing / extraction references:
+  `Common\Macro\Pipeline_DATA`
 - Macro training-script references:
   `Common\Macro\Pipeline_MODEL\5_XGBoost\train_p_1fold_pipeline.py`
   `Common\Macro\Pipeline_MODEL\5_XGBoost\train_a_multifold_pipeline.py`
