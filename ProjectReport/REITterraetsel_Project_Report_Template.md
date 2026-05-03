@@ -110,8 +110,6 @@ The main label used in the project is `label_126wd`, which is derived from `car_
 
 In practical terms, this means the system treats market reaction after the annual anchor as the closest available proxy for distress. Rather than asking whether the REIT price fell in isolation, it asks whether the REIT materially underperformed or outperformed the S-REIT benchmark over the following half-year window. That makes the label more suitable for this project than a raw price move or an informal manual class.
 
-One small but important implementation detail is that the threshold comparisons are strict. Exactly `-15%` and exactly `+5%` currently resolve to `WATCH`, not to `DISTRESSED` or `HEALTHY`.
-
 ## 3.2.2. Theoretical Benchmark
 
 The benchmark in this project is not a single external label set. Instead, each part of the system is judged against the role it is supposed to play.
