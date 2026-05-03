@@ -1,8 +1,3 @@
-### [ Practice Module ] Project Submission
-
----
-
-## SECTION 1 : PROJECT TITLE
 ## REITterratsel: REIT Distress Reasoning System with Mamdani Rules, Macro Overlay, and XGBoost
 
 <img src="Common/Frontend/DesignDoc/Reiterratsel_Wordmark.svg"
@@ -10,23 +5,19 @@
 
 ---
 
-## SECTION 2 : EXECUTIVE SUMMARY / PAPER ABSTRACT
+## Executive Summary
 
-This project is a REIT distress reasoning system built around an integrated annual-fundamentals, macro-rates, and rule-based reasoning workflow. 
+This project is a hybrid REIT distress-monitoring system for Singapore-listed REITs. It combines an annual Mamdani fuzzy reasoning layer, a short-horizon XGBoost macro overlay, and a cumulative abnormal return path overlay so the final score stays interpretable while still reacting to changing conditions.
 
-The system focuses on Singapore-listed REITs (SREITs) and aims to convert messy upstream financial statement, market, and rates data into a dashboard that supports interpretable distress assessment rather than only raw point prediction. The final application serves a ranked view of REIT distress, an individual REIT navigator, and time-series macro context through a Streamlit interface.
+At the micro layer, the repository builds an authoritative DuckDB warehouse from TradingView-style annual financial-statement data and derived REIT metrics. These outputs feed annual distress labels, a Mamdani fuzzy cache, and a daily abnormal-return CAR-path layer.
 
-At the micro / company layer, the repository builds an authoritative DuckDB warehouse from TradingView-style annual statement data and derived REIT metrics. These metrics are then used to derive distress labels, a Mamdani fuzzy cache, and a daily abnormal-return CAR path layer. 
+At the macro layer, the runnable submission bundle in `SystemCode` uses the pre-trained `run_21` XGBoost artifacts to forecast short-horizon SORA stress. The runtime app then combines the annual Mamdani base, macro-rate overlay, refinancing sensitivity, and CAR-path adjustment into a final distress ranking.
 
-At the macro layer, the repository loads pre-trained XGBoost model artifacts from `SystemCode/Macro/IO/Model_Train/Use/run_21` in the runnable submission bundle and performs runtime inference on SORA-related data so that the app can inject a rate-shock overlay into the final distress score.
-
-The reasoning architecture combines several components rather than treating the problem as a single black-box model. A Neo4j-backed rule graph is used during rebuild mode to seed and fetch the Mamdani rule bundle from `SystemCode/Micro/5_Model_KG/mamdani_rule_seed.json` in the runnable submission bundle. Those rules are evaluated into a persisted annual fuzzy cache. During app runtime, the system combines frozen Mamdani output with the latest eligible macro snapshot, `REFI_RISK`-driven sensitivity, and a daily CAR-path layer to produce the final distress ranking displayed in the user interface.
-
-For project submission, the design intentionally ships the committed DuckDB warehouse as a stable snapshot so the application can run in Docker without forcing Neo4j-backed rebuild logic on every launch. For development, rebuild mode remains available so the shipped DuckDB and parquet cache artifacts can be refreshed in place when the underlying derived outputs need to be regenerated.
+For submission, the project ships a committed DuckDB snapshot so the application can run directly in Docker from `SystemCode` without forcing a rebuild on every launch. For development, the rebuild path remains available when the shipped warehouse and cached outputs need to be refreshed.
 
 ---
 
-## SECTION 3 : CREDITS / PROJECT CONTRIBUTION
+## Credits / Project Contribution
 
 | Official Full Name | Student ID (MTech Applicable) | Work Items (Who Did What) | Email (Optional) |
 | :------------ |:---------------:| :-----| :-----|
@@ -34,19 +25,19 @@ For project submission, the design intentionally ships the committed DuckDB ware
 
 ---
 
-## SECTION 4 : VIDEO OF SYSTEM MODELLING & USE CASE DEMO
+## Video of System Modelling & Use Case Demo
 
 `Refer to Github Folder: Video`
 
-At the time of this README update, the `Video` folder exists in the repository root, but no embedded public video link or committed video file was found in this checkout.
+The repository includes a `Video` folder for modelling and demo material.
 
 ---
 
-## SECTION 5 : USER GUIDE
+## User Guide
 
-`Refer to appendix <Installation & User Guide> in project report at Github Folder: ProjectReport`
+`Refer also to Appendix C in ProjectReport\ProjectReport_Group16_JasonTay_REITterraetsel.md`
 
-### [ 1 ] To run the system using Docker in submission / demo mode
+### 1. Run the system using Docker in submission / demo mode
 
 From the repository root, meaning the folder that contains `README.md`, `Common/`, `SystemCode/`, and the top-level `.git` folder:
 
@@ -55,16 +46,10 @@ cd <path-to-this-repo>
 cd SystemCode
 ```
 
-Use the compose file in two modes:
+Use the compose setup in two modes:
 
-- `app-only` for submission/demo
+- `app-only` for the normal submission / demo path
 - `rebuild` when Neo4j-backed cache regeneration is needed
-
-Important distinction:
-
-- `app-only` serves the app against the committed DuckDB snapshot already shipped in the repo.
-- `rebuild` starts Neo4j and reruns `build_reitteratsel_pipeline.py` so the DuckDB/parquet cache is refreshed in place.
-- Rebuild is intentionally separate so the normal submission/demo path does not depend on Neo4j every time.
 
 #### App-only mode
 
@@ -96,7 +81,7 @@ First create the runtime env file inside `SystemCode`:
 Copy-Item docker-compose.env.example docker-compose.env
 ```
 
-Then edit `docker-compose.env` so it has the correct Neo4j container settings. At minimum it should stay aligned with the compose file:
+Then edit `docker-compose.env` so it matches the Neo4j container settings:
 
 ```env
 NEO4J_URI=neo4j://neo4j:7687
@@ -150,7 +135,7 @@ docker compose --profile rebuild down -v
 3. `docker compose up --build`
 4. Open `http://localhost:8501`
 
-### [ 2 ] To run the system in local development mode outside Docker
+### 2. Run the system in local development mode outside Docker
 
 Project-standard Python runtime:
 
@@ -175,30 +160,23 @@ Notes:
 
 ---
 
-## SECTION 6 : PROJECT REPORT / PAPER
+## Project Report / Paper
 
-`Refer to project report at Github Folder: ProjectReport`
+Main report file:
 
-In this repository checkout, the `ProjectReport` folder exists at the repository root but no populated report file was found during this pass.
+- `ProjectReport\ProjectReport_Group16_JasonTay_REITterraetsel.md`
 
-**Recommended Sections for Project Report / Paper:**
+Report coverage:
 
-- Executive Summary / Paper Abstract
-- Business Problem Background
-- Project Objectives & Success Measurements
-- Project Solution: annual warehouse, fuzzy reasoning, macro overlay, and app design
-- Project Implementation: TradingView-style raw-data handling, metric build, DuckDB persistence, Neo4j rebuild path, XGBoost inference, and Streamlit app workflow
-- Project Performance & Validation: evaluation outputs under `Common/Eval/IO/run_n`
-- Project Conclusions: Findings & Recommendation
-- Appendix of report: Installation and User Guide
-- Appendix of report: Evaluation exports and interpretation notes
-- Appendix of report: References
+- business case and literature grounding
+- system design and implementation
+- evaluation and findings
+- installation appendix
+- references and data sources
 
 ---
 
-## SECTION 7 : MISCELLANEOUS
-
-`Refer to Github Folder: Miscellaneous`
+## Miscellaneous
 
 `Refer to Common\PROJECT_REFERENCE_MAP.md` for the standing location map of implementation assets, warehouse files, runtime assets, and current source-of-truth order.
 
@@ -214,7 +192,7 @@ In this repository checkout, the `ProjectReport` folder exists at the repository
 
 ### Common\Eval\IO\run_3
 
-- Example populated evaluation output folder found in this repository checkout
+- Example populated evaluation output folder
 - Contains:
   - `reitteratsel_eval_detail.csv`
   - `reitteratsel_eval_summary.csv`
@@ -225,7 +203,7 @@ In this repository checkout, the `ProjectReport` folder exists at the repository
 
 ---
 
-## APPENDIX : LOCAL GIT NOTE FOR SHIPPED DUCKDB CACHE ARTIFACTS
+## Appendix: Local Git Note for Shipped DuckDB Cache Artifacts
 
 This repository intentionally ships the DuckDB warehouse and related derived parquet cache artifacts used by the app.
 

@@ -96,7 +96,7 @@ Another gap was architectural. The prior papers mainly used single-model predict
 
 ## 3.1. Original Design
 
-The original proposal described a hybrid reasoning architecture that combined induced rules from Snorkel weak supervision, Orange/Decision Tree rule extraction, Neo4j storage, and a Streamlit front end. The design emphasized explainability first, with the macro model acting as an additional overlay rather than replacing the reasoning layer.
+The original proposal described a hybrid reasoning architecture that combined induced rules from Snorkel weak supervision [5], Orange/Decision Tree rule extraction, Neo4j storage, and a Streamlit front end. The design emphasized explainability first, with the macro model acting as an additional overlay rather than replacing the reasoning layer.
 
 The original Mermaid architecture from the proposal is reproduced below because it is still useful for showing the intended starting point:
 
@@ -435,20 +435,24 @@ Second, the project already has a smoothing mechanism, and it comes from the mov
 
 ### Common (development forks, data processing, and engineering artifacts)
 
-- `Common\PROJECT_REFERENCE_MAP.md`
-- `Common\Micro\5_Model_KG\DesignDocs\Design_v1a.txt`
-- `Common\Micro\5_Model_KG\DesignDocs\Implementation_Checklist_v1a.md`
-- `Common\Micro\4_Compute_Metrics\Data_Dict_Reit_Metrics.md`
-- `Common\Micro\4_Compute_Metrics\Schemas.md`
-- `Common\Micro\5_Model_KG\mamdani_rule_seed.json`
-- `Common\Micro\5_Model_KG\reitteratsel_core.py`
-- `Common\Macro\Pipeline_MODEL\5_XGBoost\train_p_1fold_pipeline.py`
-- `Common\Macro\Pipeline_MODEL\5_XGBoost\train_a_multifold_pipeline.py`
-- `Common\Macro\Pipeline_MODEL\5_XGBoost\train_rstar_directional_1fold.py`
-- `Common\Macro\Pipeline_MODEL\5_XGBoost\train_rstar_xgboost_walkforward_optuna_deap.py`
-- `Common\Macro\Pipeline_MODEL\5_XGBoost\train_rstar_xgboost_walkforward_optuna_deap_1fold.py`
-- `Common\Frontend\DesignDoc\Reitteratsel.pdf`
-- `README.md`
+- Project map and implementation notes:
+  `Common\PROJECT_REFERENCE_MAP.md`
+  `Common\Micro\5_Model_KG\DesignDocs\Design_v1a.txt`
+  `Common\Micro\5_Model_KG\DesignDocs\Implementation_Checklist_v1a.md`
+- Micro / warehouse / rule-engine references:
+  `Common\Micro\4_Compute_Metrics\Data_Dict_Reit_Metrics.md`
+  `Common\Micro\4_Compute_Metrics\Schemas.md`
+  `Common\Micro\5_Model_KG\mamdani_rule_seed.json`
+  `Common\Micro\5_Model_KG\reitteratsel_core.py`
+- Macro training-script references:
+  `Common\Macro\Pipeline_MODEL\5_XGBoost\train_p_1fold_pipeline.py`
+  `Common\Macro\Pipeline_MODEL\5_XGBoost\train_a_multifold_pipeline.py`
+  `Common\Macro\Pipeline_MODEL\5_XGBoost\train_rstar_directional_1fold.py`
+  `Common\Macro\Pipeline_MODEL\5_XGBoost\train_rstar_xgboost_walkforward_optuna_deap.py`
+  `Common\Macro\Pipeline_MODEL\5_XGBoost\train_rstar_xgboost_walkforward_optuna_deap_1fold.py`
+- Frontend and repo-level references:
+  `Common\Frontend\DesignDoc\Reitteratsel.pdf`
+  `README.md`
 
 ### Miscellaneous (key development artifacts)
 
@@ -473,8 +477,8 @@ Second, the project already has a smoothing mechanism, and it comes from the mov
 - [2] J. Y. Campbell, J. Hilscher, and J. Szilagyi, "In Search of Distress Risk," *NBER Working Paper* no. 12362, 2006.
 - [3] W.-Y. Cheng, E. Su, and S.-J. Li, "A financial distress pre-warning study by fuzzy regression model of TSE-listed companies," *Asian Academy of Management Journal of Accounting and Finance*, vol. 2, no. 2, pp. 75-93, 2006.
 - [4] N. V. Martyushev, V. Spitsin, R. V. Klyuev, L. Spitsina, V. Yu. Konyukhov, T. A. Oparina, and A. E. Boltrushevich, "Predicting firm's performance based on panel data: Using hybrid methods to improve forecast accuracy," *Mathematics*, vol. 13, no. 8, p. 1247, 2025, doi: 10.3390/math13081247.
-- A. Ratner, S. Bach, H. Ehrenberg, J. Fries, S. Wu, and C. Re, *Snorkel: Rapid Training Data Creation with Weak Supervision*, 2017.
-- BDO Singapore, *REIT Leverage and Disclosure*, 2025.
+- [5] A. Ratner, S. H. Bach, H. Ehrenberg, J. Fries, S. Wu, and C. Re, *Snorkel: Rapid Training Data Creation with Weak Supervision*. Stanford, CA, USA: Stanford AI Lab, 2017.
+- [6] BDO Singapore, *REIT Leverage and Disclosure*. Singapore: BDO Singapore, 2025.
 
 ## Appendix A. Project Proposal
 
