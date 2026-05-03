@@ -385,29 +385,43 @@ On the macro-model side specifically, future work should revisit the current con
 
 ## 7. References
 
-Local repository references:
+Repository sources used in this report:
 
 - `Common\PROJECT_REFERENCE_MAP.md`
-- `SAMPLES\Mine\Proposal_Temp_04.md`
-- `SAMPLES\Mine\MAS_Rule_Change_Risk_Implications.txt`
 - `Common\Micro\5_Model_KG\DesignDocs\Design_v1a.txt`
 - `Common\Micro\5_Model_KG\DesignDocs\Implementation_Checklist_v1a.md`
 - `Common\Micro\5_Model_KG\mamdani_rule_seed.json`
 - `Common\Micro\5_Model_KG\reitteratsel_core.py`
 - `Common\Micro\4_Compute_Metrics\Data_Dict_Reit_Metrics.md`
 - `Common\Macro\Pipeline_MODEL\5_XGBoost\train_p_1fold_pipeline.py`
-- `Common\Macro\IO\Model_Train\Use\run_21\...`
-- `Common\Eval\IO\run_3\...`
+- `Common\Macro\Pipeline_MODEL\5_XGBoost\train_a_multifold_pipeline.py`
 - `README.md`
+- `SAMPLES\Mine\Proposal_Temp_04.md`
+- `SAMPLES\Mine\MAS_Rule_Change_Risk_Implications.txt`
 
-External references already named in the local proposal:
+Archived local run artifacts used in this report:
 
-- Ratner, A., Bach, S., Ehrenberg, H., Fries, J., Wu, S., and Re, C. (2017). *Snorkel: Rapid Training Data Creation with Weak Supervision*.
-- BDO Singapore (2025). *REIT Leverage and Disclosure*.
+- `Miscellaneous\Run_Artifacts_XGBoost\run_19\fwd_10_days`
+- `Miscellaneous\Run_Artifacts_XGBoost\run_20\fwd_10_days`
+- `Miscellaneous\Run_Artifacts_XGBoost\run_21\fwd_10_days`
+- `Miscellaneous\Run_Artifacts_XGBoost\run_21\fwd_15_days`
+- `Miscellaneous\Run_Artifacts_XGBoost\run_22\fwd_10_days`
+- `Miscellaneous\Run_Artifacts_XGBoost\run_22\fwd_15_days`
+- `Miscellaneous\Run_Artifacts_XGBoost\run_26\fwd_21_days`
+- `Miscellaneous\Run_Artifacts_XGBoost\run_27\fwd_21_days`
+- `Miscellaneous\Run_Artifacts_XGBoost\run_28\fwd_21_days`
+- `Miscellaneous\full_pipeline_eval\run_3`
+- `Miscellaneous\script_refs\train_p_1fold_pipeline.py`
+- `Miscellaneous\script_refs\train_a_multifold_pipeline.py`
+
+External literature:
+
 - [1] T. Shumway, "Forecasting Bankruptcy More Accurately: A Simple Hazard Model," *The Journal of Business*, vol. 74, no. 1, pp. 101-124, 2001, doi: 10.1086/209665.
 - [2] J. Y. Campbell, J. Hilscher, and J. Szilagyi, "In Search of Distress Risk," *NBER Working Paper* no. 12362, 2006.
 - [3] W.-Y. Cheng, E. Su, and S.-J. Li, "A financial distress pre-warning study by fuzzy regression model of TSE-listed companies," *Asian Academy of Management Journal of Accounting and Finance*, vol. 2, no. 2, pp. 75-93, 2006.
 - [4] N. V. Martyushev, V. Spitsin, R. V. Klyuev, L. Spitsina, V. Yu. Konyukhov, T. A. Oparina, and A. E. Boltrushevich, "Predicting firm's performance based on panel data: Using hybrid methods to improve forecast accuracy," *Mathematics*, vol. 13, no. 8, p. 1247, 2025, doi: 10.3390/math13081247.
+- A. Ratner, S. Bach, H. Ehrenberg, J. Fries, S. Wu, and C. Re, *Snorkel: Rapid Training Data Creation with Weak Supervision*, 2017.
+- BDO Singapore, *REIT Leverage and Disclosure*, 2025.
 
 ## Appendix A. Project Proposal
 
@@ -424,33 +438,23 @@ The local copy of the previous proposal can be found in this folder (ProjectRepo
 
 ## Appendix B. Mapped System Functionalities against MR, RS, CGS Modules
 
-The project clearly satisfies the requirement to integrate at least three IRS-related technique groups.
+The project clearly satisfies the requirement to integrate at least three IRS-related technique groups. More importantly, these are not abstract labels added after the fact. Each module mapping corresponds directly to parts of the implemented system already discussed in Sections `3`, `4`, and `5`.
 
 ## Appendix B.1. Decision Automation
 
-The Mamdani fuzzy layer is the clearest decision-automation component. It encodes domain logic into explicit rules and turns annual financial conditions into a structured distress score. The rule bundle includes direct solvency alarms, corroborating multi-metric alarms, and stability rules, which together form a machine-executable decision framework rather than a descriptive dashboard only.
+The Mamdani fuzzy layer is the clearest decision-automation component. As explained in Sections `3.4` and `3.5`, it turns annual accounting and balance-sheet conditions into a machine-executable distress score through explicit rules rather than through free-form analyst judgment. The rules do not merely display ratios. They automate decisions such as when weak coverage, high leverage, payout strain, and refinancing pressure should reinforce one another and escalate a REIT's risk reading. Section `5.3` then shows that this annual reasoning layer is the strongest standalone classifier in the system, which is why it is appropriate to treat it as the main decision-automation core.
 
 ## Appendix B.2. Business Resource Optimization / Evolutionary Computing
 
-The XGBoost macro pipeline uses Optuna and DEAP for structured hyperparameter search. This is the strongest local evidence for the optimization-technique requirement. The search layer is not decorative; it materially affects which macro model configuration is promoted into the runtime overlay.
+The XGBoost macro pipeline satisfies the optimization or evolutionary-computing requirement through its Optuna and DEAP search layers. Sections `4.3.2` and `5.5` show that these are not decorative additions. They directly affect which macro model is accepted into the runtime overlay, how unstable candidates are filtered out, and how aggressive search behavior is constrained in small-sample settings. In other words, the optimization component has a causal role in the final design: without it, the deployed `P`-family macro overlay and its winner-selection logic would not have been chosen as they were.
 
 ## Appendix B.3. Knowledge Discovery and Data Mining
 
-The project contains substantial data-mining and engineering work across both the micro and macro sides:
-
-- staged financial-statement extraction and serialization
-- annual metric derivation
-- market and macro schema probing
-- engineered macro feature creation
-- label derivation from abnormal-return behavior
-
-This is not merely static reporting. It is a pipeline that turns raw heterogeneous data into model-ready and rule-ready information.
+The project also clearly qualifies as knowledge discovery and data mining. Sections `3.2`, `3.3`, and `4.2`-`4.4` show that the system does not start from ready-made labels or tidy model tables. It builds them. On the micro side, annual financial statements are transformed into distress-relevant metrics and status flags. On the macro side, market and rate data are converted into lag, momentum, curve, and forward-signal features. The ground truth itself is engineered from cumulative abnormal-return behavior rather than copied from an external labelled dataset. This is a causal part of the project design: the later Mamdani and XGBoost layers only exist because earlier data-mining stages turned heterogeneous raw inputs into model-ready and rule-ready structures.
 
 ## Appendix B.4. Cognitive Techniques / Tools
 
-The original architecture and the current rebuild path both involve Neo4j. In the implemented system, Neo4j is used to seed and persist the Mamdani rule graph, even though the runtime app now reads the persisted fuzzy outputs from DuckDB rather than querying Neo4j live on every page interaction. The graph layer therefore remains a real cognitive-systems component, even if it is no longer the direct runtime serving layer.
-
-<!--FILL The skeleton asks for explicit module-link evidence using external notes under `D:\WS\-GH-A-Ref\...`. Those module-link documents are outside this repository, so I can map the techniques conceptually but cannot verify the exact slide/day references from local sources alone.-->
+The cognitive-techniques component is most visible in the project's use of explicit knowledge representation. As described in Sections `3.4`, `3.5`, and `4.4`, the Mamdani rules are seeded into a Neo4j rule graph during rebuild and then persisted into a form the runtime app can use through DuckDB. Even though the app does not query Neo4j live on every interaction, the system still relies on a graph-backed representation of domain knowledge during construction of the reasoning layer. That creates a clear causal link between symbolic knowledge representation and the final distress outputs: the fuzzy rules are not just coded as opaque weights, but organized as explicit, inspectable business logic that can be traced through rule IDs and rule explanations in the final interface.
 
 ## Appendix C. Installation and User Guide
 
