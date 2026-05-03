@@ -39,7 +39,9 @@ Recent sector stress is especially relevant because S-REIT balance sheets are se
 
 For example, geopolitical stress events such as rate regime changes and black swan events (COVID-19, the 2026) can propagate into downstream distress for S-REITs, as was demonstrated with notable S-REIT distresses such as Lippo Malls Indonesia Retail Trust (D5IU) and Prime US REIT (OXMU).
 
-The repo also contains a dedicated MAS rule-change note arguing that the revised framework effectively introduces a hard borrowing floor when `ICR < 1.5x`, even if aggregate leverage is still low. In plain English, a REIT can appear lightly levered yet still become operationally constrained if earnings weaken enough to drag coverage below the regulatory floor.
+Under the revised MAS framework, a REIT with `ICR < 1.5x` can be blocked from taking on additional debt even if its aggregate leverage is still low. In practical terms, a REIT may appear lightly geared on paper yet still face funding stress if weaker earnings push interest coverage below the regulatory threshold.
+
+For example, a REIT with 20% gearing but `ICR = 1.2x` may still be unable to borrow for recovery or refinancing needs. Under the old leverage-focused view, 20% gearing looked safe. Under the revised rule, the sub-`1.5x` coverage ratio becomes the binding constraint.
 
 ## 2.2. Competitive Positioning
 
