@@ -1,0 +1,51 @@
+{
+  "option2_change": {
+    "target_col": "sora_fwd_10d_change",
+    "description": "Future SORA change over 10 SGX trading rows",
+    "signed_target": true,
+    "winner": "deap",
+    "optuna_summary": {
+      "label": "optuna",
+      "target_col": "sora_fwd_10d_change",
+      "r2": 0.1927406134939713,
+      "mse": 0.06389051203874549,
+      "rmse": 0.25276572560128774,
+      "mae": 0.2085761588720581,
+      "accuracy": 0.6794871794871795,
+      "precision": 0.5925925925925926,
+      "recall": 0.7384615384615385,
+      "f1": 0.6575342465753424,
+      "auc": 0.7340659340659341,
+      "pred_std": 0.17699415981769562,
+      "pred_positive_rate": 0.5192307692307693,
+      "gamma": 0.36152531790324494
+    },
+    "deap_summary": {
+      "label": "deap",
+      "target_col": "sora_fwd_10d_change",
+      "r2": 0.25223709045841014,
+      "mse": 0.05918166573568545,
+      "rmse": 0.24327282161327732,
+      "mae": 0.19603040711805944,
+      "accuracy": 0.6923076923076923,
+      "precision": 0.6307692307692307,
+      "recall": 0.6307692307692307,
+      "f1": 0.6307692307692307,
+      "auc": 0.7468300929839392,
+      "pred_std": 0.17460006475448608,
+      "pred_positive_rate": 0.4166666666666667,
+      "gamma": 0.5
+    },
+    "winner_params": {
+      "gamma": 0.5,
+      "n_estimators": 300,
+      "max_depth": 8,
+      "learning_rate": 0.3,
+      "min_child_weight": 1.0,
+      "subsample": 0.7,
+      "colsample_bytree": 0.8,
+      "reg_alpha": 0.01,
+      "reg_lambda": 0.1
+    }
+  }
+}
