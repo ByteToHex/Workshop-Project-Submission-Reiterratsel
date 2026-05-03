@@ -454,11 +454,21 @@ The original architecture and the current rebuild path both involve Neo4j. In th
 
 ## Appendix C. Installation and User Guide
 
-The repository README is already strong enough to support a largely complete appendix.
+Please refer to the README.md SECTION 5 : USER GUIDE on how to run this project.
+
+Nevertheless, an abridged version is attached to this report (demo mode ONLY).
 
 ### C.1. Docker submission / demo mode
 
-From the repository root:
+Pass:
+
+```powershell
+cd <path-to-this-repo>
+```
+
+#### App-only mode
+
+This serves the app against the committed DuckDB snapshot and does not need `Common/docker-compose.env`.
 
 ```powershell
 docker compose -f Common/docker-compose.yml up --build
@@ -470,68 +480,7 @@ Then open:
 http://localhost:8501
 ```
 
-This serves the Streamlit app against the committed DuckDB snapshot and does not require Neo4j-backed rebuild logic for the normal demo path.
-
-### C.2. Docker rebuild mode
-
-If the cached DuckDB and parquet artifacts need to be regenerated, first create:
+To stop it:
 
 ```powershell
-Copy-Item Common\docker-compose.env.example Common\docker-compose.env
-```
-
-Then keep the Neo4j container settings aligned with the compose path, including:
-
-```env
-NEO4J_URI=neo4j://neo4j:7687
-NEO4J_DATABASE=neo4j
-NEO4J_USERNAME=neo4j
-NEO4J_PASSWORD=mamdaniXGBoost
-```
-
-Run the rebuild profile:
-
-```powershell
-docker compose -f Common/docker-compose.yml --profile rebuild up --build reitteratsel-rebuild
-```
-
-After that, start the app:
-
-```powershell
-docker compose -f Common/docker-compose.yml up --build
-```
-
-### C.3. Local development mode
-
-The project-standard Python runtime is:
-
-- `C:\ProgramData\anaconda3\envs\env\python.exe`
-- `C:\ProgramData\anaconda3\envs\env\Scripts\streamlit.exe`
-
-Typical local development entrypoint:
-
-```powershell
-C:\ProgramData\anaconda3\envs\env\python.exe Common\Micro\5_Model_KG\run_reitteratsel.py
-```
-
-Important local-development notes:
-
-- development mode assumes cache rebuild on launch
-- root `.env` must contain the required Neo4j settings
-- submission mode differs because it serves the committed DuckDB snapshot directly
-
-### C.4. Main user-facing pages
-
-The app exposes three primary pages:
-
-- `Ranking`
-- `Individual REIT Navigator`
-- `Time Series (Rates)`
-
-The user can:
-
-- choose a simulation date
-- inspect annual Mamdani scores
-- view macro overlay fields
-- view abnormal-return-path overlays
-- drill into annual metric history and label history for a selected REIT
+docker compose -f Common/docker-compose.yml down
