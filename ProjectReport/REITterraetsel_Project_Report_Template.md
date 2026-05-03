@@ -27,13 +27,7 @@ Prepared by:
 
 ## 1. Executive Summary
 
-REITterratsel is an explainable distress-ranking system for Singapore-listed REITs. The implemented system combines annual firm-level financial metrics, a Mamdani fuzzy reasoning layer, a macroeconomic XGBoost overlay centered on SORA movement, and a daily abnormal-return path overlay into a single dashboard-oriented decision workflow.
-
-At the company layer, the repository builds a DuckDB warehouse from TradingView-style statement data, derives a 20-metric annual feature set, and uses those annual metrics to construct distress labels, Mamdani inputs, and a cached fuzzy-output table. At the macro layer, the system loads the saved `run_21` XGBoost artifacts from `Common\Macro\IO\Model_Train\Use\run_21` and performs runtime SORA-related inference. At the application layer, Streamlit presents three views: `Ranking`, `Individual REIT Navigator`, and `Time Series (Rates)`.
-
-The current implementation is intentionally not a pure black-box predictor. Instead, it preserves an annual "anchor" score from the Mamdani layer and then adjusts it at runtime with a macro shock term and a REIT-specific cumulative abnormal return path term. This design keeps the base reasoning interpretable while still allowing shorter-horizon macro and market movements to influence the final distress score.
-
-Compared with the original proposal, the implemented system changed materially in one key area. The proposal originally emphasized Snorkel weak supervision and decision-tree rule extraction. The final local implementation instead uses threshold-based annual label engineering from forward cumulative abnormal returns, Python-based Mamdani inference seeded from a Neo4j rule graph, and a persisted DuckDB cache for runtime use. This shift reflects the small-sample realities of S-REIT annual data and the project's need for a stable, auditable submission build.
+<!--- Not Filled in because slop -->
 
 ## 2. Business Case / Market Research
 
