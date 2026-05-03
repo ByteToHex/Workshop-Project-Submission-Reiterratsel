@@ -229,7 +229,7 @@ This step is also where the earlier weak-labelling and Snorkel implementation wa
 
 The macro experiment was designed as a controlled comparison of different ways to define the prediction task, rather than as a one-shot attempt to fit a single model.
 
-The script varies two main things: the forward horizon (in practice, I tested 1d, 3d, 5d, 7d, 10d, 14d, 21d, 63d timeframes) and the target definition. In practice, that means the pipeline tests whether it is more useful to predict future SORA level, future SORA change, or the absolute magnitude of future change, and to do so over different short-horizon windows.
+The script varies two main things: the forward horizon (in practice, I tested 1d, 3d, 5d, 7d, 10d, 14d, 21d, 63d timeframes) and the target formulation. Specifically, the pipeline supports three prediction targets: `option1_level`, which predicts the future SORA level; `option2_change`, which predicts the signed future change in SORA; and `option3_abs_change`, which predicts the absolute size of the future move regardless of direction. These targets are then compared across different short-horizon windows.
 
 Essentially, the project is trying to identify which specific macro target is most reliably forcasted, while still remaining useful for the hybrid REIT-distress system. That is why the comparison is framed around practical usefulness as a runtime overlay. 
 
