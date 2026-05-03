@@ -298,42 +298,17 @@ Its holdout summary is:
 - `F1 = 0.6575`
 - `AUC = 0.7341`
 
-These are not "perfect prediction" numbers, but they do indicate a real, usable signal. The clearest support comes from the deployed `P`-family `run_21` results for `fwd_10_days` and `fwd_15_days`, where holdout `R2` stayed around `0.19-0.20`, but directional performance was stronger, with `AUC` reaching about `0.73-0.77` and accuracy about `0.68-0.72`. The most important practical point is that the model is stronger as a directional overlay than as a precise magnitude forecaster. In other words, it is more useful for telling the system whether short-horizon rate stress is becoming worse or better than for making exact point forecasts of where SORA will land. That is also exactly how the system uses it. The XGBoost layer does not replace the annual reasoning layer. It nudges the final distress score in response to short-horizon rate stress. The archived supporting files are kept in `Miscellaneous\Run_Artifacts_XGBoost\run_21\fwd_10_days` and `Miscellaneous\Run_Artifacts_XGBoost\run_21\fwd_15_days`.
+These are not "perfect prediction" numbers, but they are strong enough to justify using the macro model as a short-horizon overlay. The clearest evidence comes from the deployed `P`-family `run_21` results for `fwd_10_days` and `fwd_15_days`. In both cases, holdout `R2` stayed only around `0.19-0.20`, which means the model is not an especially precise point forecaster. However, the directional metrics were clearly better: `AUC` reached about `0.73-0.77`, accuracy about `0.68-0.72`, and `F1` about `0.64-0.69`. This is the practical reason the XGBoost layer is used the way it is. It is better at telling the system whether near-term rate stress is worsening or easing than at forecasting the exact future SORA level. The annual Mamdani layer therefore remains the structural core, while XGBoost nudges the final score when the short-horizon rate backdrop becomes more adverse or more supportive. The archived supporting files are kept in `Miscellaneous\Run_Artifacts_XGBoost\run_21\fwd_10_days` and `Miscellaneous\Run_Artifacts_XGBoost\run_21\fwd_15_days`.
 
 ## 5.2. Evaluation for XGBoost Historical Versions
 
-The historical working directory exists and contains many earlier runs:
+The historical runs are most useful when read by model family rather than by run number alone. The `P` family was the only one that produced a stable enough directional signal to justify deployment, even under a conservative 1-fold time-ordered setup. By contrast, the `A` abnormal-returns family often looked interesting in isolated metrics but did not generalize cleanly, while the `R` and `R*` regime-style family remained too inconclusive for production use. This is the practical reason the final app uses only `P`.
 
-- `Common\Macro\IO\Model_Train\Working\run_0` through `run_28`
-
-Across those historical runs, the most important distinction is between model families rather than just run numbers. The `P` family was the clearest success case: despite data limitations that forced a conservative 1-fold time-ordered evaluation design, it still produced the most convincing directional and holdout signal. By contrast, the `A` abnormal-returns family did not generalize cleanly and often drifted toward ticker-identity memorization, which made its apparent signal hard to trust. The `R` and `R*` regime-style family was also not taken forward because its signal remained inconclusive for production use. This is the practical reason the final app uses only `P`.
-
-Within those historical runs, several recurring issues became visible. First, some earlier winner-selection logic over-favoured threshold-dependent F1 improvements and could therefore choose a model that looked better on paper but was weaker on more robust metrics such as AUC or RMSE. The clearest case is still `P`-family `run_19 / fwd_10_days`, with `run_20 / fwd_10_days` confirming the correction, and the archived evidence is in `Miscellaneous\Run_Artifacts_XGBoost\run_19\fwd_10_days` and `Miscellaneous\Run_Artifacts_XGBoost\run_20\fwd_10_days`. Second, some runs exposed collapse behaviour, where the model became too one-sided in its predictions or lost useful dispersion, which made its apparent performance unreliable. The clearest example is `A`-family `run_26 / fwd_21_days`, contrasted with the healthier `run_28 / fwd_21_days`, archived in `Miscellaneous\Run_Artifacts_XGBoost\run_26\fwd_21_days` and `Miscellaneous\Run_Artifacts_XGBoost\run_28\fwd_21_days`. Third, the `A` family repeatedly surfaced ticker-feature contamination: the strongest historical example is `run_22`, where `feature_manifest.json`, the holdout prediction exports, and `model_a_shap_summary_values.csv` all show explicit ticker-identity features such as `is_A17U`, `is_BTOU`, and `is_OXMU`. This suggested memorization rather than transferable signal, especially when compared against later `run_27` and `run_28` variants where `ticker_identity` was empty and ticker one-hot features were disabled. The archived evidence for this comparison is kept in `Miscellaneous\Run_Artifacts_XGBoost\run_22\fwd_10_days`, `Miscellaneous\Run_Artifacts_XGBoost\run_22\fwd_15_days`, `Miscellaneous\Run_Artifacts_XGBoost\run_27\fwd_21_days`, and `Miscellaneous\Run_Artifacts_XGBoost\run_28\fwd_21_days`.
-
-The experiments around ticker inclusion reinforced that point. Variants with ticker dummies or poisoned/caveat universes could look informative, but they often encouraged the model to learn "this ticker is usually bad" instead of learning a cleaner state-based relationship. Cleaner universes and no-ticker variants were therefore important diagnostics for checking whether the signal was genuinely generalizing or merely using identity shortcuts.
-
-The folder also contains the safe artifacts named in the skeleton, including `shap_summary_bar.png` and `shap_summary_beeswarm.png` in multiple historical runs.
-
-However, I did not build a reliable cross-run historical comparison table from the `Working` folder during this pass because the skeleton explicitly constrained what should be read there, and the needed comparative narrative was not already consolidated in a local summary document inside this repository.
-
-<!--FILL A proper historical-version subsection should be completed from `Common\Macro\IO\Model_Train\Working` by reviewing the allowed SHAP images and statistics JSON files across the relevant run range. I did not find a ready-made local summary that states which exact historical runs correspond to each issue mentioned in the skeleton.-->
+Three recurring lessons came out of those historical runs. First, winner selection needed to be stricter than an `F1`-first rule. The clearest example is `P`-family `run_19 / fwd_10_days`, where Optuna won on `F1` and recall but DEAP was better on `AUC`, `R2`, `RMSE`, and accuracy. `Run_20 / fwd_10_days` then confirmed the fix by switching the winner after the priority was tightened. Second, collapse diagnostics mattered because some models looked acceptable on a headline score while becoming structurally unusable. The clearest case is `A`-family `run_26 / fwd_21_days`, where both optimizers had `F1` near `0.717` but also predicted almost one class only and showed extremely weak output dispersion. Third, ticker identity could contaminate the `A` family. `Run_22` still contained explicit ticker one-hot features, and the SHAP and holdout exports show the model relying on those identity signals directly. Later `run_27` and `run_28` variants removed ticker-identity features and treated cleaner universes as a diagnostic check, which is more consistent with learning a transferable state-based relationship than memorizing specific names. The archived evidence for these comparisons is in `Miscellaneous\Run_Artifacts_XGBoost\run_19\fwd_10_days`, `run_20\fwd_10_days`, `run_22\fwd_10_days`, `run_22\fwd_15_days`, `run_26\fwd_21_days`, `run_27\fwd_21_days`, and `run_28\fwd_21_days`.
 
 ## 5.3. Evaluation for Mamdani Layer and Full Pipeline
 
-The latest local evaluation output folder is:
-
-`Common\Eval\IO\run_3`
-
-This appears to be the current canonical final evaluation in the repository because the `IO` folder contains `run_1`, `run_2`, and `run_3`, and `run_3` is the highest-numbered run present.
-
-The local evaluation exports include:
-
-- `reitteratsel_eval_summary.csv`
-- `reitteratsel_eval_per_class_metrics.csv`
-- `reitteratsel_eval_confusion_matrices.csv`
-- `reitteratsel_eval_ranking_metrics.csv`
-- `reitteratsel_eval_disagreements.csv`
-- `reitteratsel_eval_detail.csv`
+The current final evaluation in the repository is `Common\Eval\IO\run_3`, which compares the simple baseline, the annual Mamdani layer, the refinancing-only layer, and the full hybrid score on the same evaluation slice. A copy of the relevant outputs is archived in `Miscellaneous\Run_Artifacts_XGBoost\full_pipeline_eval\run_3`.
 
 The summary metrics show:
 
@@ -344,30 +319,19 @@ The summary metrics show:
 | `distress_score_refi` | 0.2816 | 0.2817 | 0.2261 | 0.3638 | 0.5175 |
 | `final_distress` | 0.5214 | 0.5188 | 0.2919 | 0.2724 | 0.3295 |
 
-The results are interesting because they show a trade-off:
+The main result is a trade-off between cleaner annual classification and better continuous ranking. The Mamdani annual layer has the best label accuracy at `0.5563`, which means it is strongest if the goal is to reproduce the annual class label directly. The final hybrid score is slightly worse on label accuracy at `0.5214`, but it has the best continuous-error profile, with `MAE = 0.2724` and `RMSE = 0.3295`, both better than Mamdani alone. That pattern is consistent with the design. The hybrid layer is not meant only to restate the annual label. It is meant to behave as a smoother runtime risk score after adding macro-rate and CAR-path information.
 
-- The Mamdani annual layer has the best label accuracy.
-- The final hybrid score has slightly lower label accuracy than Mamdani alone.
-- The final hybrid score has the best continuous-error metrics.
+The class-level results make the trade-off even clearer. Mamdani gives a more balanced treatment of the `WATCH` bucket, with `WATCH` recall of `0.6826`, while the final hybrid score is more aggressive toward distress: `DISTRESSED` recall rises from `0.6841` under Mamdani to `0.8545` under the full model. This comes at a cost, because more borderline `WATCH` names get pulled upward into `DISTRESSED`. The refinancing-only layer performs worst as a standalone classifier, which is also expected. It was never designed to be a complete distress model on its own; it is only one stress channel inside the final synthesis.
 
-That is consistent with the architecture. The hybrid score is not only trying to reproduce the annual class label. It is also trying to behave more smoothly as a continuous runtime risk score after adding macro and CAR-path information.
+The ranking metrics support the same interpretation. `Final_distress` has the best `MAP@5` at `0.7274`, ahead of Mamdani at `0.7131`, which suggests the hybrid score is slightly better at surfacing the riskiest names near the top of a ranking even when its final class labels are less conservative. In practical terms, Mamdani is the cleaner annual classifier, while the full pipeline is the better runtime prioritization score.
 
 ## 5.4. Representation Tables and Graphs
 
-The repo already contains several directly usable report artifacts:
+The repo already contains enough report-ready tables and graphs to support the evaluation section without generating new material. For XGBoost, the most useful artifacts are the `run_21` holdout summaries and the historical SHAP visuals now archived under `Miscellaneous\Run_Artifacts_XGBoost\run_21`, `run_22`, `run_27`, and `run_28`. For the full pipeline, the most useful artifacts are the summary, per-class, ranking, and confusion-matrix CSVs archived under `Miscellaneous\Run_Artifacts_XGBoost\full_pipeline_eval\run_3`.
 
-- XGBoost holdout summaries in `run_21`
-- SHAP visual assets in `run_21`
-- confusion matrices and per-class metrics in `Common\Eval\IO\run_3`
+The confusion-matrix outputs already show the core behavioral difference between Mamdani and the full hybrid score. Mamdani correctly identifies `1,594` distressed rows and `4,811` watch rows. The final hybrid score identifies more distressed rows correctly at `1,991`, but it does so by reclassifying more `WATCH` rows upward into `DISTRESSED` (`2,264` such cases, versus `1,698` for Mamdani). This is why the hybrid model looks more aggressive in practice. It improves distressed-case capture, but it also increases pressure on borderline names.
 
-The full-pipeline confusion matrices already reveal meaningful behavior. For example:
-
-- `distress_score_mamdani` correctly predicts `1,594` distressed rows and `4,811` watch rows.
-- `final_distress` correctly predicts `1,991` distressed rows, but does so more aggressively by also pulling more watch rows into the distressed bucket.
-
-This supports the skeleton's intuition that the hybrid model is more aggressive. It improves distressed-case capture, but it also increases over-flagging pressure on borderline names.
-
-<!--FILL The skeleton mentions adding more realistic graphs such as residual plots or more specific confusion-matrix views. Those visuals are not yet generated as dedicated report-ready images in the local repo, even though the raw CSV outputs needed for plotting are present.-->
+The existing SHAP artifacts serve a different purpose. They are most useful in the historical-model discussion because they help show whether the model is learning macro and path features or relying too heavily on ticker identity. In other words, the tables explain performance, while the SHAP graphs help explain why some historical variants were accepted or rejected.
 
 ## 5.5. Optuna and DEAP as an Adversarial Error-Surfacing System
 
