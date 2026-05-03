@@ -185,7 +185,17 @@ Visually, the interface follows a dashboard-style layout with custom branding an
 
 ## 4.1. Early Development / Dead Forks
 
-The proposal shows that the project originally intended to use Snorkel weak supervision and decision-tree rule extraction. That direction was methodologically attractive because the annual S-REIT dataset is small and does not come with an obvious labelled distress target. However, the final local implementation did not keep Snorkel in the production path.
+In the proposal, the project originally intended to use Snorkel weak supervision and decision-tree rule extraction. That direction was methodologically attractive because the annual S-REIT dataset is small and does not come with an obvious labelled distress target. 
+
+A weak-supervision route was attempted initially in `Miscellaneous\Snorkel`, especially in `snorkel_financial_cycle_schema_demo.py` and `snorkel_financial_cycle_schema_decision_tree_depth3.py` actual experimental direction was done following the original proposal language. However, the final local implementation did not keep Snorkel, Orange, or decision-tree rule extraction in the production path for specific reasons.
+
+The first problem was that the Snorkel branch was drifting away from the final project target. In both schema-based scripts, the weak labels are built around economic-cycle classes such as `contraction`, `slowdown`, `expansion`, and `recovery`, rather than the final REIT distress labels used in the implemented system. The decision-tree fork also evaluates against synthetic ground truth rather than the final forward abnormal-return label framework. In practical terms, this meant the branch was becoming a proxy-labelling experiment instead of a direct distress-labelling pipeline for S-REITs.
+
+A second reason is that the Snorkel path was becoming operationally brittle. The schema-based scripts show repeated manual threshold engineering inside the labeling functions, then a second round of added slowdown labeling functions specifically to reduce vote-pattern collapse. The same decision-tree fork also contains a warning that the LF matrix width can diverge from the current LF list after edits, with an instruction to re-run the applier after changes. This is important because it shows that the weak-labelling route was not staying simple. It required iterative LF maintenance, vote-pattern debugging, and confidence-threshold tuning before it could even produce pseudo-labels.
+
+Orange was then abandoned because it added another layer of tooling complexity without solving the core problem. In `snorkel_financial_cycle_schema_demo.py`, the Orange branch only starts after Snorkel has already generated `phase_pred` labels and confidence scores, so Orange is not learning from real distress labels either. The same file also contains guarded configuration because Orange internals can differ across versions, followed by repeated `try` blocks around search and rule-validation settings. After rule extraction, the script still has to flag and filter out artifacts such as `IF TRUE` fallback rules and exact-equality-style rules. This suggests that the Orange branch was not yielding a clean, stable, report-ready rule set for the final project.
+
+The decision-tree fork was abandoned for a similar reason. In `snorkel_financial_cycle_schema_decision_tree_depth3.py`, the tree is trained on `phase_pred` rows filtered to `pred_confidence >= 0.70`. That means the tree is not discovering primary rules directly from observed REIT distress outcomes. It is extracting compact rules from Snorkel's own pseudo-labels. As a result, the tree became a second-order approximation of an already hand-engineered weak-supervision layer, rather than a clean direct model of the final problem.
 
 The current design documents and code show a different final outcome:
 
@@ -193,11 +203,9 @@ The current design documents and code show a different final outcome:
 - Mamdani rules are manually seeded and evaluated in Python
 - DuckDB stores the resulting annual labels and fuzzy outputs for runtime reuse
 
-This is not a minor implementation detail. It means the project moved away from an "induce labels from weak supervision" workflow toward a more explicit threshold-based labelling strategy that could be audited end to end.
+This is not a minor implementation detail. It means the project moved away from an "induce labels from weak supervision" workflow toward a more explicit threshold-based labelling strategy that could be audited end to end. Taken together, the `Miscellaneous\Snorkel` folder shows that Snorkel, Orange, and decision-tree rule extraction were not abandoned because they were impossible to run. They were abandoned because they were pulling the project toward a more fragile and indirect pipeline built around proxy cycle classes, hand-maintained weak labels, pseudo-label-to-rule extraction, and version-sensitive rule-mining tooling.
 
-As a result, Snorkel labelling was abandoned and threshold-based labelling was adopted instead. See Section 4.2.1.
-
-<!--FILL The skeleton asks for specific discussion of Snorkel, Decision Tree, and Orange experiments using folders under `D:\WS_NUS\REF_DATA\...` and `IVT_Dividends\...`. Those artifacts are outside this repository, so I cannot verify the detailed experimental outcome or quote the exact Orange findings from local evidence.-->
+The final implementation is much more direct. It engineers the distress target from forward abnormal returns, evaluates the annual reasoning layer against that target, and keeps the explainable rule system explicit through the seeded Mamdani design instead of trying to recover it indirectly from weak labels. See Section 4.2.1.
 
 ## 4.2. Data Scraping and Data Engineering
 
