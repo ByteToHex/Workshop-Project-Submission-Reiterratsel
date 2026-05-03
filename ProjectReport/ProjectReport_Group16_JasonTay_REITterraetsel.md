@@ -43,6 +43,7 @@ Prepared by:
 - [5.5. Optuna and DEAP as an Adversarial Error-Surfacing System](#55-optuna-and-deap-as-an-adversarial-error-surfacing-system)
 - [5.6. Developed Models and Final Interpretation](#56-developed-models-and-final-interpretation)
 - [6. Future Work](#6-future-work)
+- [6.1. Conclusion and Afterthoughts](#61-conclusion-and-afterthoughts)
 - [7. References](#7-references)
 - [Appendix A. Project Proposal](#appendix-a-project-proposal)
 - [Appendix B. Mapped System Functionalities against MR, RS, CGS Modules](#appendix-b-mapped-system-functionalities-against-mr-rs-cgs-modules)
@@ -413,6 +414,12 @@ Fourth, the proposal's broader ambitions remain valid:
 - extend the system into a more general explainable investment-risk framework
 
 On the macro-model side specifically, future work should revisit the current conservative DEAP guardrails once materially larger datasets are available. Those restrictions are sensible for the present small-row regime, but they should not be treated as permanent if later versions of the project gain enough data to support a broader and more expressive search space.
+
+## 6.1. Conclusion and Afterthoughts
+
+Two design questions remain especially worth reflecting on after the final evaluation. First, sectoral differences could plausibly improve the system, but only if they are introduced carefully. The current model already captures common S-REIT stress channels such as leverage, coverage weakness, refinancing concentration, and macro rate pressure. However, the evaluation also shows that some `WATCH` and `DISTRESSED` cases remain difficult to separate cleanly, especially once the hybrid score becomes more aggressive. A sector-aware extension may therefore improve accuracy because office, retail, industrial, hospitality, and data-centre REITs do not respond to refinancing pressure, tenant stress, and valuation compression in exactly the same way. At the same time, the historical XGBoost results show that identity-style shortcuts can quickly become misleading. For that reason, sector is likely to be more defensible than ticker identity, but it should probably be introduced through sector-sensitive thresholds, sector-conditioned rule calibration, or sector-specific overlays rather than through crude memorization features.
+
+Second, the project already contains the beginnings of a smoothing layer, even if it is not labeled that way explicitly. The annual Mamdani score already acts as a stable structural anchor, so the runtime signal does not jump purely because of short-term market noise. The Mamdani layer also blends weak-evidence cases back toward neutral, and the CAR-path overlay already includes a neutral dead zone so that very small post-filing moves do not immediately distort the final score. In other words, the closest implemented answer to the smoothing question is the existing hybrid blending design itself: annual fuzzy anchor plus continuous macro and CAR-path overlays, with explicit damping against overreaction. If a stronger smoothing layer is still desired, the most natural next step would be to smooth `final_distress` directly through bounded day-to-day score changes or a rolling overlay filter, rather than introducing a completely separate model family.
 
 ## 7. References
 
