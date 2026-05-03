@@ -69,7 +69,7 @@ Another gap was architectural. The prior papers mainly used single-model predict
 
 ## 3.1. Original Design
 
-The original proposal described a hybrid reasoning architecture that combined manually encoded rules, weak supervision, rule extraction, Neo4j storage, and a Streamlit front end. The design emphasized explainability first, with the macro model acting as an additional overlay rather than replacing the reasoning layer.
+The original proposal described a hybrid reasoning architecture that combined induced rules from Snorkel weak supervision, Orange/Decision Tree rule extraction, Neo4j storage, and a Streamlit front end. The design emphasized explainability first, with the macro model acting as an additional overlay rather than replacing the reasoning layer.
 
 The original Mermaid architecture from the proposal is reproduced below because it is still useful for showing the intended starting point:
 
@@ -94,7 +94,7 @@ flowchart TD
     MPM -->|Predictions| F
 ```
 
-That original design is important because the final implementation only partially matches it. Neo4j still exists, but it is no longer queried live by the app for rule reasoning. Snorkel and decision-tree induction were proposed, but the local implementation now relies on threshold-derived labels and a seeded Mamdani rule system evaluated in Python. The final architecture is therefore best described as a design evolution rather than a straight proposal-to-code translation.
+Although the final design incorporates the bulk of this architecture, Snorkel and decision-tree induction were removed during implementation due to the additional overhead that using Snorkel's voting LF functions entailed. The current implementation now relies on threshold-derived labels and a seeded Mamdani fuzzy rule system evaluated in Python. The final architecture is therefore best described as a design evolution rather than a straight proposal-to-code translation.
 
 ## 3.2. Data Definitions
 
