@@ -100,20 +100,15 @@ Although the final design incorporates the bulk of this architecture, Snorkel an
 
 ## 3.2.1. Labels / Ground Truth
 
-The current local implementation defines annual distress labels from forward cumulative abnormal returns rather than from hand-labelled expert classes. Specifically, the label table `reit_labels.fact_distress_label` stores:
+The project does not use hand-labelled distress classes as its ground truth. Instead, it derives the annual label from how each REIT performs against the sector after its fiscal-year-end filing anchor.
 
-- `car_63wd`
-- `car_126wd`
-- `label_126wd`
-- annual anchor and window-end dates
-- `null_count`
-- `non_ok_count`
-
-The source logic in `reitteratsel_core.py` compounds abnormal returns from the first trading day on or after each annual fiscal-year-end anchor. The abnormal return itself is defined as:
+For each ticker-period, the pipeline takes the first trading day on or after the fiscal year end, then compounds forward abnormal returns over 63 and 126 trading days. Here, abnormal return means:
 
 `REIT daily return - SGX iEdge REIT index daily return`
 
-This design intentionally measures how the market responded to each REIT relative to the sector benchmark rather than asking the model to predict raw price paths.
+The main label used in the project is `label_126wd`, which is derived from `car_126wd` and stored in `reit_labels.fact_distress_label` together with the anchor date, forward-window end dates, and data-quality counts such as `null_count` and `non_ok_count`.
+
+In practical terms, this means the system treats market reaction after the annual anchor as the closest available proxy for distress. Rather than asking whether the REIT price fell in isolation, it asks whether the REIT materially underperformed or outperformed the S-REIT benchmark over the following half-year window. That makes the label more suitable for this project than a raw price move or an informal manual class.
 
 ## 3.2.2. Theoretical Benchmark
 
