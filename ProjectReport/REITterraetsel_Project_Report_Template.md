@@ -157,40 +157,15 @@ If a ratio is flagged as `NEGATIVE_BASE` or `DISTRESS_BASE`, the code therefore 
 
 ## 3.5. Full Pipeline / Hybrid Model
 
-The best way to describe the implemented system is:
+The cleanest way to understand the full design is as an annual anchor with two faster-moving overlays. The annual anchor is the Mamdani score built from annual fundamentals. It represents the slower-moving balance-sheet view of distress and stays frozen until the next annual checkpoint. This is the stable base of the system because accounting weakness, leverage strain, and payout pressure do not usually reset every day.
 
-`Annual Anchor + Daily Watchdog`
+That annual anchor is then deliberately supplemented by the earlier XGBoost and CAR-path work, because annual fundamentals alone are "frozen" and incapable of explaining how risk changes between filing dates. The XGBoost layer contributes a macro rate-stress view by predicting short-horizon SORA change. This matters because refinancing pressure is not only a function of how much debt a REIT has, but also of what the rate environment is becoming. The design therefore uses the XGBoost output as a macro shock rather than as a standalone distress classifier.
 
-The annual anchor is the persisted Mamdani score in `reit_fuzzy.fact_fuzzy_cache`. It is built from annual fundamentals and remains frozen until the next annual checkpoint.
+The second overlay is the daily CAR-path layer. This uses cumulative abnormal return from the same annual filing anchor to show how the market has reacted since that disclosure point. Its role is different from the macro model. The macro layer captures a broad rate regime shift that can affect the sector, while the CAR-path layer captures the REIT-specific market path after the annual anchor. In other words, the macro layer asks whether funding conditions are worsening, while the CAR-path layer asks whether this particular REIT is already trading like a weaker name.
 
-The daily watchdog adds two faster-moving layers:
+The runtime `final_distress` score is the point where those three ideas are combined. The code starts from the frozen `distress_score_mamdani`, then adds a macro adjustment from `distress_sora` and a market-path adjustment from `car_path_distress`. `REFI_RISK` is the bridge between the annual and macro layers: a REIT with higher refinancing concentration is made more sensitive to the same macro rate shock than a REIT with lower near-term refinancing pressure. The CAR-path overlay is also given a neutral dead zone so that very small daily path moves do not cause the system to overreact too early.
 
-- a macro rate-stress overlay derived from the XGBoost-predicted 10-day SORA change
-- a REIT-specific abnormal-return-path overlay derived from cumulative abnormal returns since the filing anchor
-
-The final score is assembled in `compute_final_distress_score()`:
-
-- start from `distress_score_mamdani`
-- derive a macro shock from `distress_sora - 0.5`
-- scale that macro shock by `REFI_RISK`
-- derive a `car_path_shock` from `car_path_distress - 0.5`
-- ignore small CAR-path shocks inside a neutral dead zone
-- combine the pieces into a bounded final score
-
-In the current code, the exact formula is:
-
-- `macro contribution = 0.15 * sensitivity * macro_shock`
-- `car contribution = 0.20 * car_path_shock`
-- `sensitivity = max(0.25, min(1.0, REFI_RISK * 2.5))`
-
-This produces a hybrid score that still preserves the annual reasoning base while allowing more recent macro and market developments to move the final ranking.
-
-The main design gap between proposal and implementation is therefore clear:
-
-- The proposal centered Snorkel, decision-tree rule extraction, and Neo4j-backed live reasoning.
-- The implementation centers threshold-derived labels, Python Mamdani inference, persisted DuckDB caches, and runtime composition.
-
-Neo4j still matters, but mainly as the rebuild-time rule seed store rather than the runtime decision engine used by the app.
+This relationship is the real logic of the hybrid model. Mamdani answers the annual structural question, XGBoost answers the short-horizon rate-regime question, and CAR path answers the market-reaction question. The final design in `Design_v1a.txt` is therefore not three unrelated components placed side by side. It is a layered system in which annual accounting risk is treated as the base state, then adjusted at runtime by macro stress and by REIT-specific market behaviour between annual reporting dates.
 
 ## 3.6. UI Prototype
 
