@@ -33,35 +33,43 @@ Prepared by:
 
 ## 2.1. Business Case
 
-Singapore REITs are income-oriented instruments that are highly exposed to financing costs, refinancing structure, and operating resilience. The project proposal frames the central business problem clearly: retail investors can already view many raw S-REIT metrics, but they still lack a systematic way to turn those values into transparent distress judgments. In practice, a user can see gearing, payout, or price-to-book values, yet still not know whether the combination implies a stable name, a watchlist candidate, or a genuinely distressed counter.
+Singapore REITs (S-REITs) are income-oriented instruments that are highly exposed to financing costs, refinancing structure, and macroeconomic variables, on top of their internal accounting health statistics. 
+
+Recent sector stress is especially relevant because S-REIT balance sheets are sensitive to higher debt costs and refinancing walls. There are known recurrent risks such as debt-cost sensitivity, refinancing risk, and valuation compression. 
+
+For example, geopolitical stress events such as rate regime changes and black swan events (COVID-19, the 2026) can propagate into downstream distress for S-REITs, as was demonstrated with notable S-REIT distresses such as Lippo Malls Indonesia Retail Trust (D5IU) and Prime US REIT (OXMU).
+
+The repo also contains a dedicated MAS rule-change note arguing that the revised framework effectively introduces a hard borrowing floor when `ICR < 1.5x`, even if aggregate leverage is still low. In plain English, a REIT can appear lightly levered yet still become operationally constrained if earnings weaken enough to drag coverage below the regulatory floor.
+
+## 2.2. Competitive Positioning
+
+There are a variety of public, simple yield screens when selecting S-REITs available to Singapore retail investors. 
+
+- **[REITsavvy Screener](https://reitsavvy.com/reits-screener)**, which exposes filters and raw metrics but leaves reasoning to the user.
+- **[Fifth Person](http://sreit.fifthperson.com)**, which presents live S-REIT data for general reference but does not encode rule-based distress scoring.
+- **[DBS Research InsightsDirect](https://www.dbs.com/insightsdirect/)**, which contains analyst reasoning but is episodic, institutional, and not transparently rerunnable by a retail user.
+
+Existing tools either display metrics without reasoning (REITsavvy, Fifth Person) or apply reasoning episodically behind institutional paywalls (DBS Research). There is a lack of quantitative evaluation available that captures the safety of current S-REITs, or whether current distributions remain sustainable under changing policy and inflation. 
+
+This project addresses that gap by building intelligent reasoning systems that combine macro regime signals with REIT-level financial health indicators.
+
+
+
+
+
+The project proposal frames the central business problem clearly: retail investors can already view many raw S-REIT metrics, but they still lack a systematic way to turn those values into transparent distress judgments. In practice, a user can see gearing, payout, or price-to-book values, yet still not know whether the combination implies a stable name, a watchlist candidate, or a genuinely distressed counter.
 
 The implemented system is designed around this gap. It does not aim to predict raw price levels. Instead, it prioritizes distress interpretation under changing rate conditions. That focus is consistent with the project's local design documents, which repeatedly emphasize refinancing pressure, coverage stress, and cumulative abnormal market reaction as the key signals to interpret.
 
-Recent sector stress is especially relevant because S-REIT balance sheets are sensitive to higher debt costs and refinancing walls. The proposal identifies recurrent risks such as debt-cost sensitivity, refinancing risk, and valuation compression. The repo also contains a dedicated MAS rule-change note arguing that the revised framework effectively introduces a hard borrowing floor when `ICR < 1.5x`, even if aggregate leverage is still low. In plain English, a REIT can appear lightly levered yet still become operationally constrained if earnings weaken enough to drag coverage below the regulatory floor.
+
 
 This matters because the distress problem is not only "high gearing is bad." The repo's MAS note explicitly argues that tenant weakness, falling earnings, and shrinking interest coverage can be just as dangerous as headline leverage, because they can force equity dilution or limit access to new debt even before the balance sheet reaches the formal maximum leverage cap.
 
 The implemented metric and rule design follows that logic. The Mamdani layer gives special importance to `ICR`, `DSCR`, `GEARING`, and `REFI_RISK`, while the runtime layer uses `REFI_RISK` again as the sensitivity bridge between macro rate stress and the final distress score. This is a strong sign that the business case was not only rhetorical but translated into the actual scoring architecture.
 
-<!--FILL The skeleton specifically asks for treatment of the "US-Iran war and Hormuz Closure 2026" as a recent sector stress event, but no supporting source for that event exists inside this repository, and I did not browse external news sources for temporal verification. Fill this only after adding a local source or after a separate sourced web pass.-->
 
-## 2.2. Scoping and Competitive Positioning
 
-The proposal sets the product scope as a curated S-REIT distress-evaluation system rather than a universal equity screener. It explicitly focuses on combining company financials with macroeconomic indicators, operationalizing hard risk flags as rule-based systems, and exposing distress rankings in a practical retail-investor context.
 
-The proposal also defines several out-of-scope items that remain important for the report:
-
-- The project is not primarily a raw price-prediction system.
-- Pure time-series or LSTM forecasting was not the intended core.
-- The domain is intentionally constrained by the limited history and small annual sample size of S-REIT data.
-
-The competitive positioning in the proposal is already usable in near-final form. Three locally documented comparators are:
-
-- `REITsavvy Screener`, which exposes filters and raw metrics but leaves reasoning to the user.
-- `Fifth Person`, which presents live S-REIT data for general reference but does not encode rule-based distress scoring.
-- `DBS Research InsightsDirect`, which contains analyst reasoning but is episodic, institutional, and not transparently rerunnable by a retail user.
-
-The proposal's core conclusion remains consistent with the implemented system: existing tools either show metrics without machine-readable reasoning or hide reasoning behind non-programmatic analyst workflows, while this project encodes rule logic and exposes a programmatic distress-ranking pipeline.
 
 ## 2.3. Literature Review
 
