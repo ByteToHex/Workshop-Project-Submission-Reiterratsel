@@ -270,7 +270,7 @@ The final production choice was based on iterative experiments on these few diff
 
 The macro experiment was designed as a controlled comparison of different ways to define the prediction task, rather than as a one-shot attempt to fit a single model.
 
-The script varies two main things: the forward horizon and the target formulation. In practice, the tested horizons include `1d`, `3d`, `5d`, `7d`, `10d`, `14d`, `21d`, and `63d`. The pipeline also supports three prediction targets: `option1_level`, which predicts the future SORA level; `option2_change`, which predicts the signed future change in SORA; and `option3_abs_change`, which predicts the absolute size of the future move regardless of direction. These targets are then compared across different short-horizon windows.
+The script varies two main things: the forward horizon and the target formulation. In practice, the tested horizons include `1d`, `3d`, `5d`, `7d`, `10d`, `14d`, `21d`, and `63d`. The pipeline also supports three prediction targets: `option1_level`, which predicts the future SORA level; `option2_change`, which predicts the signed future change in SORA, meaning whether SORA moves up or down and by how much over the chosen forward window; and `option3_abs_change`, which predicts the absolute size of the future move regardless of direction. These targets are then compared across different short-horizon windows.
 
 Within the successful `P` family, the project is trying to identify which specific macro target is most reliably forecasted, while still remaining useful for the hybrid REIT-distress system. That is why the comparison is framed around practical usefulness as a runtime overlay. 
 
@@ -278,7 +278,7 @@ This is also why shuffle and standard k-fold cross-validation are not appropriat
 
 For the same reason, ordinary k-fold would make the model look stronger than it really is by mixing highly autocorrelated neighbouring periods across train and test. The script therefore uses a strictly time-ordered split with an explicit gap, so validation is always done on later data that the model was not allowed to see during training.
 
-The final deployed choice is the signed 10-trading-day SORA change target. This was more stable and less predisposed to noise. Furthermore, it fits the later hybrid design better than predicting the absolute level of SORA, because the app mainly needs a short-horizon signal of whether refinancing conditions are becoming more or less stressful.
+The final deployed choice is the signed 10-trading-day SORA change target. In script terms, this is the `option2_change` setup. This was more stable and less predisposed to noise. Furthermore, it fits the later hybrid design better than predicting the absolute level of SORA, because the app mainly needs a short-horizon signal of whether refinancing conditions are becoming more or less stressful.
 
 ## 4.3.2. Hyperparameter Search Strategy
 
@@ -314,7 +314,7 @@ The design also comes with explicit limits: The test window is still frozen and 
 
 ## 5.1. Evaluation for XGBoost Best Version
 
-The best locally evidenced macro model is the `P`-family `run_21` `fwd_10_days` `option2_change` model, where Optuna is the recorded winner over DEAP. It predicts the 10-trading-day forward SORA change and is the exact family wired into the runtime app.
+The best locally evidenced macro model is the `P`-family `run_21` `fwd_10_days` `option2_change` model, where Optuna is the recorded winner over DEAP. Here, `option2_change` means the model predicts the signed 10-trading-day forward change in SORA rather than the future SORA level itself. This is the exact target family wired into the runtime app.
 
 Its holdout summary is:
 
