@@ -18,9 +18,9 @@ The system focuses on Singapore-listed REITs (SREITs) and aims to convert messy 
 
 At the micro / company layer, the repository builds an authoritative DuckDB warehouse from TradingView-style annual statement data and derived REIT metrics. These metrics are then used to derive distress labels, a Mamdani fuzzy cache, and a daily abnormal-return CAR path layer. 
 
-At the macro layer, the repository loads pre-trained XGBoost model artifacts from `Common/Macro/IO/Model_Train/Use/run_21` and performs runtime inference on SORA-related data so that the app can inject a rate-shock overlay into the final distress score.
+At the macro layer, the repository loads pre-trained XGBoost model artifacts from `SystemCode/Macro/IO/Model_Train/Use/run_21` in the runnable submission bundle and performs runtime inference on SORA-related data so that the app can inject a rate-shock overlay into the final distress score.
 
-The reasoning architecture combines several components rather than treating the problem as a single black-box model. A Neo4j-backed rule graph is used during rebuild mode to seed and fetch the Mamdani rule bundle from `Common/Micro/5_Model_KG/mamdani_rule_seed.json`. Those rules are evaluated into a persisted annual fuzzy cache. During app runtime, the system combines frozen Mamdani output with the latest eligible macro snapshot, `REFI_RISK`-driven sensitivity, and a daily CAR-path layer to produce the final distress ranking displayed in the user interface.
+The reasoning architecture combines several components rather than treating the problem as a single black-box model. A Neo4j-backed rule graph is used during rebuild mode to seed and fetch the Mamdani rule bundle from `SystemCode/Micro/5_Model_KG/mamdani_rule_seed.json` in the runnable submission bundle. Those rules are evaluated into a persisted annual fuzzy cache. During app runtime, the system combines frozen Mamdani output with the latest eligible macro snapshot, `REFI_RISK`-driven sensitivity, and a daily CAR-path layer to produce the final distress ranking displayed in the user interface.
 
 For project submission, the design intentionally ships the committed DuckDB warehouse as a stable snapshot so the application can run in Docker without forcing Neo4j-backed rebuild logic on every launch. For development, rebuild mode remains available so the shipped DuckDB and parquet cache artifacts can be refreshed in place when the underlying derived outputs need to be regenerated.
 
@@ -48,10 +48,11 @@ At the time of this README update, the `Video` folder exists in the repository r
 
 ### [ 1 ] To run the system using Docker in submission / demo mode
 
-From the repository root, meaning the folder that contains `README.md`, `Common/`, and the top-level `.git` folder:
+From the repository root, meaning the folder that contains `README.md`, `Common/`, `SystemCode/`, and the top-level `.git` folder:
 
 ```powershell
 cd <path-to-this-repo>
+cd SystemCode
 ```
 
 Use the compose file in two modes:
@@ -67,10 +68,10 @@ Important distinction:
 
 #### App-only mode
 
-This serves the app against the committed DuckDB snapshot and does not need `Common/docker-compose.env`.
+This serves the app against the committed DuckDB snapshot and does not need `docker-compose.env`.
 
 ```powershell
-docker compose -f Common/docker-compose.yml up --build
+docker compose up --build
 ```
 
 Then open:
@@ -82,20 +83,20 @@ http://localhost:8501
 To stop it:
 
 ```powershell
-docker compose -f Common/docker-compose.yml down
+docker compose down
 ```
 
 #### Rebuild mode
 
 This starts Neo4j and reruns `build_reitteratsel_pipeline.py`, which refreshes the DuckDB/parquet cache in place.
 
-First create the runtime env file:
+First create the runtime env file inside `SystemCode`:
 
 ```powershell
-Copy-Item Common\docker-compose.env.example Common\docker-compose.env
+Copy-Item docker-compose.env.example docker-compose.env
 ```
 
-Then edit `Common/docker-compose.env` so it has the correct Neo4j container settings. At minimum it should stay aligned with the compose file:
+Then edit `docker-compose.env` so it has the correct Neo4j container settings. At minimum it should stay aligned with the compose file:
 
 ```env
 NEO4J_URI=neo4j://neo4j:7687
@@ -107,13 +108,13 @@ NEO4J_PASSWORD=mamdaniXGBoost
 Run the rebuild:
 
 ```powershell
-docker compose -f Common/docker-compose.yml --profile rebuild up --build reitteratsel-rebuild
+docker compose --profile rebuild up --build reitteratsel-rebuild
 ```
 
 If that succeeds, start the app:
 
 ```powershell
-docker compose -f Common/docker-compose.yml up --build
+docker compose up --build
 ```
 
 #### Useful checks
@@ -121,32 +122,32 @@ docker compose -f Common/docker-compose.yml up --build
 View logs:
 
 ```powershell
-docker compose -f Common/docker-compose.yml logs -f
+docker compose logs -f
 ```
 
 View rebuild logs:
 
 ```powershell
-docker compose -f Common/docker-compose.yml --profile rebuild logs -f reitteratsel-rebuild
+docker compose --profile rebuild logs -f reitteratsel-rebuild
 ```
 
 Stop and remove containers:
 
 ```powershell
-docker compose -f Common/docker-compose.yml down
+docker compose down
 ```
 
 Stop and also remove Neo4j named volumes:
 
 ```powershell
-docker compose -f Common/docker-compose.yml --profile rebuild down -v
+docker compose --profile rebuild down -v
 ```
 
 #### Recommended first run
 
-1. `Copy-Item Common\docker-compose.env.example Common\docker-compose.env`
-2. `docker compose -f Common/docker-compose.yml --profile rebuild up --build reitteratsel-rebuild`
-3. `docker compose -f Common/docker-compose.yml up --build`
+1. `Copy-Item docker-compose.env.example docker-compose.env`
+2. `docker compose --profile rebuild up --build reitteratsel-rebuild`
+3. `docker compose up --build`
 4. Open `http://localhost:8501`
 
 ### [ 2 ] To run the system in local development mode outside Docker

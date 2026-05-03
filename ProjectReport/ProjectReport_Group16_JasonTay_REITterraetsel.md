@@ -202,7 +202,7 @@ The final design in `Design_v1a.txt` is therefore not three unrelated components
 
 The UI was designed to make the hybrid model readable to a non-technical user. In practical terms, the interface is not just there to display a final distress score. Its job is to show how that score was formed, what annual anchor it came from, and how the macro and market-path overlays changed it at runtime.
 
-The repository contains both design assets and a working implementation. The design references are stored in `Common\Frontend\DesignDoc\Reitteratsel.pdf`, `Common\Frontend\DesignDoc\figma.png`, and the branding files such as `Reiterratsel_Wordmark.svg`, while the implemented app is served from `Common\Frontend\reitteratsel_app.py`.
+The repository contains both design assets and a working implementation. The design references remain in `Common\Frontend\DesignDoc\Reitteratsel.pdf`, `Common\Frontend\DesignDoc\figma.png`, and the branding files such as `Reiterratsel_Wordmark.svg`, while the self-contained runnable submission copy is now served from `SystemCode\Frontend\reitteratsel_app.py`.
 
 The current Streamlit interface exposes three pages: `Ranking`, `Individual REIT Navigator`, and `Time Series (Rates)`. These pages reflect the same three-part logic used in the system design. The Ranking page gives a sector-wide view of current runtime distress scores, the Individual REIT Navigator breaks down one selected REIT in more detail, and the Rates page shows the macro side of the system through predicted versus actual rate behaviour.
 
@@ -298,7 +298,7 @@ One further lesson concerns DEAP specifically. The cleanest example came from th
 
 ## 4.4. Pipeline and Application Delivery
 
-The delivered system is built around a simple practical idea: do the heavy pipeline work first, persist the results, and let the app read those persisted outputs at runtime. In local development mode, `run_reitteratsel.py` first runs the build pipeline and then launches the Streamlit app. That build step refreshes the annual labels, the Mamdani cache, and the rule-trace outputs before the interface opens.
+The delivered system is built around a simple practical idea: do the heavy pipeline work first, persist the results, and let the app read those persisted outputs at runtime. In local development mode, `run_reitteratsel.py` first runs the build pipeline and then launches the Streamlit app. For submission and rerun purposes, the same runtime is copied into `SystemCode`, where `docker-compose.yml` can launch the app directly and `--profile rebuild` can rerun the rebuild path from that folder. The build step refreshes the annual labels, the Mamdani cache, and the rule-trace outputs before the interface opens.
 
 This means the app is not doing the full reasoning pipeline from scratch every time a user clicks a page. Rather, the build stage prepares the warehouse tables that the interface needs, including annual metrics, annual distress labels, annual Mamdani scores, and daily CAR-path rows. The app then resolves the selected simulation date to the latest eligible annual row, the latest eligible macro snapshot, and the latest eligible CAR-path row, and combines them into the runtime `final_distress` score.
 
@@ -420,21 +420,37 @@ Second, the project already has a smoothing mechanism, and it comes from the mov
 
 ## 7. References
 
-Repository sources used in this report:
+### SystemCode (runnable app)
+
+- `SystemCode\docker-compose.yml`
+- `SystemCode\docker-compose.env`
+- `SystemCode\Frontend\Dockerfile.reitteratsel`
+- `SystemCode\Frontend\reitteratsel_app.py`
+- `SystemCode\Frontend\reitteratsel_view_logic.py`
+- `SystemCode\Micro\5_Model_KG\build_reitteratsel_pipeline.py`
+- `SystemCode\Micro\5_Model_KG\reitteratsel_core.py`
+- `SystemCode\Micro\5_Model_KG\mamdani_rule_seed.json`
+- `SystemCode\Micro\IO\out\_annual_warehouse\fundamentals.duckdb`
+- `SystemCode\Macro\IO\Model_Train\Use\run_21`
+
+### Common (development forks, data processing, and engineering artifacts)
 
 - `Common\PROJECT_REFERENCE_MAP.md`
 - `Common\Micro\5_Model_KG\DesignDocs\Design_v1a.txt`
 - `Common\Micro\5_Model_KG\DesignDocs\Implementation_Checklist_v1a.md`
+- `Common\Micro\4_Compute_Metrics\Data_Dict_Reit_Metrics.md`
+- `Common\Micro\4_Compute_Metrics\Schemas.md`
 - `Common\Micro\5_Model_KG\mamdani_rule_seed.json`
 - `Common\Micro\5_Model_KG\reitteratsel_core.py`
-- `Common\Micro\4_Compute_Metrics\Data_Dict_Reit_Metrics.md`
 - `Common\Macro\Pipeline_MODEL\5_XGBoost\train_p_1fold_pipeline.py`
 - `Common\Macro\Pipeline_MODEL\5_XGBoost\train_a_multifold_pipeline.py`
+- `Common\Macro\Pipeline_MODEL\5_XGBoost\train_rstar_directional_1fold.py`
+- `Common\Macro\Pipeline_MODEL\5_XGBoost\train_rstar_xgboost_walkforward_optuna_deap.py`
+- `Common\Macro\Pipeline_MODEL\5_XGBoost\train_rstar_xgboost_walkforward_optuna_deap_1fold.py`
+- `Common\Frontend\DesignDoc\Reitteratsel.pdf`
 - `README.md`
-- `SAMPLES\Mine\Proposal_Temp_04.md`
-- `SAMPLES\Mine\MAS_Rule_Change_Risk_Implications.txt`
 
-Archived local run artifacts used in this report:
+### Miscellaneous (key development artifacts)
 
 - `Miscellaneous\Run_Artifacts_XGBoost\run_19\fwd_10_days`
 - `Miscellaneous\Run_Artifacts_XGBoost\run_20\fwd_10_days`
@@ -448,8 +464,10 @@ Archived local run artifacts used in this report:
 - `Miscellaneous\full_pipeline_eval\run_3`
 - `Miscellaneous\script_refs\train_p_1fold_pipeline.py`
 - `Miscellaneous\script_refs\train_a_multifold_pipeline.py`
+- `SAMPLES\Mine\MAS_Rule_Change_Risk_Implications.txt`
+- `SAMPLES\Mine\Proposal_Temp_04.md`
 
-External literature:
+### External literature
 
 - [1] T. Shumway, "Forecasting Bankruptcy More Accurately: A Simple Hazard Model," *The Journal of Business*, vol. 74, no. 1, pp. 101-124, 2001, doi: 10.1086/209665.
 - [2] J. Y. Campbell, J. Hilscher, and J. Szilagyi, "In Search of Distress Risk," *NBER Working Paper* no. 12362, 2006.
@@ -503,14 +521,15 @@ Pass:
 
 ```powershell
 cd <path-to-this-repo>
+cd SystemCode
 ```
 
 #### App-only mode
 
-This serves the app against the committed DuckDB snapshot and does not need `Common/docker-compose.env`.
+This serves the app against the committed DuckDB snapshot and does not need `docker-compose.env`.
 
 ```powershell
-docker compose -f Common/docker-compose.yml up --build
+docker compose up --build
 ```
 
 Then open:
@@ -522,7 +541,7 @@ http://localhost:8501
 To stop it:
 
 ```powershell
-docker compose -f Common/docker-compose.yml down
+docker compose down
 ```
 
 ## Appendix D. Data Sources
