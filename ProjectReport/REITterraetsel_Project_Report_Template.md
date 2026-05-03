@@ -245,25 +245,13 @@ The reason both Optuna and DEAP are used is simple: the project does not want to
 
 ## 4.4. Pipeline and Application Delivery
 
-The end-to-end local implementation can be summarized in a sequence of concrete components:
+The delivered system is built around a simple practical idea: do the heavy pipeline work first, persist the results, and let the app read those persisted outputs at runtime. In local development mode, `run_reitteratsel.py` first runs the build pipeline and then launches the Streamlit app. That build step refreshes the annual labels, the Mamdani cache, and the rule-trace outputs before the interface opens.
 
-- upstream micro data preparation under `Common\Micro\1_*` to `4_*`
-- annual metric derivation by `Common\Micro\4_Compute_Metrics\build_reit_metrics.py`
-- hybrid pipeline build by `Common\Micro\5_Model_KG\build_reitteratsel_pipeline.py`
-- core logic in `Common\Micro\5_Model_KG\reitteratsel_core.py`
-- local development orchestration in `Common\Micro\5_Model_KG\run_reitteratsel.py`
-- frontend entrypoint in `Common\Frontend\reitteratsel_app.py`
-- formal evaluation in `Common\Eval\build_reitteratsel_eval.py`
+This means the app is not doing the full reasoning pipeline from scratch every time a user clicks a page. Instead, the build stage prepares the warehouse tables that the interface needs, including annual metrics, annual distress labels, annual Mamdani scores, and daily CAR-path rows. The app then resolves the selected simulation date to the latest eligible annual row, the latest eligible macro snapshot, and the latest eligible CAR-path row, and combines them into the runtime `final_distress` score.
 
-The application itself is intentionally built on persisted outputs rather than on raw live recomputation at page-load time. At runtime, the app reads:
+This separation between build-time persistence and runtime display is one of the most important implementation choices in the project. It makes the system easier to audit, because intermediate outputs such as `fact_distress_label`, `fact_fuzzy_cache`, and `fact_car_path_daily` can be inspected directly. It also makes the dashboard more reproducible, because the user is not depending on live rule induction or raw data recomputation at page-load time.
 
-- annual metric tables
-- annual label tables
-- annual Mamdani cache tables
-- daily CAR-path tables
-- direct macro prediction outputs from the saved XGBoost artifacts
-
-This is a strong practical implementation choice for a submission repository because it improves reproducibility and reduces operational dependence on live graph rebuilds.
+The same logic explains the submission design. In submission mode, the repository ships with the committed DuckDB snapshot and the app serves directly from that persisted warehouse by default. In other words, the submitted application is designed to demonstrate the final reasoning outputs reliably, while still preserving a separate rebuild path for development and refresh work.
 
 ## 5. Findings and Discussion
 
