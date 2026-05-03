@@ -41,7 +41,7 @@ For example, geopolitical stress events such as rate regime changes and black sw
 
 Under the revised MAS framework, a REIT with `ICR < 1.5x` can be blocked from taking on additional debt even if its aggregate leverage is still low. In practical terms, a REIT may appear lightly geared on paper yet still face funding stress if weaker earnings push interest coverage below the regulatory threshold.
 
-For example, a REIT with 20% gearing but `ICR = 1.2x` may still be unable to borrow for recovery or refinancing needs. Under the old leverage-focused view, 20% gearing looked safe. Under the revised rule, the sub-`1.5x` coverage ratio becomes the binding constraint.
+For example, a REIT with 20% gearing but `ICR = 1.2x` may still be unable to borrow for recovery or refinancing needs, leading to shareholder dilution or price impact.
 
 ## 2.2. Competitive Positioning
 
@@ -56,34 +56,9 @@ Existing tools either display metrics without reasoning (REITsavvy, Fifth Person
 This project addresses that gap by building intelligent reasoning systems that combine macro regime signals with REIT-level financial health indicators.
 
 
-
-
-
-The project proposal frames the central business problem clearly: retail investors can already view many raw S-REIT metrics, but they still lack a systematic way to turn those values into transparent distress judgments. In practice, a user can see gearing, payout, or price-to-book values, yet still not know whether the combination implies a stable name, a watchlist candidate, or a genuinely distressed counter.
-
-The implemented system is designed around this gap. It does not aim to predict raw price levels. Instead, it prioritizes distress interpretation under changing rate conditions. That focus is consistent with the project's local design documents, which repeatedly emphasize refinancing pressure, coverage stress, and cumulative abnormal market reaction as the key signals to interpret.
-
-
-
-This matters because the distress problem is not only "high gearing is bad." The repo's MAS note explicitly argues that tenant weakness, falling earnings, and shrinking interest coverage can be just as dangerous as headline leverage, because they can force equity dilution or limit access to new debt even before the balance sheet reaches the formal maximum leverage cap.
-
-The implemented metric and rule design follows that logic. The Mamdani layer gives special importance to `ICR`, `DSCR`, `GEARING`, and `REFI_RISK`, while the runtime layer uses `REFI_RISK` again as the sensitivity bridge between macro rate stress and the final distress score. This is a strong sign that the business case was not only rhetorical but translated into the actual scoring architecture.
-
-
-
-
-
 ## 2.3. Literature Review
 
-The local proposal already contains one academically grounded anchor: Ratner et al. (2017) on Snorkel. In the proposal, Snorkel was attractive because the project lacked a large hand-labelled distress dataset and needed a way to combine heuristic labels under uncertainty. That framing remains useful in the report because it explains the original methodological direction even though the final implementation pivoted away from Snorkel as the main production labelling path.
 
-The proposal's literature framing also remains relevant for explaining the research intent of the project:
-
-- Distress labels in S-REIT space are not directly available as neat supervised targets.
-- Weak supervision was originally considered as a way to generate structured labels from domain heuristics.
-- Explainability remained a first-class requirement, which is why transparent rule systems and graph-backed reasoning stayed central even after the labelling approach changed.
-
-<!--FILL The skeleton asks for a detailed four-paper comparison using `D:\WS\-GH-A-Ref\REF-Study\GC_ASMT\Project\REF_SELF\IRS\Working\AcademicStudy\Combining\260503_1240_prompt_citations_response.txt`, but that source is outside this repository. I cannot responsibly summarize the four-paper comparison from local evidence alone.-->
 
 ## 3. System Design / Model
 
