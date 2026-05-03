@@ -1,0 +1,107 @@
+train_a_multifold_pipeline.py output summary
+
+Dataset: D:\WS_NUS\REF_DATA\prediction-market-analysis\scripts\export\REF_Preprocessing\Step5_XGBoost_Test\out\run_22\fwd_15_days\model_a_panel_dataset.csv
+Panel export: D:\WS_NUS\REF_DATA\prediction-market-analysis\scripts\export\REF_Preprocessing\Step5_XGBoost_Test\out\run_22\fwd_15_days\model_a_panel_dataset.csv
+Forward horizon rows: 15
+Worker seed: 57
+Drop calendar by: sreit
+Output directory: D:\WS_NUS\REF_DATA\prediction-market-analysis\scripts\export\REF_Preprocessing\Step5_XGBoost_Test\out\run_22\fwd_15_days
+Validation: walkforward by date, TimeSeriesSplit n_splits=5 gap_rows=63
+Final holdout dates: 126
+
+Model A ticker-universe controls:
+  all_reit_tickers=['A17U', 'AJBU', 'BTOU', 'BUOU', 'BWCU', 'C38U', 'CMOU', 'D5IU', 'J69U', 'M1GU', 'M44U', 'ME8U', 'N2IU', 'OXMU', 'T82U']
+  index_tickers=['REIT', 'REITN', 'REITR']
+  hard_poison_tickers=['BWCU', 'D5IU']
+  caveat_tickers=['BTOU', 'OXMU', 'CMOU']
+  row_level_exclusions={}
+  exclude_hard_poison_tickers=True
+  exclude_caveat_tickers=False
+  manual_exclude_tickers=[]
+  manual_include_tickers=[]
+  effective_excluded_tickers=['BWCU', 'D5IU']
+  effective_reit_universe=['A17U', 'AJBU', 'BTOU', 'BUOU', 'C38U', 'CMOU', 'J69U', 'M1GU', 'M44U', 'ME8U', 'N2IU', 'OXMU', 'T82U']
+
+Target: abnormal_fwd_15d_return
+
+Abnormal-history feature cols:
+  - car_63d
+  - car_sign_consistency
+  - car_acceleration
+
+Macro base feature cols:
+  - expected_bps
+  - sora_level_t2
+
+REIT sector-state feature cols:
+  - reit_index_lag_21d_return
+  - reit_index_lag_63d_return
+  - reit_index_vol_21d
+  - reit_index_vol_63d
+  - reit_index_drawdown_63d
+
+Ticker identity feature cols:
+  - is_A17U
+  - is_AJBU
+  - is_BTOU
+  - is_BUOU
+  - is_C38U
+  - is_CMOU
+  - is_J69U
+  - is_M1GU
+  - is_M44U
+  - is_ME8U
+  - is_N2IU
+  - is_OXMU
+  - is_T82U
+
+Effective feature cols (n=23):
+  - car_63d
+  - car_sign_consistency
+  - car_acceleration
+  - expected_bps
+  - sora_level_t2
+  - reit_index_lag_21d_return
+  - reit_index_lag_63d_return
+  - reit_index_vol_21d
+  - reit_index_vol_63d
+  - reit_index_drawdown_63d
+  - is_A17U
+  - is_AJBU
+  - is_BTOU
+  - is_BUOU
+  - is_C38U
+  - is_CMOU
+  - is_J69U
+  - is_M1GU
+  - is_M44U
+  - is_ME8U
+  - is_N2IU
+  - is_OXMU
+  - is_T82U
+
+Output naming pattern:
+  model_a_optuna_best_params.json
+  model_a_deap_best_params.json
+  model_a_optuna_walkforward_fold_metrics.csv
+  model_a_deap_walkforward_fold_metrics.csv
+  model_a_optuna_walkforward_oos_predictions.csv
+  model_a_deap_walkforward_oos_predictions.csv
+  model_a_optuna_baseline_walkforward_fold_metrics.csv
+  model_a_deap_baseline_walkforward_fold_metrics.csv
+  model_a_optuna_baseline_walkforward_oos_predictions.csv
+  model_a_deap_baseline_walkforward_oos_predictions.csv
+  model_a_optuna_walkforward_summary.json
+  model_a_deap_walkforward_summary.json
+  model_a_final_model_xgb.json
+  model_a_shap_summary_values.csv
+  model_a_shap_summary_beeswarm.png
+  model_a_shap_summary_bar.png
+
+Run-level manifest files:
+  data_manifest.json
+  feature_manifest.json
+Cross-run consolidated files:
+  optimizer_comparison.json
+  final_selected_params.json
+  run_contents_summary.txt

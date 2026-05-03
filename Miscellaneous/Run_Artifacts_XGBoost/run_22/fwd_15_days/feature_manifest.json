@@ -1,0 +1,97 @@
+{
+  "target_col": "abnormal_fwd_15d_return",
+  "features": [
+    "car_63d",
+    "car_sign_consistency",
+    "car_acceleration",
+    "expected_bps",
+    "sora_level_t2",
+    "reit_index_lag_21d_return",
+    "reit_index_lag_63d_return",
+    "reit_index_vol_21d",
+    "reit_index_vol_63d",
+    "reit_index_drawdown_63d",
+    "is_A17U",
+    "is_AJBU",
+    "is_BTOU",
+    "is_BUOU",
+    "is_C38U",
+    "is_CMOU",
+    "is_J69U",
+    "is_M1GU",
+    "is_M44U",
+    "is_ME8U",
+    "is_N2IU",
+    "is_OXMU",
+    "is_T82U"
+  ],
+  "feature_groups": {
+    "abnormal_history": [
+      "car_63d",
+      "car_sign_consistency",
+      "car_acceleration"
+    ],
+    "macro_base": [
+      "expected_bps",
+      "sora_level_t2"
+    ],
+    "reit_sector_state": [
+      "reit_index_lag_21d_return",
+      "reit_index_lag_63d_return",
+      "reit_index_vol_21d",
+      "reit_index_vol_63d",
+      "reit_index_drawdown_63d"
+    ],
+    "ticker_identity": [
+      "is_A17U",
+      "is_AJBU",
+      "is_BTOU",
+      "is_BUOU",
+      "is_C38U",
+      "is_CMOU",
+      "is_J69U",
+      "is_M1GU",
+      "is_M44U",
+      "is_ME8U",
+      "is_N2IU",
+      "is_OXMU",
+      "is_T82U"
+    ]
+  },
+  "trace_cols": [
+    "ticker",
+    "fomc_decision_date",
+    "ticker_open",
+    "ticker_high",
+    "ticker_low",
+    "ticker_close",
+    "reit_index_open",
+    "reit_index_high",
+    "reit_index_low",
+    "reit_index_close",
+    "beta_252d",
+    "ticker_daily_return",
+    "reit_index_daily_return",
+    "ticker_fwd_return",
+    "reit_index_fwd_return"
+  ],
+  "effective_excluded_tickers": [
+    "BWCU",
+    "D5IU"
+  ],
+  "effective_reit_universe": [
+    "A17U",
+    "AJBU",
+    "BTOU",
+    "BUOU",
+    "C38U",
+    "CMOU",
+    "J69U",
+    "M1GU",
+    "M44U",
+    "ME8U",
+    "N2IU",
+    "OXMU",
+    "T82U"
+  ]
+}

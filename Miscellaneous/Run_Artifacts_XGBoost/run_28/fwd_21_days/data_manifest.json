@@ -1,0 +1,145 @@
+{
+  "data_path": "D:\\WS_NUS\\REF_DATA\\prediction-market-analysis\\scripts\\export\\REF_Preprocessing\\Step5_XGBoost_Test\\out\\run_28\\fwd_21_days\\model_a_panel_dataset.csv",
+  "rows_base": 8677,
+  "unique_dates": 869,
+  "unique_tickers": 10,
+  "date_min": "2022-07-28 00:00:00",
+  "date_max": "2026-01-28 00:00:00",
+  "target_col": "abnormal_fwd_21d_return",
+  "ticker_universe_reference_path": "D:\\WS_NUS\\REF_DATA\\prediction-market-analysis\\scripts\\export\\REF_Preprocessing\\Step4_XGBoost\\sample_tradingview\\Tickers_SingleTable.md",
+  "index_tickers": [
+    "REIT",
+    "REITN",
+    "REITR"
+  ],
+  "all_reit_tickers": [
+    "A17U",
+    "AJBU",
+    "BTOU",
+    "BUOU",
+    "BWCU",
+    "C38U",
+    "CMOU",
+    "D5IU",
+    "J69U",
+    "M1GU",
+    "M44U",
+    "ME8U",
+    "N2IU",
+    "OXMU",
+    "T82U"
+  ],
+  "hard_poison_tickers": [
+    "BWCU",
+    "D5IU"
+  ],
+  "caveat_tickers": [
+    "BTOU",
+    "OXMU",
+    "CMOU"
+  ],
+  "row_level_exclusions": {},
+  "exclude_hard_poison_tickers": true,
+  "exclude_caveat_tickers": true,
+  "manual_exclude_tickers": [],
+  "manual_include_tickers": [],
+  "effective_excluded_tickers": [
+    "BTOU",
+    "BWCU",
+    "CMOU",
+    "D5IU",
+    "OXMU"
+  ],
+  "effective_reit_universe": [
+    "A17U",
+    "AJBU",
+    "BUOU",
+    "C38U",
+    "J69U",
+    "M1GU",
+    "M44U",
+    "ME8U",
+    "N2IU",
+    "T82U"
+  ],
+  "feature_cols": [
+    "car_63d",
+    "car_sign_consistency",
+    "car_acceleration",
+    "expected_bps",
+    "sora_level_t2",
+    "car_window_recent",
+    "car_window_mid",
+    "car_window_old",
+    "sora_90d_change_t2",
+    "sora_3m_t2",
+    "sora_term_spread_t2",
+    "reit_index_lag_21d_return",
+    "reit_index_lag_63d_return",
+    "reit_index_vol_21d",
+    "reit_index_vol_63d",
+    "reit_index_drawdown_63d"
+  ],
+  "feature_groups": {
+    "abnormal_history": [
+      "car_63d",
+      "car_sign_consistency",
+      "car_acceleration"
+    ],
+    "macro_base": [
+      "expected_bps",
+      "sora_level_t2"
+    ],
+    "abnormal_history_extended": [
+      "car_window_recent",
+      "car_window_mid",
+      "car_window_old"
+    ],
+    "macro_extended": [
+      "sora_90d_change_t2",
+      "sora_3m_t2",
+      "sora_term_spread_t2"
+    ],
+    "reit_sector_state": [
+      "reit_index_lag_21d_return",
+      "reit_index_lag_63d_return",
+      "reit_index_vol_21d",
+      "reit_index_vol_63d",
+      "reit_index_drawdown_63d"
+    ],
+    "interaction_terms": [],
+    "ticker_identity": []
+  },
+  "split_mode": "walkforward_by_date",
+  "n_splits": 3,
+  "gap_rows": 63,
+  "forward_horizon_rows": 21,
+  "worker_seed": 42,
+  "beta_window_days": 252,
+  "car_lookback_days": 63,
+  "car_subwindow_days": 21,
+  "drop_calendar_by": "sreit",
+  "export_panel_csv": true,
+  "panel_export_path": "D:\\WS_NUS\\REF_DATA\\prediction-market-analysis\\scripts\\export\\REF_Preprocessing\\Step5_XGBoost_Test\\out\\run_28\\fwd_21_days\\model_a_panel_dataset.csv",
+  "run_flags_default": {
+    "PER_HORIZON_SEED_OFFSET": true,
+    "EXPORT_PANEL_CSV": true,
+    "EXCLUDE_HARD_POISON_TICKERS": true,
+    "EXCLUDE_CAVEAT_TICKERS": true,
+    "ENABLE_TICKER_ONEHOT_FEATURES": false,
+    "ENABLE_EXTENDED_CAR_FEATURES": true,
+    "ENABLE_EXTENDED_SORA_FEATURES": true,
+    "ENABLE_INTERACTION_FEATURES": false,
+    "MANUAL_DISABLE_FEATURES": [],
+    "MANUAL_ENABLE_FEATURES": [],
+    "ENABLE_EARLY_STOPPING": false,
+    "EARLY_STOPPING_VALID_FRACTION": 0.2,
+    "EARLY_STOPPING_MIN_VALID_DATES": 21,
+    "EARLY_STOPPING_MIN_TRAIN_DATES": 63,
+    "EARLY_STOPPING_ROUNDS": 50,
+    "WINNER_SELECTION_MODE": "directional",
+    "OBJECTIVE_SIGN_BALANCE_CENTER": 0.5,
+    "OBJECTIVE_SIGN_BALANCE_TARGET_BAND": 0.1,
+    "OBJECTIVE_SIGN_BALANCE_PENALTY": 0.2
+  }
+}

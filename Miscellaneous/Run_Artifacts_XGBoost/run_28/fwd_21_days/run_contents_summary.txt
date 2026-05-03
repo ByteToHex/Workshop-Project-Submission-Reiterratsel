@@ -1,0 +1,116 @@
+## TWENTYNINTH RUN: Run 28 [ABNORMAL_RETURNS_fwd_21d[UPDATE_FEATURES_HEALTHY_TICKERS_ONLY][CHG_SCORING]] 
+
+train_a_multifold_pipeline.py output summary
+
+Dataset: D:\WS_NUS\REF_DATA\prediction-market-analysis\scripts\export\REF_Preprocessing\Step5_XGBoost_Test\out\run_28\fwd_21_days\model_a_panel_dataset.csv
+Panel export: D:\WS_NUS\REF_DATA\prediction-market-analysis\scripts\export\REF_Preprocessing\Step5_XGBoost_Test\out\run_28\fwd_21_days\model_a_panel_dataset.csv
+Forward horizon rows: 21
+Worker seed: 42
+Drop calendar by: sreit
+Output directory: D:\WS_NUS\REF_DATA\prediction-market-analysis\scripts\export\REF_Preprocessing\Step5_XGBoost_Test\out\run_28\fwd_21_days
+Validation: walkforward by date, TimeSeriesSplit n_splits=3 gap_rows=63
+Final holdout dates: 126
+
+Model A ticker-universe controls:
+  all_reit_tickers=['A17U', 'AJBU', 'BTOU', 'BUOU', 'BWCU', 'C38U', 'CMOU', 'D5IU', 'J69U', 'M1GU', 'M44U', 'ME8U', 'N2IU', 'OXMU', 'T82U']
+  index_tickers=['REIT', 'REITN', 'REITR']
+  hard_poison_tickers=['BWCU', 'D5IU']
+  caveat_tickers=['BTOU', 'OXMU', 'CMOU']
+  row_level_exclusions={}
+  exclude_hard_poison_tickers=True
+  exclude_caveat_tickers=True
+  manual_exclude_tickers=[]
+  manual_include_tickers=[]
+  enable_ticker_onehot_features=False
+  enable_extended_car_features=True
+  enable_extended_sora_features=True
+  enable_interaction_features=False
+  manual_disable_features=[]
+  manual_enable_features=[]
+  effective_excluded_tickers=['BTOU', 'BWCU', 'CMOU', 'D5IU', 'OXMU']
+  effective_reit_universe=['A17U', 'AJBU', 'BUOU', 'C38U', 'J69U', 'M1GU', 'M44U', 'ME8U', 'N2IU', 'T82U']
+
+Target: abnormal_fwd_21d_return
+Winner selection mode: directional
+Early stopping enabled: False
+Early stopping valid fraction: 0.2
+Early stopping min valid dates: 21
+Early stopping min train dates: 63
+Early stopping rounds: 50
+Objective sign balance center: 0.5
+Objective sign balance target band: 0.1
+Objective sign balance penalty: 0.2
+
+Abnormal-history feature cols:
+  - car_63d
+  - car_sign_consistency
+  - car_acceleration
+
+Macro base feature cols:
+  - expected_bps
+  - sora_level_t2
+
+Extended abnormal-history feature cols:
+  - car_window_recent
+  - car_window_mid
+  - car_window_old
+
+Extended macro feature cols:
+  - sora_90d_change_t2
+  - sora_3m_t2
+  - sora_term_spread_t2
+
+REIT sector-state feature cols:
+  - reit_index_lag_21d_return
+  - reit_index_lag_63d_return
+  - reit_index_vol_21d
+  - reit_index_vol_63d
+  - reit_index_drawdown_63d
+
+Interaction feature cols:
+
+Ticker identity feature cols:
+
+Effective feature cols (n=16):
+  - car_63d
+  - car_sign_consistency
+  - car_acceleration
+  - expected_bps
+  - sora_level_t2
+  - car_window_recent
+  - car_window_mid
+  - car_window_old
+  - sora_90d_change_t2
+  - sora_3m_t2
+  - sora_term_spread_t2
+  - reit_index_lag_21d_return
+  - reit_index_lag_63d_return
+  - reit_index_vol_21d
+  - reit_index_vol_63d
+  - reit_index_drawdown_63d
+
+Output naming pattern:
+  model_a_optuna_best_params.json
+  model_a_deap_best_params.json
+  model_a_optuna_walkforward_fold_metrics.csv
+  model_a_deap_walkforward_fold_metrics.csv
+  model_a_optuna_walkforward_oos_predictions.csv
+  model_a_deap_walkforward_oos_predictions.csv
+  model_a_optuna_baseline_walkforward_fold_metrics.csv
+  model_a_deap_baseline_walkforward_fold_metrics.csv
+  model_a_optuna_baseline_walkforward_oos_predictions.csv
+  model_a_deap_baseline_walkforward_oos_predictions.csv
+  model_a_optuna_walkforward_summary.json
+  model_a_deap_walkforward_summary.json
+  model_a_final_model_xgb.json
+  model_a_shap_summary_values.csv
+  model_a_shap_summary_beeswarm.png
+  model_a_shap_summary_bar.png
+
+Run-level manifest files:
+  data_manifest.json
+  feature_manifest.json
+Cross-run consolidated files:
+  optimizer_comparison.json
+  final_selected_params.json
+  run_contents_summary.txt
