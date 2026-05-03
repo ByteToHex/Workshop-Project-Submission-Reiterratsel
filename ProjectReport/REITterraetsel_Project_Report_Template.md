@@ -221,32 +221,21 @@ The main output is `label_126wd`, which is derived from `car_126wd` and stored t
 
 The threshold rule is intentionally simple. As mentioned above, if `car_126wd < -15%`, the REIT is labelled `DISTRESSED`. If `car_126wd > +5%`, it is labelled `HEALTHY`. Anything in between is labelled `WATCH`.
 
-This step is also where the earlier weak-labelling idea was effectively replaced. Instead of generating proxy labels through a separate weak-supervision model, the project defines its annual target directly from observable post-filing abnormal-return behaviour.
+This step is also where the earlier weak-labelling and Snorkel implementation was replaced. Instead of generating proxy labels through a separate weak-supervision model, the project defines its annual target directly from observable post-filing abnormal-return behaviour.
 
 ## 4.3. XGBoost Development
 
 ## 4.3.1. Multi-Configuration Controlled Experiment Design
 
-The local training code and run artifacts show a structured experimental approach rather than a single one-off model fit.
+The macro model was trained over multiple iterations (at least 23). The training script was designed to compare different forecasting setups and then keep only the one that was most usable for the final app.
 
-The script configuration records:
+Two choices were varied. The first was forecast horizon. The script supports multiple forward windows, and the project evidence shows that horizons such as 10 and 15 trading days were tested, with earlier experiments also considering shorter and longer windows. The second was target definition. The script supports three versions of the prediction task: future SORA level, future SORA change, and absolute future SORA change.
 
-- default forward horizons `(10, 15)`
-- alternative historical notes for `(3, 7, 10, 15)` and `(1, 5, 10, 21)`
-- three target types listed in the manifests:
-  `option1_level`, `option2_change`, `option3_abs_change`
-- active run target in `run_21`:
-  `option2_change`
+This matters because the project was not simply asking, "Can XGBoost predict something?" It was asking a narrower design question: which macro target is most useful as a rate-stress overlay for the hybrid REIT system?
 
-This matches the skeleton's description of a controlled experiment across multiple labels and horizons. The final deployed direction is not "predict anything possible." It is the one that survived comparative selection and became stable enough for runtime wiring.
+The final deployed choice is the signed change target over a 10-trading-day horizon. In runtime terms, the app uses `sora_fwd_10d_change`, not a long-range macro forecast and not a prediction of the absolute SORA level. This is a sensible choice because the project needs a short-horizon signal of rate movement, rather than a slower descriptive estimate of the current rate regime.
 
-The active runtime choice is:
-
-- forward horizon: `10` trading days
-- target: `sora_fwd_10d_change`
-- winner: `optuna`
-
-That makes the runtime model operationally simple: the macro layer predicts a short-horizon change in SORA and converts that into a 0-1 stress overlay.
+The resulting design is operationally simple. The macro layer predicts the near-term change in SORA, then converts that prediction into a rate-stress score that can be used as an overlay on top of the annual Mamdani distress base.
 
 ## 4.3.2. Hyperparameter Search Strategy
 
