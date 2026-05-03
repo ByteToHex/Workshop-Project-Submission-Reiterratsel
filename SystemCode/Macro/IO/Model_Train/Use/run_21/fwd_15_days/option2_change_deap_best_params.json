@@ -1,0 +1,16 @@
+{
+  "target_key": "option2_change",
+  "target_col": "sora_fwd_15d_change",
+  "best_score_penalized_objective": 0.26483725717631873,
+  "best_params": {
+    "gamma": 0.0,
+    "n_estimators": 300,
+    "max_depth": 2,
+    "learning_rate": 0.02,
+    "min_child_weight": 3.0,
+    "subsample": 0.8,
+    "colsample_bytree": 0.9,
+    "reg_alpha": 0.1,
+    "reg_lambda": 10.0
+  }
+}

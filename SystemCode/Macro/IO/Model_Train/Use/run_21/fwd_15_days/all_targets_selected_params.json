@@ -1,0 +1,13 @@
+{
+  "option2_change": {
+    "gamma": 0.5745042216134131,
+    "n_estimators": 850,
+    "max_depth": 2,
+    "learning_rate": 0.024736993437434338,
+    "min_child_weight": 5.92598831389272,
+    "subsample": 0.9842794651725502,
+    "colsample_bytree": 0.9156439541017714,
+    "reg_alpha": 3.0414928363577663e-06,
+    "reg_lambda": 4.084379825383369
+  }
+}

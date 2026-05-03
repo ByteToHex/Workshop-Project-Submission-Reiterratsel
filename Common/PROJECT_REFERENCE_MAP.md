@@ -331,23 +331,51 @@ CREATE TABLE financials (
 - Docker compose entrypoint:
   `Common\docker-compose.yml`
 
+- Self-contained rerunnable submission/runtime copy:
+  `SystemCode\docker-compose.yml`
+  Note: this bundle mirrors the essential app, rebuild, DuckDB, XGBoost, ticker-CSV, and rule-seed assets outside `Common` so the project can be rerun from `SystemCode` alone.
+
 - App image definition:
   `Common\Frontend\Dockerfile.reitteratsel`
+
+- Self-contained app image definition:
+  `SystemCode\Frontend\Dockerfile.reitteratsel`
 
 - App container pip requirements:
   `Common\Frontend\requirements.reitteratsel.txt`
 
+- Self-contained app container pip requirements:
+  `SystemCode\Frontend\requirements.reitteratsel.txt`
+
 - Container runtime env override:
   `Common\docker-compose.env` local secret file
 
+- Self-contained container runtime env override:
+  `SystemCode\docker-compose.env`
+  Note: mounted as `/workspace/.env` for the rebuild profile inside the copied compose stack.
+
 - Container runtime env template:
   `Common\docker-compose.env.example`
+
+- Self-contained container runtime env template:
+  `SystemCode\docker-compose.env.example`
+
+- Self-contained runtime `.env` used by copied Python modules:
+  `SystemCode\.env`
+
+- Self-contained copied binary/runtime artifacts:
+  `SystemCode\Micro\IO\out\_annual_warehouse\fundamentals.duckdb`
+  `SystemCode\Micro\IO\out\_annual_warehouse\parquet`
+  `SystemCode\Macro\IO\Model_Train\Use\run_21`
+  `SystemCode\Macro\IO\SRC\CSV_TICKER`
+  `SystemCode\Micro\5_Model_KG\mamdani_rule_seed.json`
 
 - Usage note:
   this compose setup is now split by use case:
   - default app/service path serves the Streamlit app directly against the committed DuckDB snapshot
   - rebuild profile path starts Neo4j plus the rebuild container so `build_reitteratsel_pipeline.py` can refresh the shipped DuckDB/parquet cache in-place
   - `Common\docker-compose.env` is needed for the rebuild profile path, not for the default app-only path
+  - `SystemCode\docker-compose.yml` is the self-contained rerun path when the project needs to be launched from outside `Common`
 
 ## Practical Working Rules
 
