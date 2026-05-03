@@ -1,4 +1,4 @@
-Videos are too large- will upload to youtube and update here when completed
+Videos are too large- uploaded to youtube instead of pushing directly to repo
 
 System Design Video: https://youtu.be/LQb5lMcDabc
 Marketing Video: https://youtu.be/NTCO8mmg_Mg
