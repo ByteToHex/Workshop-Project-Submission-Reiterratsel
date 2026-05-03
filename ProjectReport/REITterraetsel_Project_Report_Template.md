@@ -112,19 +112,13 @@ In practical terms, this means the system treats market reaction after the annua
 
 ## 3.2.2. Theoretical Benchmark
 
-Two benchmark ideas appear in the implemented system:
+The benchmark in this project is not a single external label set. Instead, each part of the system is judged against the role it is supposed to play.
 
-- For the annual rule layer, the relevant benchmark is the ground-truth label `label_126wd`, which is derived from `car_126wd`.
-- For the macro layer, the relevant benchmark is the saved holdout evaluation in `Common\Macro\IO\Model_Train\Use\run_21`, where Optuna and DEAP are compared on the same target and holdout split.
+For the annual distress layer, the practical benchmark is whether the model's classification agrees with `label_126wd`, which is the project's own ground-truth label derived from forward 126-trading-day abnormal returns. In other words, the annual reasoning layer is evaluated by asking a simple question: does its distress judgement line up with the later relative market outcome for that REIT?
 
-The formal evaluation script under `Common\Eval\build_reitteratsel_eval.py` compares four model views:
+For the macro layer, the benchmark is narrower. The XGBoost model is not trying to predict firm distress directly. It is trying to predict short-horizon SORA movement well enough to act as a useful rate-stress overlay. That is why its performance is assessed through holdout forecasting results rather than by comparing it straight to `label_126wd`.
 
-- `distress_baseline`
-- `distress_score_mamdani`
-- `distress_score_refi`
-- `final_distress`
-
-This is a useful report design because it shows not only whether the full hybrid score works, but also whether the Mamdani layer alone already improves over a simpler baseline.
+The final evaluation then brings the system views together and compares four levels of interpretation: a simple baseline, the annual Mamdani score, a REFI-only stress proxy, and the full hybrid score. This matters because it shows whether the added complexity is actually useful. If the hybrid score cannot outperform the simpler views, then the macro and CAR-path overlays are not earning their place in the design.
 
 ## 3.2.3. Threshold-Based Label Engineering Rationale
 
