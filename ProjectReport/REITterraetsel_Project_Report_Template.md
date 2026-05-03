@@ -132,7 +132,7 @@ In plain language, the label says that `DISTRESSED` means the REIT performed cle
 
 ## 3.3. XGBoost / Macro Data Design
 
-The macro model is not meant to predict REIT distress directly. Its job is narrower: estimate short-horizon movement in SORA so the app can translate rate stress into a refinancing-risk overlay for each REIT. In the deployed setup, the active target is `option2_change`, which predicts the future change in SORA over the next 10 SGX trading days rather than the absolute rate level.
+The macro model used in the final app belongs to what the project informally calls the `P` family, meaning `Parquet-direct`. In this family, features are built directly from the large parquet-based macro dump, especially forward-looking rate-expectation fields such as `expected_bps`, and the model is trained to predict rates such as EFFR or SORA. The macro model is not meant to predict REIT distress directly. Its job is narrower: estimate short-horizon movement in SORA so the app can translate rate stress into a refinancing-risk overlay for each REIT. In the deployed setup, the active target is `option2_change`, which predicts the future change in SORA over the next 10 SGX trading days rather than the absolute rate level.
 
 This design choice matters because the project is trying to detect changes in the rate environment, and not simply restate the current regime. That is why the model gives weight to market-expectation variables such as `expected_bps`, `p_no_change`, `margin_over_second`, and `days_to_next_fomc`, while also using local term-structure signals such as `sora_term_spread_t2`, `expected_bps_minus_sora_90d`, and `sora_curve_steepness`. In plain terms, the model asks both what the market expects the Fed and rate path to do next, and what the recent local SORA curve is already implying.
 
@@ -227,13 +227,15 @@ This step is also where the earlier weak-labelling and Snorkel implementation wa
 
 ## 4.3. XGBoost Development
 
+The project did not build only one XGBoost pipeline. It explored three model families. `P` stands for `Parquet-direct`, where forward-looking rate features from the parquet macro dump are used to predict rates such as EFFR or SORA. `A` stands for `Abnormal Returns`, where the goal was to predict REIT abnormal performance relative to macro conditions. `R` or `R*` stands for `Regime`, where the goal was to model macro effects against the SGX iEdge S-REIT index itself. The final production choice was `P`, because it was the only family that showed a sufficiently usable and repeatable signal for the later hybrid system.
+
 ## 4.3.1. Multi-Configuration Controlled Experiment Design
 
 The macro experiment was designed as a controlled comparison of different ways to define the prediction task, rather than as a one-shot attempt to fit a single model.
 
 The script varies two main things: the forward horizon (in practice, I tested 1d, 3d, 5d, 7d, 10d, 14d, 21d, 63d timeframes) and the target formulation. Specifically, the pipeline supports three prediction targets: `option1_level`, which predicts the future SORA level; `option2_change`, which predicts the signed future change in SORA; and `option3_abs_change`, which predicts the absolute size of the future move regardless of direction. These targets are then compared across different short-horizon windows.
 
-Essentially, the project is trying to identify which specific macro target is most reliably forcasted, while still remaining useful for the hybrid REIT-distress system. That is why the comparison is framed around practical usefulness as a runtime overlay. 
+Within the successful `P` family, the project is trying to identify which specific macro target is most reliably forecasted, while still remaining useful for the hybrid REIT-distress system. That is why the comparison is framed around practical usefulness as a runtime overlay. 
 
 This is also why shuffle and standard k-fold cross-validation are not appropriate here. The macro dataset is a daily time series, the targets are forward-looking, and the feature set includes lagged path information. If rows were shuffled, or if later periods were allowed to appear in the training folds for earlier validation periods, the model would leak future regime information into its own evaluation. 
 
@@ -248,6 +250,8 @@ The project runs two different search strategies, Optuna and DEAP, against the s
 For the signed change target, the script is not satisfied with a model that only gets the average error slightly lower. It also checks whether the model gets the direction of the rate move right, because the later distress overlay mainly cares whether refinancing conditions are worsening or easing. That is why the script evaluates directional metrics such as accuracy, F1, and AUC in addition to ordinary regression error. It also rejects weak solutions such as models that predict almost the same value every time or predict one direction too often.
 
 The reason both Optuna and DEAP are used is simple: the project does not want to trust one tuning method blindly. Optuna searches for a strong parameter set in a more direct way, while DEAP searches the same problem from a different angle. DEAP is intentionally kept conservative because the dataset is small, so an overly aggressive search could just fit noise instead of real signal. After both searches finish, the script compares their holdout results on the same test window and keeps the better one.
+
+This adversarial selection logic matters especially because the project had other model families that did not generalize cleanly. The `A` family had enough pooled rows, but it repeatedly drifted toward ticker memorization rather than a stable cross-sectional signal. The `R` and `R*` regime-style family remained inconclusive as well, likely because the feature set and effective sample were still too limited for a strong standalone regime model. In practice, this made the `P` family the only defensible production candidate.
 
 ## 4.4. Pipeline and Application Delivery
 
@@ -267,7 +271,7 @@ The design also comes with explicit limits: The test window is still frozen and 
 
 ## 5.1. Evaluation for XGBoost Best Version
 
-The best locally evidenced macro model is the `run_21` `fwd_10_days` `option2_change` model, where Optuna is the recorded winner over DEAP. It predicts the 10-trading-day forward SORA change and is the exact family wired into the runtime app.
+The best locally evidenced macro model is the `P`-family `run_21` `fwd_10_days` `option2_change` model, where Optuna is the recorded winner over DEAP. It predicts the 10-trading-day forward SORA change and is the exact family wired into the runtime app.
 
 Its holdout summary is:
 
@@ -287,6 +291,8 @@ These are not "perfect prediction" numbers, but they are enough to justify using
 The historical working directory exists and contains many earlier runs:
 
 - `Common\Macro\IO\Model_Train\Working\run_0` through `run_28`
+
+Across those historical runs, the most important distinction is between model families rather than just run numbers. The `P` family was the clearest success case: despite data limitations that forced a conservative 1-fold time-ordered evaluation design, it still produced the most convincing directional and holdout signal. By contrast, the `A` abnormal-returns family did not generalize cleanly and often drifted toward ticker-identity memorization, which made its apparent signal hard to trust. The `R` and `R*` regime-style family was also not taken forward because its signal remained inconclusive for production use. This is the practical reason the final app uses only `P`.
 
 The folder also contains the safe artifacts named in the skeleton, including `shap_summary_bar.png` and `shap_summary_beeswarm.png` in multiple historical runs.
 
@@ -391,6 +397,7 @@ The practical interpretation is:
 - Mamdani is the more stable annual reasoning core.
 - The final hybrid score is the more sensitive live-monitoring view.
 - Model `P` has enough signal to justify inclusion as a macro overlay, but not enough evidence to replace the reasoning system entirely.
+- Models `A` and `R/R*` were not promoted into the final runtime design because their signals remained inconclusive or unstable relative to the production needs of the app.
 
 ## 6. Future Work
 
