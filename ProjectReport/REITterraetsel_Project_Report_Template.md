@@ -215,27 +215,13 @@ Taken together, the data-engineering design is more deliberate than a simple scr
 
 ## 4.2.1. Threshold-Based Annual Label Engineering
 
-This is one of the clearest fully implemented parts of the project. The code path in `reitteratsel_core.py` does the following:
+The annual label in this project is engineered directly from post-filing market behaviour. For each REIT-year, the system takes the fiscal year end as the anchor date, rolls forward to the first available trading day on or after that date, and then compounds abnormal returns over the next 63 and 126 trading days. Abnormal return is defined as the REIT's daily return minus the SGX iEdge REIT index daily return.
 
-- derives annual filing anchors from `reit_metrics.dim_period.fiscal_year_end_date`
-- rolls the anchor to the first available trading day on or after that date
-- compounds forward abnormal returns for 63 and 126 trading days
-- stores the results in `reit_labels.fact_distress_label`
-- maps `car_126wd` to `label_126wd`
+The main output is `label_126wd`, which is derived from `car_126wd` and stored together with the anchor date, forward-window end dates, and diagnostic counts in `reit_labels.fact_distress_label`. In practical terms, the label evaluates: after the annual filing anchor, did the REIT materially underperform, roughly track, or clearly outperform the sector benchmark over the following half-year window?
 
-The threshold logic is explicit:
+The threshold rule is intentionally simple. As mentioned above, if `car_126wd < -15%`, the REIT is labelled `DISTRESSED`. If `car_126wd > +5%`, it is labelled `HEALTHY`. Anything in between is labelled `WATCH`.
 
-- if `car_126wd < -15%`, the label is `DISTRESSED`
-- if `car_126wd > +5%`, the label is `HEALTHY`
-- otherwise the label is `WATCH`
-
-In plain English, this means:
-
-- the market judged the REIT badly if it underperformed the REIT index by more than 15% over the next 126 trading days
-- the market judged it positively if it outperformed by more than 5%
-- anything in between is treated as a middle-risk watch state
-
-This section is also where the earlier weak-labelling idea was functionally replaced. Instead of relying on a generative label model, the project engineered a consistent downstream target from actual post-filing market behavior.
+This step is also where the earlier weak-labelling idea was effectively replaced. Instead of generating proxy labels through a separate weak-supervision model, the project defines its annual target directly from observable post-filing abnormal-return behaviour.
 
 ## 4.3. XGBoost Development
 
