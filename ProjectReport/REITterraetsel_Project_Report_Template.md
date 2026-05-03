@@ -411,7 +411,7 @@ External references already named in the local proposal:
 
 ## Appendix A. Project Proposal
 
-The local proposal can already be summarized into a concise appendix-ready form:
+The local copy of the previous proposal can be found in this folder (ProjectReport\PROPOSAL_Group16_JasonTay_REITerratsel.pdf).
 
 - Project title:
   `REITterratsel - Equity Risk Solver for S-REITs`
@@ -421,10 +421,6 @@ The local proposal can already be summarized into a concise appendix-ready form:
   knowledge-based reasoning, weak supervision, rule extraction, Neo4j knowledge graph, and Streamlit interface.
 - Key change since proposal:
   the final implementation replaced Snorkel-centric labelling with threshold-based label engineering from cumulative abnormal returns.
-
-If a full appendix copy is preferred, the raw proposal is already available at:
-
-`SAMPLES\Mine\Proposal_Temp_04.md`
 
 ## Appendix B. Mapped System Functionalities against MR, RS, CGS Modules
 
