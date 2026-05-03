@@ -12,22 +12,50 @@ Prepared by:
 
 ## Table of Contents
 
-| Section | Description |
-|---|---|
-| 1 | Executive Summary |
-| 2 | Business Case / Market Research |
-| 3 | System Design / Model |
-| 4 | System Development & Implementation |
-| 5 | Findings and Discussion |
-| 6 | Future Work |
-| 7 | References |
-| Appendix A | Project Proposal |
-| Appendix B | Mapped System Functionalities against MR, RS, CGS Modules |
-| Appendix C | Installation and User Guide |
+- [1. Executive Summary](#1-executive-summary)
+- [2. Business Case / Market Research](#2-business-case--market-research)
+- [2.1. Business Case](#21-business-case)
+- [2.2. Competitive Positioning](#22-competitive-positioning)
+- [2.3. Literature Review](#23-literature-review)
+- [3. System Design / Model](#3-system-design--model)
+- [3.1. Original Design](#31-original-design)
+- [3.2. Data Definitions](#32-data-definitions)
+- [3.2.1. Labels / Ground Truth](#321-labels--ground-truth)
+- [3.2.2. Theoretical Benchmark](#322-theoretical-benchmark)
+- [3.2.3. Threshold-Based Label Engineering Rationale](#323-threshold-based-label-engineering-rationale)
+- [3.3. XGBoost / Macro Data Design](#33-xgboost--macro-data-design)
+- [3.4. Mamdani Fuzzy Rules / Micro Data Design](#34-mamdani-fuzzy-rules--micro-data-design)
+- [3.5. Full Pipeline / Hybrid Model](#35-full-pipeline--hybrid-model)
+- [3.6. UI Prototype](#36-ui-prototype)
+- [4. System Development & Implementation](#4-system-development--implementation)
+- [4.1. Early Development / Dead Forks](#41-early-development--dead-forks)
+- [4.2. Data Scraping and Data Engineering](#42-data-scraping-and-data-engineering)
+- [4.2.1. Threshold-Based Annual Label Engineering](#421-threshold-based-annual-label-engineering)
+- [4.3. XGBoost Development](#43-xgboost-development)
+- [4.3.1. Multi-Configuration Controlled Experiment Design](#431-multi-configuration-controlled-experiment-design)
+- [4.3.2. Hyperparameter Search Strategy](#432-hyperparameter-search-strategy)
+- [4.4. Pipeline and Application Delivery](#44-pipeline-and-application-delivery)
+- [5. Findings and Discussion](#5-findings-and-discussion)
+- [5.1. Evaluation for XGBoost Best Version](#51-evaluation-for-xgboost-best-version)
+- [5.2. Evaluation for XGBoost Historical Versions](#52-evaluation-for-xgboost-historical-versions)
+- [5.3. Evaluation for Mamdani Layer and Full Pipeline](#53-evaluation-for-mamdani-layer-and-full-pipeline)
+- [5.4. Representation Tables and Graphs](#54-representation-tables-and-graphs)
+- [5.5. Optuna and DEAP as an Adversarial Error-Surfacing System](#55-optuna-and-deap-as-an-adversarial-error-surfacing-system)
+- [5.6. Developed Models and Final Interpretation](#56-developed-models-and-final-interpretation)
+- [6. Future Work](#6-future-work)
+- [7. References](#7-references)
+- [Appendix A. Project Proposal](#appendix-a-project-proposal)
+- [Appendix B. Mapped System Functionalities against MR, RS, CGS Modules](#appendix-b-mapped-system-functionalities-against-mr-rs-cgs-modules)
+- [Appendix B.1. Decision Automation](#appendix-b1-decision-automation)
+- [Appendix B.2. Business Resource Optimization / Evolutionary Computing](#appendix-b2-business-resource-optimization--evolutionary-computing)
+- [Appendix B.3. Knowledge Discovery and Data Mining](#appendix-b3-knowledge-discovery-and-data-mining)
+- [Appendix B.4. Cognitive Techniques / Tools](#appendix-b4-cognitive-techniques--tools)
+- [Appendix C. Installation and User Guide](#appendix-c-installation-and-user-guide)
+- [Appendix C.1. Docker submission / demo mode](#c1-docker-submission--demo-mode)
 
 ## 1. Executive Summary
 
-<!--- Not Filled in because slop -->
+This project develops a hybrid distress-monitoring system for Singapore REITs that combines an annual Mamdani fuzzy reasoning layer, a short-horizon XGBoost macro overlay, and a cumulative abnormal return path overlay. The annual layer provides the structural accounting anchor, while the macro and market overlays make the runtime score more responsive when refinancing conditions or post-filing market reactions deteriorate. Evaluation results show that Mamdani is the strongest standalone annual classifier, while the full hybrid score is more aggressive in surfacing distressed names and performs better as a continuous runtime prioritization signal.
 
 ## 2. Business Case / Market Research
 
@@ -277,7 +305,7 @@ This separation between build-time persistence and runtime display makes the sys
 
 In submission mode, the repository ships with the committed DuckDB snapshot and the app serves directly from that persisted warehouse by default. In other words, the submitted application is designed to demonstrate the final reasoning outputs reliably, while still preserving a separate rebuild path for development and refresh work.
 
-The execution order for th pipeline first builds abnormal-return labels, then the daily CAR-path table, then the Mamdani input frame with `null_count` and `non_ok_count`, then seeds the Neo4j rule graph, then runs Python Mamdani inference and persists the annual fuzzy outputs, and only after that launches the app and evaluation layers. This sequencing ensures that the runtime dashboard is reading a fully prepared annual base rather than mixing partially rebuilt components.
+The execution order for the pipeline first builds abnormal-return labels, then the daily CAR-path table, then the Mamdani input frame with `null_count` and `non_ok_count`, then seeds the Neo4j rule graph, then runs Python Mamdani inference and persists the annual fuzzy outputs, and only after that launches the app and evaluation layers. This sequencing ensures that the runtime dashboard is reading a fully prepared annual base rather than mixing partially rebuilt components.
 
 The design also comes with explicit limits: The test window is still frozen and simulated rather than live, some annual anchors do not yet have a full forward 126-trading-day window so some `label_126wd` values remain `NULL`, and `non_ok_count` is currently persisted mainly for diagnostics rather than used directly in scoring.
 
@@ -325,7 +353,7 @@ The class-level results make the trade-off even clearer. Mamdani gives a more ba
 
 The ranking metrics support the same interpretation. `Final_distress` has the best `MAP@5` at `0.7274`, ahead of Mamdani at `0.7131`, which suggests the hybrid score is slightly better at surfacing the riskiest names near the top of a ranking even when its final class labels are less conservative. In practical terms, Mamdani is the cleaner annual classifier, while the full pipeline is the better runtime prioritization score. The only caveat is that the final hybrid can be quite aggressive, with a precision score close to or below 50%.
 
-## 5.4. Representation Data
+## 5.4. Representation Tables and Graphs
 
 The repo already contains several directly usable report artifacts (especially in the Miscellaneous folder and the IO folders in Common/) to support the evaluation sections above. For XGBoost, the most useful artifacts are the `run_21` holdout summaries and the historical SHAP visuals now archived under `Miscellaneous\Run_Artifacts_XGBoost\run_21`, `run_22`, `run_27`, and `run_28`. For the full pipeline, the most useful artifacts are the summary, per-class, ranking, and confusion-matrix CSVs archived under `Miscellaneous\full_pipeline_eval\run_3`.
 
