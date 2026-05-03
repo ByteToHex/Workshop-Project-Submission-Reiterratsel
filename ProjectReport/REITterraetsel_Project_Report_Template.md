@@ -122,21 +122,13 @@ The final evaluation then brings the system views together and compares four lev
 
 ## 3.2.3. Threshold-Based Label Engineering Rationale
 
-The implemented label thresholds are explicit in `reitteratsel_core.py` and `Design_v1a.txt`:
+The label thresholds are intentionally simple and conservative. If `car_126wd < -15%`, the REIT is labelled `DISTRESSED`. If `car_126wd > +5%`, it is labelled `HEALTHY`. Everything in between is labelled `WATCH`.
 
-- `car_126wd < -15%` -> `DISTRESSED`
-- `car_126wd > +5%` -> `HEALTHY`
-- otherwise -> `WATCH`
+This creates an intentionally asymmetric rule. A REIT is only called distressed when it materially underperforms the sector benchmark over the next 126 trading days, while a smaller positive threshold is enough to classify it as healthy. The middle range is left as `WATCH` because the market signal is not decisive enough to justify a stronger conclusion.
 
-This means the annual label is deliberately asymmetric. The distressed class requires a materially negative cumulative abnormal return over 126 trading days, while the healthy class requires clearly positive outperformance. The middle band is treated as ambiguous and therefore mapped to `WATCH`.
+This matters because the project is trying to detect meaningful post-filing deterioration rather than ordinary price noise. A wider negative threshold helps avoid calling every weak period a distress event, while the middle bucket preserves uncertainty instead of forcing borderline cases into a false healthy-or-distressed split.
 
-This is sensible for a proof-of-concept because the system is trying to identify meaningful market deterioration rather than minor price noise. The design documents also indicate that higher-timeframe windows were preferred because they are less noisy than very short windows and better aligned with annual filing anchors.
-
-In plain language, the label says:
-
-- `DISTRESSED` means the REIT underperformed the sector benchmark badly over roughly half a trading year after the filing anchor.
-- `HEALTHY` means it outperformed clearly over the same horizon.
-- `WATCH` means the market reaction was not decisive enough to classify as either extreme.
+In plain language, the label says that `DISTRESSED` means the REIT performed clearly worse than the sector after the filing anchor, `HEALTHY` means it held up or outperformed clearly, and `WATCH` means the evidence was mixed.
 
 ## 3.3. XGBoost / Macro Data Design
 
