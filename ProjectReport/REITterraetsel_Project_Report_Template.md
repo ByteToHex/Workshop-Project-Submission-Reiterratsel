@@ -126,38 +126,19 @@ The label thresholds are intentionally simple and conservative. If `car_126wd < 
 
 This creates an intentionally asymmetric rule. A REIT is only called distressed when it materially underperforms the sector benchmark over the next 126 trading days, while a smaller positive threshold is enough to classify it as healthy. The middle range is left as `WATCH` because the market signal is not decisive enough to justify a stronger conclusion.
 
-This matters because the project is trying to detect meaningful post-filing deterioration rather than ordinary price noise. A wider negative threshold helps avoid calling every weak period a distress event, while the middle bucket preserves uncertainty instead of forcing borderline cases into a false healthy-or-distressed split.
+This matters because the project is trying to detect meaningful post-filing deterioration and ignore ordinary price noise. A wider negative threshold helps avoid calling every weak period a distress event, while the middle bucket preserves uncertainty instead of forcing borderline cases into a false healthy-or-distressed split.
 
 In plain language, the label says that `DISTRESSED` means the REIT performed clearly worse than the sector after the filing anchor, `HEALTHY` means it held up or outperformed clearly, and `WATCH` means the evidence was mixed.
 
 ## 3.3. XGBoost / Macro Data Design
 
-The local run artifacts show that the active macro model is not a general price forecaster. It is a SORA-oriented change model. In `run_21`, the selected runtime target is `option2_change`, described as:
+The macro model is not meant to predict REIT distress directly. Its job is narrower: estimate short-horizon movement in SORA so the app can translate rate stress into a refinancing-risk overlay for each REIT. In the deployed setup, the active target is `option2_change`, which predicts the future change in SORA over the next 10 SGX trading days rather than the absolute rate level.
 
-`Future SORA change over 10 SGX trading rows`
+This design choice matters because the project is trying to detect changes in the rate environment, not simply restate the current regime. That is why the model gives weight to market-expectation variables such as `expected_bps`, `p_no_change`, `margin_over_second`, and `days_to_next_fomc`, while also using local term-structure signals such as `sora_term_spread_t2`, `expected_bps_minus_sora_90d`, and `sora_curve_steepness`. In plain terms, the model asks both what the market expects the Fed and rate path to do next, and what the recent local SORA curve is already implying.
 
-For the deployed runtime, `DEFAULT_HORIZON_DAYS = 10`, and the app explicitly loads direct XGBoost inference from `run_21`.
+The feature design also shows that the model is intentionally path-aware rather than snapshot-only. It uses lag differences, realized volatility, drawdown from recent peak, distance from moving average, and short-horizon acceleration to describe how SORA has been moving recently. This is a sensible choice because rate stress is often better captured by momentum, volatility, and direction of change than by a single static rate reading.
 
-The `fwd_10_days\feature_manifest.json` and `run_contents_summary.txt` make the feature design fairly clear. The model uses three broad feature groups:
-
-- Base macro features:
-  `sora_level_t2`, `sora_3m_t2`, `sora_term_spread_t2`, `expected_bps`, `p_no_change`, `margin_over_second`, `days_to_next_fomc`, and missingness indicators.
-- Spread features:
-  `expected_bps_minus_sora_90d`, `sora_curve_steepness`.
-- Engineered SORA path features:
-  lag differences, realized volatility, drawdown from recent peak, distance from moving average, and acceleration.
-
-The run summary also records that for `option2_change`, the model intentionally excludes `sora_level_t2` and `sora_3m_t2` from the active feature set because those level features are too regime-heavy relative to a change target. That is a meaningful design choice, because it shows the pipeline was trying to predict direction and movement rather than accidentally hard-coding level information that could distort the target.
-
-The 1-fold design is also directly evidenced by the local run metadata:
-
-- `split_mode = custom_1fold`
-- `train_frac = 0.7`
-- `test_frac = 0.2`
-- `gap_rows = 63`
-- `rows_base = 869`
-
-Based on those local settings, the 1-fold constraint appears to have been accepted because the dataset is time ordered, the sample size is not huge, and leakage prevention mattered more than producing many reshuffled validation folds. The 63-row gap is especially important because it suggests the pipeline deliberately inserted a temporal separation between training and downstream evaluation windows.
+The script also makes a deliberate effort to avoid leakage and overfitting. For the active change target, it excludes `sora_level_t2` and `sora_3m_t2` because those level variables carry heavy regime information that can distort a change forecast. The train-test split is strictly time ordered, with 70% for training, 20% for testing, and a 63-row gap in between. That gap is important because it reduces overlap between feature history and forward target windows, making the holdout evaluation more credible for a time-series setting.
 
 ## 3.4. Mamdani Fuzzy Rules / Micro Data Design
 
