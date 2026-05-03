@@ -142,50 +142,13 @@ The script also makes a deliberate effort to avoid leakage and overfitting. For 
 
 ## 3.4. Mamdani Fuzzy Rules / Micro Data Design
 
-The current Mamdani system is seeded from `Common\Micro\5_Model_KG\mamdani_rule_seed.json` and evaluated in Python through `reitteratsel_core.py`. The implemented fuzzy inputs are:
+The Mamdani layer is the project's annual reasoning core. Its job is to take a REIT's annual fundamentals and turn them into a graded distress score that is easier to interpret than a single hard threshold. In practice, it answers a question like: given this combination of coverage, leverage, refinancing pressure, and payout strain, does the REIT look stable, worth watching, already high risk, or close to critical?
 
-- `ICR`
-- `GEARING`
-- `DSCR`
-- `REFI_RISK`
-- `PAYOUT_RATIO`
-- `FFO_COVERAGE`
-- `NET_DEBT_EBITDA`
-- `NULL_COUNT`
+The chosen inputs reflect that purpose. `ICR` and `DSCR` measure debt-servicing strength, `GEARING`, `REFI_RISK`, and `NET_DEBT_EBITDA` capture balance-sheet and refinancing pressure, while `PAYOUT_RATIO` and `FFO_COVERAGE` capture whether the distribution policy is still supported by recurring cash generation. The layer also includes `NULL_COUNT` so that missing or incomplete annual inputs are treated as a real confidence problem rather than ignored.
 
-This choice is consistent with the local metric dictionary. These variables collectively cover:
+The rule design is deliberately intuitive. Some rules are direct alarms, such as very weak `ICR`, very weak `DSCR`, or extreme `REFI_RISK`, which can immediately push the score toward the critical range. Other rules are combination rules, such as weak coverage together with stretched leverage, or over-distribution together with FFO shortfall. This matters because REIT distress is rarely driven by one ratio in isolation. The model is explicitly designed to treat corroborating weaknesses as more serious than a single noisy metric on its own.
 
-- debt-servicing capacity (`ICR`, `DSCR`)
-- leverage and refinancing structure (`GEARING`, `REFI_RISK`, `NET_DEBT_EBITDA`)
-- payout sustainability (`PAYOUT_RATIO`, `FFO_COVERAGE`)
-- data-quality or missingness risk (`NULL_COUNT`)
-
-The output membership functions are not generic labels like "good" and "bad." They are:
-
-- `stable`
-- `watch`
-- `high`
-- `critical`
-
-This is useful for reporting because it matches the practical use case better than a binary classifier. A retail-investor-facing distress dashboard needs intermediate warning states, not just yes-or-no outcomes.
-
-The rule seed shows several high-signal examples:
-
-- `R1`: `ICR = distress` -> `critical`
-- `R2`: `DSCR = distress` -> `critical`
-- `R4`: `REFI_RISK = critical` -> `critical`
-- `R6`: `ICR = watch` and `GEARING = distress` -> `critical`
-- `R12`: healthy `ICR`, `GEARING`, `DSCR`, and `REFI_RISK` together -> `stable`
-
-This reveals the intended reasoning style. The system is not treating every metric as independent. It encodes both direct single-metric alarms and corroborating multi-metric combinations.
-
-The code also includes status-aware preprocessing. Certain metrics are not interpreted only by raw value:
-
-- `NEGATIVE_BASE` forces distress-style interpretation for `ICR`, `DSCR`, and `NET_DEBT_EBITDA`
-- `DISTRESS_BASE` forces payout-strain interpretation for `PAYOUT_RATIO` and `FFO_COVERAGE`
-- `PARTIAL`, `CLIPPED_SOURCE_SHARE`, and `LOW_DENOMINATOR` reduce confidence rather than silently pretending the values are fully normal
-
-That design is important because financial ratios can be numerically valid yet semantically misleading when the denominator or profit base is broken. The local implementation therefore treats metric status as part of the rule input design rather than as a mere metadata field.
+The implementation also checks whether each ratio is trustworthy before letting it influence the score at full strength. If a ratio is flagged as `NEGATIVE_BASE` or `DISTRESS_BASE`, the code forces a distress-style interpretation because the accounting base itself is already broken. If the value is `PARTIAL`, `CLIPPED_SOURCE_SHARE`, or `LOW_DENOMINATOR`, the model reduces confidence instead of pretending the ratio is fully reliable. The final Mamdani score is then blended back toward neutral when rule activation is weak, which makes the annual signal more cautious when the underlying evidence is incomplete or unstable.
 
 <!--FILL The skeleton points to an external ratio-selection justification file at `D:\WS\-GH-A-Ref\...METRICS_FOR_MAMDANI_RULES.txt`. That file is outside this repository, so I cannot fully quote the original external justification for why these exact ratios were chosen over all alternatives. The local repo does support a practical rationale through `Data_Dict_Reit_Metrics.md` and the seeded rule set.-->
 
