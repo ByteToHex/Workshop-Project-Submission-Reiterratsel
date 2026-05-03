@@ -257,9 +257,15 @@ The project runs two different search strategies, Optuna and DEAP, against the s
 
 For the signed change target, the script is not satisfied with a model that only gets the average error slightly lower. It also checks whether the model gets the direction of the rate move right, because the later distress overlay mainly cares whether refinancing conditions are worsening or easing. That is why the script evaluates directional metrics such as accuracy, F1, and AUC in addition to ordinary regression error. It also rejects weak solutions such as models that predict almost the same value every time or predict one direction too often.
 
+There is a specific reason for this metric choice. One of the lessons from the XGBoost training runs was that a winner can be chosen for the wrong reason if the selection rule leans too heavily on F1 alone. F1 is threshold-dependent: it depends on turning a continuous prediction into an up-versus-down call at a fixed threshold. AUC is more robust for this purpose because it measures directional ranking quality across thresholds rather than at only one cut point. In practical terms, a model can look better on F1 simply because it calls the positive class more aggressively, yet still be worse on AUC, RMSE, and overall ranking quality. That is why the later model-selection logic moved toward a more careful priority structure instead of treating every F1 gain as decisive.
+
 The reason both Optuna and DEAP are used is simple: the project does not want to trust one tuning method blindly. Optuna searches for a strong parameter set in a more direct way, while DEAP searches the same problem from a different angle. DEAP is intentionally kept conservative because the dataset is small, so an overly aggressive search could just fit noise instead of real signal. After both searches finish, the script compares their holdout results on the same test window and keeps the better one.
 
 This adversarial selection logic matters especially because the project had other model families that did not generalize cleanly. The `A` family had enough pooled rows, but it repeatedly drifted toward ticker memorization rather than a stable cross-sectional signal. The `R` and `R*` regime-style family remained inconclusive as well, likely because the feature set and effective sample were still too limited for a strong standalone regime model. In practice, this made the `P` family the only defensible production candidate.
+
+The historical runs also showed why explicit collapse diagnostics matter. A model can appear usable on one headline metric while still being structurally unhealthy if it predicts almost one class only, collapses toward near-constant outputs, or produces an implausibly skewed `pred_positive_rate`. Balanced class behaviour is therefore treated as a sanity check: it does not prove generalization by itself, but it helps detect models that are clearly degenerate and should not be trusted even before deeper interpretation.
+
+One further lesson concerns DEAP specifically. In small-row regimes, DEAP can occasionally discover parameter combinations that look strong on a single holdout but are too aggressive to trust, such as very deep trees with high learning rates and weak regularization. The practical response was not to discard DEAP, but to tighten its search space so it would not wander too easily into overfit-prone corners. That safeguard is specific to the current small-sample setting and should not be treated as a universal rule: if future datasets become materially larger, those caps may need to be relaxed.
 
 ## 4.4. Pipeline and Application Delivery
 
@@ -292,7 +298,7 @@ Its holdout summary is:
 - `F1 = 0.6575`
 - `AUC = 0.7341`
 
-These are not "perfect prediction" numbers, but they are enough to justify using the macro model as an overlay rather than as the sole decision engine. That is also exactly how the system uses it. The XGBoost layer does not replace the annual reasoning layer. It nudges the final distress score in response to short-horizon rate stress.
+These are not "perfect prediction" numbers, but they do indicate a real, usable signal. The most important practical point is that the model is stronger as a directional overlay than as a precise magnitude forecaster. In other words, it is more useful for telling the system whether short-horizon rate stress is becoming worse or better than for making exact point forecasts of where SORA will land. That is also exactly how the system uses it. The XGBoost layer does not replace the annual reasoning layer. It nudges the final distress score in response to short-horizon rate stress.
 
 ## 5.2. Evaluation for XGBoost Historical Versions
 
@@ -301,6 +307,10 @@ The historical working directory exists and contains many earlier runs:
 - `Common\Macro\IO\Model_Train\Working\run_0` through `run_28`
 
 Across those historical runs, the most important distinction is between model families rather than just run numbers. The `P` family was the clearest success case: despite data limitations that forced a conservative 1-fold time-ordered evaluation design, it still produced the most convincing directional and holdout signal. By contrast, the `A` abnormal-returns family did not generalize cleanly and often drifted toward ticker-identity memorization, which made its apparent signal hard to trust. The `R` and `R*` regime-style family was also not taken forward because its signal remained inconclusive for production use. This is the practical reason the final app uses only `P`.
+
+Within those historical runs, several recurring issues became visible. First, some earlier winner-selection logic over-favoured threshold-dependent F1 improvements and could therefore choose a model that looked better on paper but was weaker on more robust metrics such as AUC or RMSE. Second, some runs exposed collapse behaviour, where the model became too one-sided in its predictions or lost useful dispersion, which made its apparent performance unreliable. Third, the `A` family repeatedly surfaced ticker-feature contamination: SHAP importance concentrated too heavily on ticker identity, especially distressed names, which suggested memorization rather than transferable signal.
+
+The experiments around ticker inclusion reinforced that point. Variants with ticker dummies or poisoned/caveat universes could look informative, but they often encouraged the model to learn "this ticker is usually bad" instead of learning a cleaner state-based relationship. Cleaner universes and no-ticker variants were therefore important diagnostics for checking whether the signal was genuinely generalizing or merely using identity shortcuts.
 
 The folder also contains the safe artifacts named in the skeleton, including `shap_summary_bar.png` and `shap_summary_beeswarm.png` in multiple historical runs.
 
@@ -438,6 +448,8 @@ Fourth, the proposal's broader ambitions remain valid:
 - build a more formal MLOps pipeline
 - test additional macro experts or macro targets
 - extend the system into a more general explainable investment-risk framework
+
+On the macro-model side specifically, future work should revisit the current conservative DEAP guardrails once materially larger datasets are available. Those restrictions are sensible for the present small-row regime, but they should not be treated as permanent if later versions of the project gain enough data to support a broader and more expressive search space.
 
 ## 7. References
 
