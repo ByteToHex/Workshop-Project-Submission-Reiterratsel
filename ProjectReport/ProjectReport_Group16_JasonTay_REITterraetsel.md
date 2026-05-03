@@ -186,6 +186,54 @@ If a ratio is flagged as `NEGATIVE_BASE` or `DISTRESS_BASE`, the code therefore 
 
 The cleanest way to understand the full design is as an annual anchor with two faster-moving overlays. The annual anchor is the Mamdani score built from annual fundamentals. It represents the slower-moving balance-sheet view of distress and stays frozen until the next annual checkpoint. This is the stable base of the system because accounting weakness, leverage strain, and payout pressure do not usually reset every day.
 
+The implemented architecture is shown below.
+
+```mermaid
+flowchart TD
+    subgraph MICRO[Annual Micro Layer]
+        direction TB
+        RS[Raw TradingView-style annual statements] --> MW[DuckDB annual warehouse]
+        MW --> MET[Computed annual metrics]
+        MET --> LAB[CAR-based annual labels]
+        MET --> FI[Fuzzy-ready annual inputs]
+        FI --> MAM[Mamdani inference in Python]
+        MAM --> FC[Persisted fuzzy cache<br/>distress_score_mamdani]
+    end
+
+    subgraph RULES[Rule Construction]
+        direction TB
+        SEED[mamdani_rule_seed.json] --> NEO[Neo4j seeded rule graph]
+        NEO --> MAM
+    end
+
+    subgraph MACRO[Macro Overlay]
+        direction TB
+        PX[Parquet-direct macro features<br/>expected_bps, SORA path, curve signals] --> XGB[XGBoost Model P<br/>option2_change]
+        XGB --> MP[Predicted 10-day SORA change]
+    end
+
+    subgraph MARKET[Market Reaction Overlay]
+        direction TB
+        CSV[REIT daily CSVs + SGX iEdge REIT index] --> AR[Daily abnormal returns]
+        AR --> CAR[Daily CAR-path table<br/>car_path_distress]
+    end
+
+    subgraph RUNTIME[Runtime App Layer]
+        direction TB
+        FC --> HYB[Final distress synthesis]
+        MP --> HYB
+        CAR --> HYB
+        HYB --> UI[Streamlit dashboard<br/>Ranking / Navigator / Rates]
+    end
+
+    subgraph EVAL[Offline Full-Pipeline Evaluation]
+        direction TB
+        LAB --> EV[Evaluation vs annual ground truth<br/>label_126wd]
+        FC --> EV
+        HYB --> EV
+    end
+```
+
 That annual anchor is then deliberately supplemented by the earlier XGBoost and CAR-path work, because annual fundamentals alone are "frozen" and incapable of explaining how risk changes between filing dates. The XGBoost layer contributes a macro rate-stress view by predicting short-horizon SORA change. This matters because refinancing pressure is not only a function of how much debt a REIT has, but also of what the rate environment is becoming. The design therefore uses the XGBoost output as a macro shock rather than as a standalone distress classifier.
 
 The second overlay is the daily CAR-path layer. This uses cumulative abnormal return from the same annual filing anchor to show how the market has reacted since that disclosure point. Its role is different from the macro model. The macro layer captures a broad rate regime shift that can affect the sector, while the CAR-path layer captures the REIT-specific market path after the annual anchor. In other words, the macro layer asks whether funding conditions are worsening, while the CAR-path layer asks whether this particular REIT is already trading like a weaker name.
