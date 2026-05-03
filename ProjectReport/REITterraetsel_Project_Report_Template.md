@@ -235,6 +235,10 @@ The script varies two main things: the forward horizon (in practice, I tested 1d
 
 Essentially, the project is trying to identify which specific macro target is most reliably forcasted, while still remaining useful for the hybrid REIT-distress system. That is why the comparison is framed around practical usefulness as a runtime overlay. 
 
+This is also why shuffle and standard k-fold cross-validation are not appropriate here. The macro dataset is a daily time series, the targets are forward-looking, and the feature set includes lagged path information. If rows were shuffled, or if later periods were allowed to appear in the training folds for earlier validation periods, the model would leak future regime information into its own evaluation. 
+
+For the same reason, ordinary k-fold would make the model look stronger than it really is by mixing highly autocorrelated neighbouring periods across train and test. The script therefore uses a strictly time-ordered split with an explicit gap, so validation is always done on later data that the model was not allowed to see during training.
+
 The final deployed choice is the signed 10-trading-day SORA change target. This was more stable and less predisposed to noise. Furthermore, it fits the later hybrid design better than predicting the absolute level of SORA, because the app mainly needs a short-horizon signal of whether refinancing conditions are becoming more or less stressful.
 
 ## 4.3.2. Hyperparameter Search Strategy
