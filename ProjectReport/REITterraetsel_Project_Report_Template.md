@@ -335,51 +335,19 @@ The existing SHAP artifacts serve a different purpose. They are most useful in t
 
 ## 5.5. Optuna and DEAP as an Adversarial Error-Surfacing System
 
-One useful way to describe the macro training pipeline is that the optimizer contest was not only a tuning step. It also acted as an error-surfacing mechanism. The local code and saved run artifacts support several points from the skeleton:
+The most useful way to describe the macro training pipeline is that Optuna and DEAP were not used only to search for a better score. They were used to expose weaknesses in each other. The script makes that design explicit. In `train_p_1fold_pipeline.py`, the final winner is not picked by whichever optimizer finishes last or whichever has the most impressive single metric. It goes through a formal `choose_winner(...)` rule with tolerances, where signed targets are judged first on `AUC`, then on `RMSE`, and only then on `F1`. That is a direct response to the historical `run_19` and `run_20` lesson that a model can win on thresholded `F1` while still being weaker on broader directional ranking quality. A copy of the relevant script is archived in `Miscellaneous\Run_Artifacts_XGBoost\script_refs\train_p_1fold_pipeline.py`.
 
-- the model-selection logic became important enough to formalize in `choose_winner(...)`
-- Optuna trial count was explicitly set to `80`
-- DEAP search settings were deliberately constrained for the small-row regime
-- mutation and crossover are no longer naively extreme in the saved script
-
-The final script suggests that the project converged toward a more disciplined search regime:
-
-- small population
-- small number of generations
-- shallow trees
-- moderate mutation probability
-- moderate crossover probability
-
-This matters because aggressive evolutionary search can easily optimize noise in small temporal datasets. The local comments and parameter caps imply that the final configuration was chosen to reduce that risk.
-
-<!--FILL The skeleton asks for a documented narrative tying specific issues to runs 9-21 and to external notes under `..\REF_SELF\IRS\Working\Data\ForBoth\Consolidate_Processing.txt`. Those substantiating logs are outside this repository, so I cannot map each optimizer issue to its original discovery evidence from local sources alone.-->
+The script also shows that the final search regime was deliberately conservative. Optuna is fixed at `80` trials. DEAP is limited to `8` generations with population size `20`, mutation probability `1/9`, crossover probability `0.6`, and tournament size `3`. More importantly, the script explicitly labels its DEAP grid as a "conservative DEAP search space for the current small-row regime." In practice, that means the evolutionary search is no longer allowed to roam freely across the same aggressive corners seen in earlier runs. The later search space narrows tree depth to `2-5`, keeps learning rates moderate, and raises the floor on `min_child_weight` and `reg_lambda` relative to the earlier aggressive `run_19` and `run_20` candidates. This is not because DEAP is inherently worse than Optuna. It is because, in a small temporal dataset, an unconstrained genetic search can optimize noise very convincingly. The historical runs, the final script, and the tightened parameter ranges therefore all point to the same conclusion: the optimizer contest became an adversarial error-surfacing system, but only after the search itself was disciplined enough not to reward unstable models. The supporting script snapshots are archived in `Miscellaneous\Run_Artifacts_XGBoost\script_refs`, and the relevant historical runs remain archived under `run_19`, `run_20`, and `run_21`.
 
 ## 5.6. Developed Models and Final Interpretation
 
-The repo supports four conceptually distinct views of distress:
+The final system should be read as four distinct views of distress rather than as one model with minor variations. `Distress_baseline` is the simplest benchmark and mainly shows how weak a naive annual mapping would be on its own. `Distress_score_mamdani` is the annual structural reading built from financial ratios and rule combinations. `Distress_score_refi` isolates refinancing stress as one channel only. `Final_distress` is the runtime synthesis that blends annual structure, refinancing sensitivity, macro stress, and CAR-path information.
 
-- `distress_baseline`
-- `distress_score_mamdani`
-- `distress_score_refi`
-- `final_distress`
+The evaluation makes the role of each layer fairly clear. Mamdani is the strongest standalone annual classifier. It has the best label accuracy and keeps a more balanced treatment of the `WATCH` bucket, which is why it should be understood as the system's main annual reasoning core. The refinancing-only score performs poorly as a full classifier, but that is not a failure of design. It was never meant to replace the annual layer; it is a narrow stress amplifier. The full hybrid score is the most operationally aggressive view. Its distressed recall rises to `0.8545`, compared with `0.6841` for Mamdani alone, which means it catches more distressed cases. The price is lower precision and more upward reclassification of borderline names.
 
-The annual Mamdani layer is the strongest single discrete classifier in the local evaluation. It improves substantially over the baseline and over the simple REFI-only proxy.
+That trade-off is exactly what the architecture is trying to achieve. The deployed system is not claiming that the macro model or CAR path should override annual fundamentals by themselves. Instead, the annual Mamdani score supplies the stable structural anchor, while the macro and market overlays make the live score more sensitive when conditions deteriorate between annual reporting points. In practical terms, Mamdani is the more stable annual interpretation, while `final_distress` is the more useful monitoring score when the goal is to surface names that may be drifting into trouble before the next full-year financial picture is available.
 
-The final hybrid score appears to be more operationally aggressive. From the per-class metrics:
-
-- `final_distress` distressed recall is `0.8545`
-- `final_distress` distressed precision is `0.4413`
-- `distress_score_mamdani` distressed recall is `0.6841`
-- `distress_score_mamdani` distressed precision is `0.4510`
-
-This means the hybrid score catches more distressed cases, but it also accepts more false alarms. That is almost exactly the trade-off implied in the skeleton note that the hybrid model may catch around 70 to 80 percent of distressed cases while remaining aggressive.
-
-The practical interpretation is:
-
-- Mamdani is the more stable annual reasoning core.
-- The final hybrid score is the more sensitive live-monitoring view.
-- Model `P` has enough signal to justify inclusion as a macro overlay, but not enough evidence to replace the reasoning system entirely.
-- Models `A` and `R/R*` were not promoted into the final runtime design because their signals remained inconclusive or unstable relative to the production needs of the app.
+This also clarifies why only `P` was promoted from the XGBoost experiments. The macro model has enough signal to improve the runtime overlay, but not enough to replace the reasoning system. The `A` and `R/R*` families were not rejected because they were useless in every respect; they were rejected because they did not produce a stable enough signal for the production role the app needed. The archived evaluation outputs for this interpretation are in `Miscellaneous\Run_Artifacts_XGBoost\full_pipeline_eval\run_3`, and the historical macro evidence remains archived under the relevant `run_19` to `run_28` folders.
 
 ## 6. Future Work
 
