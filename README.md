@@ -25,6 +25,12 @@ For submission, the project ships a committed DuckDB snapshot so the application
 
 ---
 
+**Special Thanks**
+
+*My partner Nicole, for her instrumental contributions to the video production (marketing) and UI/UX design work that shaped the visual direction of REITerratsel. Nicole is not a NUS-ISS student, but her creative input brought the project's presentation layer to life.*
+
+---
+
 ## Video of System Modelling & Use Case Demo
 
 `Refer to Github Folder: Video`
